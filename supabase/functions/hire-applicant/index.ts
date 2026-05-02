@@ -33,27 +33,13 @@ function randomPassword(length = 14) {
   return out;
 }
 
-async function sendRecruitmentEmail(args: { toEmail: string; tempPassword: string }) {
+async function sendWelcomeEmail(args: { toEmail: string; tempPassword?: string }) {
   const apiKey = mustGetEnv("BREVO_API_KEY");
   const sender = { email: "recruitment@makemeclean.co.uk", name: "MakeMeClean Recruitment" };
+  const isNew = Boolean(args.tempPassword);
 
-  const html = `
-<!doctype html>
-<html>
-  <body style="margin:0;padding:0;background:#f6f7fb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="padding:28px 12px">
-      <tr><td align="center">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background:#fff;border:1px solid #e5e7eb;border-radius:20px;overflow:hidden">
-          <tr><td style="padding:22px 22px 16px;border-bottom:1px solid #eef2f7">
-            <div style="font-weight:900;font-size:22px;color:#111827">MakeMeClean</div>
-            <div style="font-weight:600;font-size:12px;color:#6b7280;margin-top:6px">Staff account created</div>
-          </td></tr>
-          <tr><td style="padding:18px 22px">
-            <h2 style="margin:0 0 10px;font-weight:900;font-size:18px;color:#111827">Welcome onboard</h2>
-            <p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#374151">
-              Your staff portal access is ready. Use the details below to sign in at <b>/login</b>. You’ll be asked to change your password after login.
-            </p>
-            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e5e7eb;border-radius:16px;overflow:hidden">
+  const credentialsBlock = isNew
+    ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;margin-top:12px">
               <tr><td colspan="2" style="background:#f9fafb;padding:12px 14px;font-weight:800;font-size:12px;color:#111827">Login details</td></tr>
               <tr>
                 <td style="padding:10px 14px;border-top:1px solid #eef2f7;font-weight:700;font-size:13px;color:#6b7280">Username</td>
@@ -64,16 +50,33 @@ async function sendRecruitmentEmail(args: { toEmail: string; tempPassword: strin
                 <td style="padding:10px 14px;border-top:1px solid #eef2f7;font-weight:900;font-size:13px;color:#111827;text-align:right">${args.tempPassword}</td>
               </tr>
             </table>
-            <p style="margin:14px 0 0;font-size:12px;line-height:1.6;color:#6b7280">
-              For security, please change your password immediately after signing in.
-            </p>
+            <p style="margin:14px 0 0;font-size:12px;line-height:1.6;color:#6b7280">For security, please change your password immediately after signing in.</p>`
+    : `<p style="margin:12px 0 0;font-size:14px;line-height:1.6;color:#374151">You already have a MakeMeClean account. Sign in at <b>/login</b> using your existing email and password to access your staff portal.</p>`;
+
+  const bodyIntro = isNew
+    ? "Your staff portal access is ready. Use the details below to sign in at <b>/login</b>. You'll be asked to change your password after login."
+    : "We're delighted to welcome you to the MakeMeClean team. Your staff portal is now active.";
+
+  const html = `<!doctype html>
+<html>
+  <body style="margin:0;padding:0;background:#f6f7fb;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="padding:28px 12px">
+      <tr><td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:640px;background:#fff;border:1px solid #e5e7eb;border-radius:20px;overflow:hidden">
+          <tr><td style="padding:22px 22px 16px;border-bottom:1px solid #eef2f7">
+            <div style="font-weight:900;font-size:22px;color:#111827">MakeMeClean</div>
+            <div style="font-weight:600;font-size:12px;color:#6b7280;margin-top:6px">Welcome to the team</div>
+          </td></tr>
+          <tr><td style="padding:18px 22px">
+            <h2 style="margin:0 0 10px;font-weight:900;font-size:18px;color:#111827">Welcome onboard</h2>
+            <p style="margin:0 0 4px;font-size:14px;line-height:1.6;color:#374151">${bodyIntro}</p>
+            ${credentialsBlock}
           </td></tr>
         </table>
       </td></tr>
     </table>
   </body>
-</html>
-  `.trim();
+</html>`;
 
   const res = await fetch("https://api.brevo.com/v3/smtp/email", {
     method: "POST",
@@ -81,7 +84,7 @@ async function sendRecruitmentEmail(args: { toEmail: string; tempPassword: strin
     body: JSON.stringify({
       sender,
       to: [{ email: args.toEmail }],
-      subject: "Your MakeMeClean staff portal login",
+      subject: "Welcome to the MakeMeClean team",
       htmlContent: html,
     }),
   });
@@ -116,7 +119,7 @@ Deno.serve(async (req) => {
     const { data: app, error: appErr } = await adminClient.from("job_applications").select("*").eq("id", applicationId).single();
     if (appErr || !app) return json(404, { ok: false, error: "Applicant not found" });
 
-    // Try to create auth user — if they already exist, look them up instead
+    // Try to create auth user — if already registered, look them up instead
     let authUserId: string;
     let isNewUser = false;
     const tempPassword = randomPassword();
@@ -129,7 +132,6 @@ Deno.serve(async (req) => {
     });
 
     if (createErr) {
-      // If already registered, fetch the existing user by email
       const alreadyExists =
         createErr.message?.toLowerCase().includes("already been registered") ||
         createErr.message?.toLowerCase().includes("already registered") ||
@@ -169,9 +171,11 @@ Deno.serve(async (req) => {
 
     await adminClient.from("job_applications").update({ status: "hired" }).eq("id", app.id);
 
-    // Only send login credentials email to brand-new auth accounts
-    if (isNewUser) {
-      await sendRecruitmentEmail({ toEmail: app.email, tempPassword });
+    // Always send a welcome email — with credentials for new accounts, portal link for existing
+    try {
+      await sendWelcomeEmail({ toEmail: app.email, tempPassword: isNewUser ? tempPassword : undefined });
+    } catch {
+      // Email failure is non-fatal — staff record and status already saved
     }
 
     return json(200, { ok: true });
