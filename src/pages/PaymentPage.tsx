@@ -83,6 +83,13 @@ export default function PaymentPage() {
 
     if (error) { setStep("error"); return; }
 
+    // Booking is only confirmed after payment succeeds
+    try {
+      await sendNotification(supabase, { type: "booking_confirmation", bookingId: booking.id });
+    } catch (e) {
+      console.error("[MakeMeClean] booking confirmation email failed:", e);
+    }
+
     // Send payment receipt email (Brevo via Supabase Edge Function)
     try {
       await sendNotification(supabase, { type: "payment_receipt", bookingId: booking.id });
@@ -124,6 +131,7 @@ export default function PaymentPage() {
           <div className="flex justify-between"><span className="font-bold text-gray-900">Amount Paid</span><span className="font-bold text-green-600 text-lg">{formatCurrency(booking.price)}</span></div>
         </div>
         <div className="flex gap-3 justify-center">
+          <button onClick={() => setLocation(`/invoice/${booking.id}`)} className="btn-secondary">Invoice</button>
           <button onClick={() => setLocation(`/bookings/${booking.id}`)} className="btn-primary">View Booking</button>
           <button onClick={() => setLocation("/dashboard")} className="btn-secondary">Dashboard</button>
         </div>

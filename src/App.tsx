@@ -12,6 +12,7 @@ import Profile from "@/pages/Profile";
 import Bookings from "@/pages/Bookings";
 import BookingDetail from "@/pages/BookingDetail";
 import PaymentPage from "@/pages/PaymentPage";
+import InvoicePage from "@/pages/InvoicePage";
 import AdminPanel from "@/pages/AdminPanel";
 import Careers from "@/pages/Careers";
 import NotFound from "@/pages/NotFound";
@@ -46,6 +47,7 @@ function App() {
           <Route path="/bookings" component={Bookings} />
           <Route path="/bookings/:id" component={BookingDetail} />
           <Route path="/pay/:bookingId" component={PaymentPage} />
+          <Route path="/invoice/:bookingId" component={InvoicePage} />
           <Route path="/admin" component={AdminPanel} />
           <Route path="/careers" component={Careers} />
           <Route component={NotFound} />

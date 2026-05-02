@@ -6,7 +6,6 @@ import { supabase } from "@/lib/supabase";
 import { services, timeSlots, walesCities, Service } from "@/lib/services";
 import { formatCurrency, generateInvoiceNumber } from "@/lib/utils";
 import { sendTelegramBookingNotification } from "@/lib/telegram";
-import { sendNotification } from "@/lib/notifications";
 
 type Step = 1 | 2 | 3;
 
@@ -101,13 +100,6 @@ export default function BookingPage() {
       invoice_number: invoice,
       customer_email: user.email ?? undefined,
     });
-
-    // Send customer booking confirmation email (Brevo via Supabase Edge Function)
-    try {
-      await sendNotification(supabase, { type: "booking_confirmation", bookingId: data.id });
-    } catch (e) {
-      console.error("[MakeMeClean] booking confirmation email failed:", e);
-    }
 
     setBookingId(data.id);
     setStep(3);
