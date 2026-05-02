@@ -204,14 +204,7 @@ export default function BookingDetail() {
               <button
                 className="flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:underline"
                 onClick={() => {
-                  const content = `INVOICE\n\nMakeMeClean — Professional Cleaning Services\nWales, UK | aadeeniiyii@gmail.com | +44 7362 068202\n\nInvoice Number: ${booking.invoice_number}\nDate Issued: ${new Date(booking.created_at).toLocaleDateString("en-GB")}\nPayment Status: ${booking.payment_status === "paid" ? "PAID" : "PENDING"}\n\n${"─".repeat(50)}\n\nSERVICE DETAILS\n\nService:  ${booking.service_name}\nDate:     ${booking.date}\nTime:     ${booking.time_slot}\nAddress:  ${booking.address}, ${booking.city}, ${booking.postcode}\n\n${"─".repeat(50)}\n\nAMOUNT DUE: ${formatCurrency(booking.price)}\n\n${"─".repeat(50)}\n\nThank you for choosing MakeMeClean!\nWe look forward to seeing you again.`;
-                  const blob = new Blob([content], { type: "text/plain" });
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `${booking.invoice_number}.txt`;
-                  a.click();
-                  URL.revokeObjectURL(url);
+                  setLocation(`/invoice/${booking.id}?print=1`);
                 }}
               >
                 <Download className="w-4 h-4" /> Download

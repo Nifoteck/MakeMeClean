@@ -50,6 +50,14 @@ export default function InvoicePage() {
     return booking.created_at.slice(0, 10);
   }, [booking?.created_at]);
 
+  useEffect(() => {
+    if (!booking) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("print") === "1") {
+      setTimeout(() => window.print(), 300);
+    }
+  }, [booking]);
+
   if (loading || fetching) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -69,15 +77,10 @@ export default function InvoicePage() {
     );
   }
 
-  const downloadHtml = () => {
-    const html = document.documentElement.outerHTML;
-    const blob = new Blob([html], { type: "text/html;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `invoice-${booking.invoice_number ?? booking.id}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
+  const downloadPdf = () => {
+    // Browser-native "Save as PDF" via print dialog (most reliable without extra libraries)
+    const url = `${window.location.origin}/invoice/${booking.id}?print=1`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   return (
@@ -91,8 +94,8 @@ export default function InvoicePage() {
             <button onClick={() => window.print()} className="btn-secondary inline-flex items-center gap-2">
               <Printer className="w-4 h-4" /> Print
             </button>
-            <button onClick={downloadHtml} className="btn-primary inline-flex items-center gap-2">
-              <Download className="w-4 h-4" /> Download
+            <button onClick={downloadPdf} className="btn-primary inline-flex items-center gap-2">
+              <Download className="w-4 h-4" /> Download PDF
             </button>
           </div>
         </div>
@@ -193,4 +196,3 @@ export default function InvoicePage() {
     </div>
   );
 }
-
