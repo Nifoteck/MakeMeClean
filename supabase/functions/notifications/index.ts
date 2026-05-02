@@ -241,7 +241,9 @@ async function sendTelegram(event: NotificationEvent, booking: any, customerEmai
     `*Service:* ${booking.service_name ?? "Cleaning"}`,
     `*Date:* ${booking.date ?? ""}`,
     booking.time_slot ? `*Time:* ${booking.time_slot}` : null,
+    booking.address ? `*Address:* ${booking.address}` : null,
     booking.city ? `*City:* ${booking.city}` : null,
+    booking.postcode ? `*Postcode:* ${booking.postcode}` : null,
     booking.price != null ? `*Amount:* ${formatGBP(Number(booking.price))}` : null,
     invoice ? `*Invoice:* ${invoice}` : null,
     `*Customer:* ${customerEmail}`,
@@ -277,7 +279,7 @@ Deno.serve(async (req) => {
 
     const { data: booking, error } = await supabase
       .from("bookings")
-      .select("id, user_id, service_name, date, time_slot, city, price, invoice_number, payment_status")
+      .select("id, user_id, service_name, date, time_slot, address, city, postcode, price, invoice_number, payment_status")
       .eq("id", payload.bookingId)
       .single();
 
