@@ -116,18 +116,44 @@ Deno.serve(async (req) => {
     const { data: app, error: appErr } = await adminClient.from("job_applications").select("*").eq("id", applicationId).single();
     if (appErr || !app) return json(404, { ok: false, error: "Applicant not found" });
 
+    // Try to create auth user — if they already exist, look them up instead
+    let authUserId: string;
+    let isNewUser = false;
     const tempPassword = randomPassword();
+
     const { data: created, error: createErr } = await adminClient.auth.admin.createUser({
       email: app.email,
       password: tempPassword,
       email_confirm: true,
       user_metadata: { must_change_password: true, staff_role: app.role ?? "Staff" },
     });
-    if (createErr || !created?.user?.id) return json(500, { ok: false, error: createErr?.message ?? "Failed to create user" });
 
-    // Staff row (upsert by email)
+    if (createErr) {
+      // If already registered, fetch the existing user by email
+      const alreadyExists =
+        createErr.message?.toLowerCase().includes("already been registered") ||
+        createErr.message?.toLowerCase().includes("already registered") ||
+        createErr.message?.toLowerCase().includes("already exists") ||
+        (createErr as any).status === 422;
+
+      if (!alreadyExists) return json(500, { ok: false, error: createErr.message });
+
+      const { data: { users }, error: listErr } = await adminClient.auth.admin.listUsers();
+      if (listErr) return json(500, { ok: false, error: listErr.message });
+
+      const existing = users.find((u) => u.email?.toLowerCase() === app.email.toLowerCase());
+      if (!existing) return json(500, { ok: false, error: "User already registered but could not be found" });
+
+      authUserId = existing.id;
+    } else {
+      if (!created?.user?.id) return json(500, { ok: false, error: "Failed to create user" });
+      authUserId = created.user.id;
+      isNewUser = true;
+    }
+
+    // Upsert staff row (by email)
     const staffRow = {
-      user_id: created.user.id,
+      user_id: authUserId,
       application_id: app.id,
       first_name: app.first_name,
       last_name: app.last_name,
@@ -142,7 +168,11 @@ Deno.serve(async (req) => {
     if (staffErr) return json(500, { ok: false, error: staffErr.message });
 
     await adminClient.from("job_applications").update({ status: "hired" }).eq("id", app.id);
-    await sendRecruitmentEmail({ toEmail: app.email, tempPassword });
+
+    // Only send login credentials email to brand-new auth accounts
+    if (isNewUser) {
+      await sendRecruitmentEmail({ toEmail: app.email, tempPassword });
+    }
 
     return json(200, { ok: true });
   } catch (e) {
