@@ -312,11 +312,13 @@ Deno.serve(async (req) => {
       }
     })();
 
-    // Optional internal notification
-    try {
-      await sendTelegram(payload, booking, userData.user.email);
-    } catch (e) {
-      console.error("[notifications] Telegram failed:", e);
+    // Optional internal notification: only notify once after payment
+    if (payload.type === "payment_receipt") {
+      try {
+        await sendTelegram(payload, booking, userData.user.email);
+      } catch (e) {
+        console.error("[notifications] Telegram failed:", e);
+      }
     }
 
     return json(200, { ok: true });
