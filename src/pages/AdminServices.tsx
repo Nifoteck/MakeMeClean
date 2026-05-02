@@ -73,9 +73,9 @@ export default function AdminServices() {
       id: computedId,
       name: String(draft.name),
       description: String(draft.description),
-      price: Number(draft.price ?? 0),
+      price: Number(String(draft.price ?? "").replace(/[^\d.]/g, "")) || 0,
       image_url: draft.image_url ? String(draft.image_url) : null,
-      discount_percent: Number(draft.discount_percent ?? 0),
+      discount_percent: Number(String(draft.discount_percent ?? "").replace(/[^\d.]/g, "")) || 0,
       popular: Boolean(draft.popular),
       active: Boolean(draft.active),
     };
@@ -159,59 +159,87 @@ export default function AdminServices() {
               </div>
               <div>
                 <label className="label">Price per hour (£)</label>
-                <input type="number" step="0.01" className="input-field" value={String(draft.price ?? 0)} onChange={(e) => setDraft((p) => ({ ...p, price: Number(e.target.value) }))} />
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={draft.price === undefined || draft.price === null ? "" : String(draft.price)}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw.trim() === "") { setDraft((p) => ({ ...p, price: "" as unknown as number })); return; }
+                    const cleaned = raw.replace(/[^\d.]/g, "");
+                    setDraft((p) => ({ ...p, price: cleaned as unknown as number }));
+                  }}
+                  onBlur={() => {
+                    const num = Number(String(draft.price ?? "").replace(/[^\d.]/g, ""));
+                    setDraft((p) => ({ ...p, price: Number.isFinite(num) ? num : 0 }));
+                  }}
+                  className="input-field"
+                  placeholder="20"
+                />
               </div>
               <div>
                 <label className="label">Discount (%)</label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min={0}
-                  max={100}
+                  type="text"
+                  inputMode="decimal"
                   className="input-field"
-                  value={String(draft.discount_percent ?? 0)}
-                  onChange={(e) => setDraft((p) => ({ ...p, discount_percent: Number(e.target.value) }))}
+                  value={draft.discount_percent === undefined || draft.discount_percent === null ? "" : String(draft.discount_percent)}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw.trim() === "") { setDraft((p) => ({ ...p, discount_percent: "" as unknown as number })); return; }
+                    const cleaned = raw.replace(/[^\d.]/g, "");
+                    setDraft((p) => ({ ...p, discount_percent: cleaned as unknown as number }));
+                  }}
+                  onBlur={() => {
+                    const num = Number(String(draft.discount_percent ?? "").replace(/[^\d.]/g, ""));
+                    const bounded = Number.isFinite(num) ? Math.max(0, Math.min(100, num)) : 0;
+                    setDraft((p) => ({ ...p, discount_percent: bounded }));
+                  }}
+                  placeholder="0"
                 />
               </div>
-              <div>
-                <label className="label">Service image</label>
-                {!useImageUrl ? (
-                  <input
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="input-field"
-                    disabled={uploadingImage}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) uploadImage(f);
-                    }}
-                  />
-                ) : (
-                  <input
-                    className="input-field"
-                    value={String(draft.image_url ?? "")}
-                    onChange={(e) => setDraft((p) => ({ ...p, image_url: e.target.value }))}
-                    placeholder="https://..."
-                  />
-                )}
-                <button
-                  type="button"
-                  className="mt-2 text-sm font-semibold text-gray-600 hover:text-green-700"
-                  onClick={() => setUseImageUrl((v) => !v)}
-                >
-                  {useImageUrl ? "Upload instead" : "Use image URL instead"}
-                </button>
-              </div>
               <div className="md:col-span-2">
-                {draft.image_url ? (
-                  <div className="border border-gray-100 rounded-2xl overflow-hidden bg-gray-50 h-44">
-                    <img src={String(draft.image_url)} alt="Service" className="w-full h-full object-cover" />
+                <div className="grid md:grid-cols-2 gap-4 items-start">
+                  <div>
+                    <label className="label">Service image</label>
+                    {!useImageUrl ? (
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="input-field"
+                        disabled={uploadingImage}
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) uploadImage(f);
+                        }}
+                      />
+                    ) : (
+                      <input
+                        className="input-field"
+                        value={String(draft.image_url ?? "")}
+                        onChange={(e) => setDraft((p) => ({ ...p, image_url: e.target.value }))}
+                        placeholder="https://..."
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="mt-2 text-sm font-semibold text-gray-600 hover:text-green-700"
+                      onClick={() => setUseImageUrl((v) => !v)}
+                    >
+                      {useImageUrl ? "Upload instead" : "Use image URL instead"}
+                    </button>
                   </div>
-                ) : (
-                  <div className="border border-dashed border-gray-200 rounded-2xl bg-gray-50 h-44 flex items-center justify-center text-sm text-gray-400">
-                    No image selected
-                  </div>
-                )}
+
+                  {draft.image_url ? (
+                    <div className="border border-gray-100 rounded-2xl overflow-hidden bg-gray-50 h-36 md:h-40">
+                      <img src={String(draft.image_url)} alt="Service" className="w-full h-full object-cover" />
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-gray-200 rounded-2xl bg-gray-50 h-36 md:h-40 flex items-center justify-center text-sm text-gray-400">
+                      No image selected
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">

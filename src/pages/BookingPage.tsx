@@ -296,23 +296,39 @@ export default function BookingPage() {
                       onClick={() => setDurationHours((h) => Math.max(1, h - 1))}
                       className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40"
                       disabled={durationHours <= 1}
+                      aria-label="Decrease hours"
                     >
                       <Minus className="w-4 h-4 text-gray-600" />
                     </button>
-                    <div className="text-center min-w-[60px]">
-                      <span className="text-2xl font-extrabold text-gray-900">{durationHours}</span>
-                      <span className="text-sm text-gray-500 ml-1">{durationHours === 1 ? "hr" : "hrs"}</span>
-                    </div>
+
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={String(durationHours)}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "");
+                        if (digits === "") return;
+                        const num = Number.parseInt(digits, 10);
+                        if (!Number.isFinite(num)) return;
+                        setDurationHours(Math.max(1, Math.min(12, num)));
+                      }}
+                      className="input-field w-24 text-center"
+                      aria-label="Number of hours"
+                    />
+
                     <button
                       type="button"
                       onClick={() => setDurationHours((h) => Math.min(12, h + 1))}
                       className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40"
                       disabled={durationHours >= 12}
+                      aria-label="Increase hours"
                     >
                       <Plus className="w-4 h-4 text-gray-600" />
                     </button>
+
                     <div className="flex-1 text-right">
-                      <p className="text-xs text-gray-400">{formatCurrency(hourlyPrice)} × {durationHours} hrs</p>
+                      <p className="text-xs text-gray-400">{formatCurrency(hourlyPrice)} × {durationHours} {durationHours === 1 ? "hr" : "hrs"}</p>
                       <p className="text-lg font-extrabold text-green-600">{formatCurrency(totalPrice)}</p>
                     </div>
                   </div>
