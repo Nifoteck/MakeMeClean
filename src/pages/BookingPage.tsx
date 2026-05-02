@@ -128,7 +128,7 @@ export default function BookingPage() {
         </div>
         <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Booking Confirmed!</h1>
         <p className="text-gray-500 mb-1">Your {selectedService.name} has been booked.</p>
-        <p className="text-gray-400 text-sm mb-8">{date} · {timeSlot} · {city}</p>
+        <p className="text-gray-400 text-sm mb-8">{date} · {timeSlot} · {address}, {city}, {postcode}</p>
 
         <div className="card mb-6 text-left space-y-2.5">
           <div className="flex justify-between text-sm">
@@ -149,7 +149,7 @@ export default function BookingPage() {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Location</span>
-            <span className="font-semibold">{city}</span>
+            <span className="font-semibold text-right">{address}, {city}, {postcode}</span>
           </div>
           <hr className="border-gray-100" />
           <div className="flex justify-between text-sm text-gray-500">
