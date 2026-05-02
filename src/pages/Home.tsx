@@ -1,7 +1,7 @@
 import { Link } from "wouter";
 import { CheckCircle, Star, Shield, Clock, Phone, ArrowRight, Zap, Leaf, Award } from "lucide-react";
-import { services } from "@/lib/services";
 import ServiceCard from "@/components/ServiceCard";
+import { useServices } from "@/hooks/useServices";
 
 const testimonials = [
   {
@@ -42,6 +42,7 @@ const highlights = [
 ];
 
 export default function Home() {
+  const { services } = useServices();
   const popularServices = services.filter((s) => s.popular).slice(0, 6);
 
   return (

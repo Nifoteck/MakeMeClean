@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { Search } from "lucide-react";
-import { services } from "@/lib/services";
+import { useServices } from "@/hooks/useServices";
 import ServiceCard from "@/components/ServiceCard";
 
 export default function Services() {
   const [search, setSearch] = useState("");
+  const { services, loading } = useServices();
 
   const filtered = services.filter(
     (s) =>
@@ -40,7 +41,11 @@ export default function Services() {
 
       {/* Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="py-16 flex items-center justify-center">
+            <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
             <p className="text-lg font-medium">No services found for "{search}"</p>
             <button onClick={() => setSearch("")} className="mt-3 text-green-600 text-sm hover:underline">Clear search</button>

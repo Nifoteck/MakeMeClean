@@ -4,7 +4,7 @@ import { ArrowLeft, Calendar, Clock, MapPin, FileText, Download, AlertTriangle, 
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { services } from "@/lib/services";
+import { defaultIcon } from "@/lib/services";
 
 interface Booking {
   id: string;
@@ -59,9 +59,7 @@ export default function BookingDetail() {
     setShowConfirm(false);
   };
 
-  const ServiceIcon = booking
-    ? services.find((s) => s.id === booking.service_type)?.icon
-    : null;
+  const ServiceIcon = booking ? defaultIcon : null;
 
   if (loading || fetching) {
     return (

@@ -142,6 +142,9 @@ export default function AdminPanel() {
             <button onClick={fetchBookings} className="btn-ghost flex items-center gap-1.5 text-sm" data-testid="button-refresh">
               <RefreshCw className="w-4 h-4" /> Refresh
             </button>
+            <button onClick={() => setLocation("/admin/services")} className="btn-secondary flex items-center gap-1.5 text-sm py-2">
+              Services
+            </button>
             <button onClick={exportCSV} className="btn-primary flex items-center gap-1.5 text-sm py-2" data-testid="button-export">
               <Download className="w-4 h-4" /> Export CSV
             </button>

@@ -3,9 +3,10 @@ import { useLocation, useParams } from "wouter";
 import { CheckCircle, ArrowLeft, Calendar, Clock, MapPin, ArrowRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { services, timeSlots, walesCities, Service } from "@/lib/services";
+import { timeSlots, walesCities, Service } from "@/lib/services";
 import { formatCurrency, generateInvoiceNumber } from "@/lib/utils";
 import { sendTelegramBookingNotification } from "@/lib/telegram";
+import { useServices } from "@/hooks/useServices";
 
 type Step = 1 | 2 | 3;
 
@@ -13,6 +14,7 @@ export default function BookingPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const params = useParams<{ serviceId?: string }>();
+  const { services } = useServices();
 
   const [step, setStep] = useState<Step>(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);

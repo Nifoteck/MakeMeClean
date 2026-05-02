@@ -14,6 +14,34 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- ── 1b. SERVICES (Admin-managed) ──────────────────────────────
+CREATE TABLE IF NOT EXISTS public.services (
+  id TEXT PRIMARY KEY, -- slug, e.g. 'deep-cleaning'
+  name TEXT NOT NULL,
+  description TEXT NOT NULL,
+  price NUMERIC(10,2) NOT NULL,
+  duration TEXT NOT NULL,
+  icon_key TEXT NOT NULL DEFAULT 'home',
+  popular BOOLEAN DEFAULT false,
+  active BOOLEAN DEFAULT true,
+  sort_order INT DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE OR REPLACE FUNCTION public.set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS services_set_updated_at ON public.services;
+CREATE TRIGGER services_set_updated_at
+BEFORE UPDATE ON public.services
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
 -- ── 2. BOOKINGS ──────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.bookings (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -120,6 +148,7 @@ CREATE TABLE IF NOT EXISTS public.job_applications (
 ALTER TABLE public.profiles         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.bookings         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.job_applications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.services         ENABLE ROW LEVEL SECURITY;
 
 -- Profiles
 CREATE POLICY "Users can view own profile"   ON public.profiles FOR SELECT USING (auth.uid() = id);
@@ -132,6 +161,11 @@ CREATE POLICY "Profiles readable by all authenticated" ON public.profiles FOR SE
 CREATE POLICY "Users can view own bookings"   ON public.bookings FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create own bookings" ON public.bookings FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update own bookings" ON public.bookings FOR UPDATE USING (auth.uid() = user_id);
+
+-- Services (public read)
+CREATE POLICY "Anyone can read active services"
+  ON public.services FOR SELECT
+  USING (active = true);
 
 -- Job applications — anyone can INSERT (public apply), only admin can SELECT
 CREATE POLICY "Anyone can submit application" ON public.job_applications FOR INSERT WITH CHECK (true);
@@ -193,3 +227,8 @@ CREATE POLICY "Public read applications"
 -- CREATE POLICY "Admin update all applications"
 --   ON public.job_applications FOR UPDATE
 --   USING (auth.uid() = 'YOUR-ADMIN-UUID');
+--
+-- CREATE POLICY "Admin manage services"
+--   ON public.services FOR ALL
+--   USING (auth.uid() = 'YOUR-ADMIN-UUID')
+--   WITH CHECK (auth.uid() = 'YOUR-ADMIN-UUID');
