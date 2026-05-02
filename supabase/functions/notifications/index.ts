@@ -54,7 +54,9 @@ function buildEmail(event: NotificationEvent, booking: any) {
   const safeService = escapeHtml(String(booking.service_name ?? "Cleaning"));
   const safeDate = escapeHtml(String(booking.date ?? ""));
   const safeTime = escapeHtml(String(booking.time_slot ?? ""));
+  const safeAddress = escapeHtml(String(booking.address ?? ""));
   const safeCity = escapeHtml(String(booking.city ?? ""));
+  const safePostcode = escapeHtml(String(booking.postcode ?? ""));
   const safeInvoice = escapeHtml(String(booking.invoice_number ?? ""));
   const safePrice = formatGBP(Number(booking.price ?? 0));
   const invoiceNumber = escapeHtml(String(booking.invoice_number ?? booking.id));
@@ -160,7 +162,9 @@ function buildEmail(event: NotificationEvent, booking: any) {
           panelRow("Service", safeService),
           panelRow("Date", safeDate),
           panelRow("Time", safeTime),
-          panelRow("City", safeCity),
+          safeAddress ? panelRow("Address", safeAddress) : "",
+          safeCity ? panelRow("City", safeCity) : "",
+          safePostcode ? panelRow("Postcode", safePostcode) : "",
           panelRow("Booking reference", escapeHtml(String(booking.id))),
         ].join(""),
         ctaHref: bookingUrl || undefined,
@@ -201,7 +205,9 @@ function buildEmail(event: NotificationEvent, booking: any) {
           <li><b>Service:</b> ${safeService}</li>
           <li><b>Date:</b> ${safeDate}</li>
           <li><b>Time:</b> ${safeTime}</li>
-          <li><b>City:</b> ${safeCity}</li>
+          ${safeAddress ? `<li><b>Address:</b> ${safeAddress}</li>` : ""}
+          ${safeCity ? `<li><b>City:</b> ${safeCity}</li>` : ""}
+          ${safePostcode ? `<li><b>Postcode:</b> ${safePostcode}</li>` : ""}
         </ul>
         ${bookingUrl ? `<p style="margin:0 0 16px"><a href="${bookingUrl}">View booking</a></p>` : ""}
       </div>
