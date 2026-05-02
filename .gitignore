@@ -1,0 +1,9 @@
+node_modules/
+dist/
+
+# Local env (may contain secrets)
+.env.local
+.env.*.local
+
+# Keep .env out of git if you add secrets to it
+.env
