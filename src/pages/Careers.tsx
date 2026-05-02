@@ -73,6 +73,7 @@ const defaultForm = {
   role: "Cleaning",
   employment_type: "",
   available_days: [] as string[],
+  available_hours: "",
   earliest_start: "",
   first_name: "",
   last_name: "",
@@ -121,6 +122,7 @@ const defaultForm = {
   declare_privacy: false,
   declare_dbs_consent: false,
   declare_references_consent: false,
+  declare_terms: false,
 };
 
 export default function Careers() {
@@ -328,6 +330,7 @@ export default function Careers() {
         ...f,
         employment_type: data.employment_type ?? f.employment_type,
         available_days: data.available_days ?? f.available_days,
+        available_hours: data.available_hours ?? f.available_hours,
         earliest_start: data.earliest_start ?? f.earliest_start,
         first_name: data.first_name ?? f.first_name,
         last_name: data.last_name ?? f.last_name,
@@ -375,6 +378,7 @@ export default function Careers() {
         declare_privacy: false,
         declare_dbs_consent: false,
         declare_references_consent: false,
+        declare_terms: false,
       }));
     }
     setPrefillLoading(false);
@@ -427,6 +431,7 @@ export default function Careers() {
         role: form.role,
         employment_type: form.employment_type || null,
         available_days: form.available_days,
+        available_hours: form.available_hours || null,
         earliest_start: form.earliest_start || null,
         first_name: form.first_name,
         last_name: form.last_name,
@@ -479,6 +484,20 @@ export default function Careers() {
       });
 
       if (insertErr) throw new Error(insertErr.message);
+
+      // keep profiles (master) and staff table in sync with the latest personal data
+      const contactPatch = {
+        full_name: `${form.first_name} ${form.last_name}`.trim() || null,
+        phone:     form.phone    || null,
+        address:   form.address  || null,
+        city:      form.city     || null,
+        postcode:  form.postcode || null,
+      };
+      await Promise.all([
+        supabase.from("profiles").upsert({ id: user.id, ...contactPatch }, { onConflict: "id" }),
+        supabase.from("staff").update({ phone: contactPatch.phone, address: contactPatch.address, city: contactPatch.city, postcode: contactPatch.postcode }).eq("user_id", user.id),
+      ]);
+
       clearDraft(form.email);
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -861,6 +880,15 @@ export default function Careers() {
             </div>
 
             <div>
+              <label className="label">Hours available per week</label>
+              <div className="flex flex-wrap gap-2">
+                {["Up to 10 hours", "10–20 hours", "20–30 hours", "30–40 hours", "40+ hours (full time)"].map((h) => (
+                  <Chip key={h} active={form.available_hours === h} onClick={() => set("available_hours", h)}>{h}</Chip>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <label className="label">Earliest start date</label>
               <input type="date" className="input-field" value={form.earliest_start} onChange={(e) => set("earliest_start", e.target.value)} />
             </div>
@@ -875,7 +903,7 @@ export default function Careers() {
 
             <hr className="border-gray-100" />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">First name *</label>
                 <input className="input-field" value={form.first_name} onChange={(e) => set("first_name", e.target.value)} required />
@@ -900,7 +928,18 @@ export default function Careers() {
             </div>
             <div>
               <label className="label">Address</label>
-              <input className="input-field" placeholder="Street, City, Postcode" value={form.address} onChange={(e) => set("address", e.target.value)} />
+              <input className="input-field" placeholder="House number and street" value={form.address} onChange={(e) => set("address", e.target.value)} />
+            </div>
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="label">City / Town</label>
+                <input className="input-field" placeholder="e.g. Cardiff" value={form.city} onChange={(e) => set("city", e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Postcode</label>
+                <input className="input-field" placeholder="e.g. CF10 1AB" value={form.postcode} onChange={(e) => set("postcode", e.target.value.toUpperCase())} />
+              </div>
             </div>
 
             <div>
@@ -910,7 +949,7 @@ export default function Careers() {
 
             <hr className="border-gray-100" />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Emergency contact name</label>
                 <input className="input-field" placeholder="Full name" value={form.emergency_contact_name} onChange={(e) => set("emergency_contact_name", e.target.value)} />
@@ -1005,7 +1044,7 @@ export default function Careers() {
               <input className="input-field" placeholder="Company name" value={form.current_employer} onChange={(e) => set("current_employer", e.target.value)} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid sm:grid-cols-2 gap-3">
               <div>
                 <label className="label">Job title</label>
                 <input className="input-field" placeholder="e.g. Cleaner" value={form.current_job_title} onChange={(e) => set("current_job_title", e.target.value)} />
@@ -1128,7 +1167,7 @@ export default function Careers() {
             <div>
               <p className="text-sm font-semibold text-gray-700 mb-3">Reference 1</p>
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Full name *</label>
                     <input className="input-field" placeholder="Jane Smith" value={form.ref1_name} onChange={(e) => set("ref1_name", e.target.value)} />
@@ -1138,7 +1177,7 @@ export default function Careers() {
                     <input className="input-field" placeholder="ABC Cleaning Ltd" value={form.ref1_company} onChange={(e) => set("ref1_company", e.target.value)} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Phone</label>
                     <input type="tel" className="input-field" placeholder="+44 7000 000000" value={form.ref1_phone} onChange={(e) => set("ref1_phone", e.target.value)} />
@@ -1156,7 +1195,7 @@ export default function Careers() {
             <div>
               <p className="text-sm font-semibold text-gray-700 mb-3">Reference 2</p>
               <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Full name *</label>
                     <input className="input-field" placeholder="John Doe" value={form.ref2_name} onChange={(e) => set("ref2_name", e.target.value)} />
@@ -1166,7 +1205,7 @@ export default function Careers() {
                     <input className="input-field" placeholder="XYZ Services" value={form.ref2_company} onChange={(e) => set("ref2_company", e.target.value)} />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid sm:grid-cols-2 gap-3">
                   <div>
                     <label className="label">Phone</label>
                     <input type="tel" className="input-field" placeholder="+44 7000 000000" value={form.ref2_phone} onChange={(e) => set("ref2_phone", e.target.value)} />
@@ -1346,30 +1385,63 @@ export default function Careers() {
             {/* Declarations */}
             <div className="space-y-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Declarations</p>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={form.declare_accurate} onChange={(e) => set("declare_accurate", e.target.checked)} className="mt-0.5" />
-                <span className="text-sm text-gray-600">
-                  I confirm that the information I have provided is accurate and complete. I understand that providing false or misleading information will disqualify my application, or may result in dismissal if discovered after employment commences.
-                </span>
-              </label>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={form.declare_privacy} onChange={(e) => set("declare_privacy", e.target.checked)} className="mt-0.5" />
-                <span className="text-sm text-gray-600">
-                  I consent to MakeMeClean storing and processing my personal data for the purposes of this recruitment process, in accordance with the UK GDPR and Data Protection Act 2018.
-                </span>
-              </label>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={form.declare_dbs_consent} onChange={(e) => set("declare_dbs_consent", e.target.checked)} className="mt-0.5" />
-                <span className="text-sm text-gray-600">
-                  I consent to a Disclosure and Barring Service (DBS) check being carried out as part of the employment process if required.
-                </span>
-              </label>
-              <label className="flex items-start gap-3 cursor-pointer">
-                <input type="checkbox" checked={form.declare_references_consent} onChange={(e) => set("declare_references_consent", e.target.checked)} className="mt-0.5" />
-                <span className="text-sm text-gray-600">
-                  I consent to MakeMeClean contacting the references I have provided. I confirm that the referees are aware that they may be contacted.
-                </span>
-              </label>
+
+              {[
+                {
+                  key: "declare_accurate" as const,
+                  text: (
+                    <>I confirm that the information I have provided is accurate and complete. I understand that providing false or misleading information will disqualify my application, or may result in dismissal if discovered after employment commences.</>
+                  ),
+                },
+                {
+                  key: "declare_privacy" as const,
+                  text: (
+                    <>I consent to MakeMeClean storing and processing my personal data for the purposes of this recruitment process, in accordance with the UK GDPR and Data Protection Act 2018. I have read the{" "}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold hover:underline">Privacy Policy</a>.</>
+                  ),
+                },
+                {
+                  key: "declare_dbs_consent" as const,
+                  text: (
+                    <>I consent to a Disclosure and Barring Service (DBS) check being carried out as part of the employment process if required.</>
+                  ),
+                },
+                {
+                  key: "declare_references_consent" as const,
+                  text: (
+                    <>I consent to MakeMeClean contacting the references I have provided. I confirm that the referees are aware that they may be contacted.</>
+                  ),
+                },
+                {
+                  key: "declare_terms" as const,
+                  text: (
+                    <>I have read and accept MakeMeClean's{" "}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold hover:underline">Terms &amp; Conditions</a>
+                      {" "}and{" "}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-green-600 font-semibold hover:underline">Privacy Policy</a>
+                      {" "}and understand they govern my engagement with MakeMeClean.</>
+                  ),
+                },
+              ].map(({ key, text }) => (
+                <label key={key} className="flex items-start gap-3 cursor-pointer group">
+                  <button
+                    type="button"
+                    onClick={() => set(key, !form[key])}
+                    className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
+                      form[key]
+                        ? "bg-green-600 border-green-600"
+                        : "border-gray-300 bg-white group-hover:border-green-400"
+                    }`}
+                  >
+                    {form[key] && (
+                      <svg viewBox="0 0 12 12" className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="2,6 5,9 10,3" />
+                      </svg>
+                    )}
+                  </button>
+                  <span className="text-sm text-gray-600 leading-snug">{text}</span>
+                </label>
+              ))}
             </div>
 
             {error && (
@@ -1380,7 +1452,7 @@ export default function Careers() {
               <button type="button" onClick={() => goToStep(3)} className="btn-secondary">Back</button>
               <button
                 type="button"
-                disabled={submitting || !files.cv || !files.id_proof || !files.rtw_doc || !form.declare_accurate || !form.declare_privacy || !form.declare_dbs_consent || !form.declare_references_consent}
+                disabled={submitting || !files.cv || !files.id_proof || !files.rtw_doc || !form.declare_accurate || !form.declare_privacy || !form.declare_dbs_consent || !form.declare_references_consent || !form.declare_terms}
                 onClick={handleSubmit}
                 className="btn-primary flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
               >

@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
-import { ArrowLeft, Calendar, Clock, MapPin, FileText, Download, AlertTriangle, CreditCard, CheckCircle, XCircle } from "lucide-react";
+import {
+  ArrowLeft, Calendar, Clock, MapPin, FileText, Download,
+  AlertTriangle, CreditCard, CheckCircle, XCircle, Star, Receipt, RefreshCw,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { formatDate, formatCurrency } from "@/lib/utils";
+import { cn, formatDate, formatCurrency } from "@/lib/utils";
+import { START_HOURS } from "@/lib/services";
 
 interface Booking {
   id: string;
@@ -22,34 +26,69 @@ interface Booking {
   created_at: string;
 }
 
-function canCancelBooking(booking: Booking): { allowed: boolean; reason?: string } {
-  if (booking.status !== "upcoming") {
-    return { allowed: false, reason: "Booking is not upcoming." };
-  }
+interface RescheduleRequest {
+  requested_date: string;
+  requested_time: string;
+  status: "pending" | "approved" | "rejected";
+}
 
+const STATUS_STYLES: Record<string, string> = {
+  upcoming:  "bg-blue-100 text-blue-700",
+  completed: "bg-emerald-100 text-emerald-700",
+  cancelled: "bg-red-100 text-red-600",
+};
+
+function canCancelBooking(booking: Booking): { allowed: boolean; reason?: string } {
+  if (booking.status !== "upcoming") return { allowed: false, reason: "Booking is not upcoming." };
   const startHour = booking.time_slot.split("–")[0].trim().split(" ")[0].trim();
   const bookingDateTime = new Date(`${booking.date}T${startHour}:00`);
-  const now = new Date();
-  const hoursUntil = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-
+  const hoursUntil = (bookingDateTime.getTime() - Date.now()) / (1000 * 60 * 60);
   if (hoursUntil <= 3) {
     return {
       allowed: false,
-      reason: `Cancellations must be made at least 3 hours before the booking time. Your booking starts at ${startHour} on ${booking.date}.`,
+      reason: `Cancellations must be made at least 3 hours before the booking. Yours starts at ${startHour} on ${booking.date}.`,
     };
   }
-
   return { allowed: true };
 }
+
+function InfoRow({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0 mt-0.5">
+        <Icon className="w-4 h-4 text-green-600" />
+      </div>
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</p>
+        <div className="text-sm font-semibold text-gray-900 mt-0.5">{value}</div>
+      </div>
+    </div>
+  );
+}
+
+const minDate = new Date();
+minDate.setDate(minDate.getDate() + 1);
+const minDateStr = minDate.toISOString().split("T")[0];
 
 export default function BookingDetail() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const params = useParams<{ id: string }>();
-  const [booking, setBooking] = useState<Booking | null>(null);
-  const [fetching, setFetching] = useState(true);
-  const [cancelling, setCancelling] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+
+  const [booking, setBooking]           = useState<Booking | null>(null);
+  const [serviceImage, setServiceImage] = useState<string | null>(null);
+  const [fetching, setFetching]         = useState(true);
+  const [cancelling, setCancelling]     = useState(false);
+  const [showConfirm, setShowConfirm]   = useState(false);
+  const [hasReview, setHasReview]       = useState(false);
+
+  // Reschedule state
+  const [existingRequest, setExistingRequest]   = useState<RescheduleRequest | null>(null);
+  const [showReschedule, setShowReschedule]     = useState(false);
+  const [rescheduleDate, setRescheduleDate]     = useState("");
+  const [rescheduleTime, setRescheduleTime]     = useState("09:00");
+  const [rescheduleReason, setRescheduleReason] = useState("");
+  const [rescheduling, setRescheduling]         = useState(false);
 
   useEffect(() => {
     if (!loading && !user) setLocation("/login");
@@ -57,16 +96,27 @@ export default function BookingDetail() {
 
   useEffect(() => {
     if (!user || !params.id) return;
-    supabase
-      .from("bookings")
-      .select("*")
-      .eq("id", params.id)
-      .eq("user_id", user.id)
-      .single()
-      .then(({ data }) => {
-        setBooking(data as Booking);
-        setFetching(false);
-      });
+    Promise.all([
+      supabase.from("bookings").select("*").eq("id", params.id).eq("user_id", user.id).single(),
+      supabase.from("reviews").select("id").eq("booking_id", params.id).maybeSingle(),
+      supabase
+        .from("reschedule_requests")
+        .select("requested_date, requested_time, status")
+        .eq("booking_id", params.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]).then(([{ data: b }, { data: r }, { data: rr }]) => {
+      const bk = b as Booking | null;
+      setBooking(bk);
+      setHasReview(!!r);
+      setExistingRequest((rr as RescheduleRequest | null) ?? null);
+      if (bk?.service_type) {
+        supabase.from("services").select("image_url").eq("id", bk.service_type).maybeSingle()
+          .then(({ data }) => { if (data?.image_url) setServiceImage(data.image_url); });
+      }
+      setFetching(false);
+    });
   }, [user, params.id]);
 
   const handleCancel = async () => {
@@ -78,9 +128,25 @@ export default function BookingDetail() {
     setShowConfirm(false);
   };
 
+  const handleReschedule = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!booking || !user) return;
+    setRescheduling(true);
+    await supabase.from("reschedule_requests").insert({
+      booking_id: booking.id,
+      user_id: user.id,
+      requested_date: rescheduleDate,
+      requested_time: rescheduleTime,
+      reason: rescheduleReason || null,
+    });
+    setExistingRequest({ requested_date: rescheduleDate, requested_time: rescheduleTime, status: "pending" });
+    setShowReschedule(false);
+    setRescheduling(false);
+  };
+
   if (loading || fetching) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -90,189 +156,335 @@ export default function BookingDetail() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 text-center px-4">
         <div>
-          <p className="text-gray-500 text-lg font-medium mb-4">Booking not found.</p>
+          <p className="text-gray-500 font-semibold mb-4">Booking not found.</p>
           <Link href="/bookings" className="btn-primary">Back to Bookings</Link>
         </div>
       </div>
     );
   }
 
-  const isPaid = booking.payment_status === "paid";
+  const isPaid      = booking.payment_status === "paid";
   const cancelCheck = canCancelBooking(booking);
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <Link href="/bookings" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-green-600 mb-6 transition-colors">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+        {/* Back */}
+        <Link href="/bookings" className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-green-600 mb-6 transition-colors font-medium">
           <ArrowLeft className="w-4 h-4" /> Back to bookings
         </Link>
 
-        <div className="card mb-5">
-          <div className="flex items-start gap-4 mb-6">
-            <div className="w-14 h-14 bg-green-50 border border-green-100 rounded-2xl flex items-center justify-center shrink-0">
-              <FileText className="w-7 h-7 text-green-600" />
+        {/* Hero card */}
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden mb-4">
+          {serviceImage && (
+            <div className="h-32 w-full overflow-hidden">
+              <img src={serviceImage} alt={booking.service_name} className="w-full h-full object-cover" />
             </div>
-            <div className="flex-1">
-              <h1 className="text-2xl font-extrabold text-gray-900">{booking.service_name}</h1>
-              <div className="flex flex-wrap gap-2 mt-1">
-                <span className={`badge-status-${booking.status}`}>{booking.status}</span>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${isPaid ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"}`}>
-                  {isPaid ? "Paid" : "Payment pending"}
-                </span>
-              </div>
-            </div>
-            <div className="text-right shrink-0">
-              <div className="text-2xl font-extrabold text-green-600">{formatCurrency(booking.price)}</div>
-            </div>
-          </div>
-
-          <hr className="border-gray-100 mb-5" />
-
-          <div className="space-y-4">
-            <div className="flex items-start gap-3">
-              <Calendar className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Date</p>
-                <p className="text-sm font-semibold text-gray-900">{formatDate(booking.date)}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <Clock className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Time</p>
-                <p className="text-sm font-semibold text-gray-900">{booking.time_slot}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3">
-              <MapPin className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Address</p>
-                <p className="text-sm font-semibold text-gray-900">
-                  {booking.address}<br />{booking.city}, {booking.postcode}
-                </p>
-              </div>
-            </div>
-            {booking.notes && (
-              <div className="flex items-start gap-3">
-                <FileText className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+          )}
+          <div className="p-6">
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-4">
+                {!serviceImage && (
+                  <div className="w-14 h-14 bg-green-50 border border-green-100 rounded-2xl flex items-center justify-center shrink-0 text-2xl">
+                    🧹
+                  </div>
+                )}
                 <div>
-                  <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Special Instructions</p>
-                  <p className="text-sm text-gray-600">{booking.notes}</p>
+                  <h1 className="text-xl font-black text-gray-900 tracking-tight">{booking.service_name}</h1>
+                  <div className="flex flex-wrap items-center gap-2 mt-2">
+                    <span className={cn("text-xs font-semibold px-2.5 py-1 rounded-full", STATUS_STYLES[booking.status] ?? "bg-gray-100 text-gray-600")}>
+                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                    </span>
+                    <span className={cn(
+                      "text-xs font-semibold px-2.5 py-1 rounded-full",
+                      isPaid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                    )}>
+                      {isPaid ? "Paid" : "Payment pending"}
+                    </span>
+                  </div>
                 </div>
               </div>
+              <div className="text-right shrink-0">
+                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wider">Amount</p>
+                <p className="text-2xl font-black text-green-600">{formatCurrency(booking.price)}</p>
+              </div>
+            </div>
+
+            <div className="h-px bg-gray-100 my-5" />
+
+            <div className="grid sm:grid-cols-2 gap-4">
+              <InfoRow icon={Calendar} label="Date"  value={formatDate(booking.date)} />
+              <InfoRow icon={Clock}    label="Time"  value={booking.time_slot} />
+              <InfoRow
+                icon={MapPin}
+                label="Address"
+                value={<span>{booking.address}<br />{booking.city}, {booking.postcode}</span>}
+              />
+              {booking.notes && (
+                <InfoRow icon={FileText} label="Special Instructions" value={booking.notes} />
+              )}
+            </div>
+
+            {booking.invoice_number && (
+              <p className="text-xs text-gray-400 mt-4">
+                Invoice: <span className="font-semibold text-gray-600">{booking.invoice_number}</span>
+              </p>
             )}
           </div>
         </div>
 
+        {/* Payment pending alert */}
         {!isPaid && booking.status === "upcoming" && (
-          <div className="card border-amber-200 bg-amber-50 mb-5 flex items-center justify-between gap-4 flex-wrap">
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-4 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
-              <CreditCard className="w-5 h-5 text-amber-600 shrink-0" />
+              <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+                <CreditCard className="w-4 h-4 text-amber-600" />
+              </div>
               <div>
-                <p className="font-semibold text-amber-900 text-sm">Payment pending</p>
-                <p className="text-xs text-amber-700">Complete your payment to confirm your booking.</p>
+                <p className="font-bold text-amber-900 text-sm">Payment pending</p>
+                <p className="text-xs text-amber-700 mt-0.5">Complete your payment to confirm this booking.</p>
               </div>
             </div>
-            <Link
-              href={`/pay/${booking.id}`}
-              className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-5 py-2 rounded-xl text-sm transition-colors shrink-0"
-            >
+            <Link href={`/pay/${booking.id}`}
+              className="bg-amber-500 hover:bg-amber-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors shrink-0">
               Pay {formatCurrency(booking.price)}
             </Link>
           </div>
         )}
 
+        {/* Payment confirmed */}
         {isPaid && (
-          <div className="card border-emerald-200 bg-emerald-50 mb-5 flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
-            <p className="text-sm font-semibold text-emerald-800">Payment confirmed — {formatCurrency(booking.price)}</p>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-4 flex items-center gap-3">
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center shrink-0">
+              <CheckCircle className="w-4 h-4 text-emerald-600" />
+            </div>
+            <p className="text-sm font-bold text-emerald-800">
+              Payment confirmed — {formatCurrency(booking.price)}
+            </p>
           </div>
         )}
 
+        {/* Invoice */}
         {booking.invoice_number && (
-          <div className="card mb-5 border-dashed border-gray-200">
-            <div className="flex items-center justify-between">
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 mb-4">
+            <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-                  <FileText className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+                  <Receipt className="w-5 h-5 text-blue-600" />
                 </div>
                 <div>
                   <p className="text-sm font-bold text-gray-900">Invoice</p>
-                  <p className="text-xs text-gray-400">{booking.invoice_number}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{booking.invoice_number}</p>
                 </div>
               </div>
               <button
-                className="flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:underline"
-                onClick={() => {
-                  setLocation(`/invoice/${booking.id}?print=1`);
-                }}
+                onClick={() => setLocation(`/invoice/${booking.id}`)}
+                className="flex items-center gap-1.5 text-sm text-blue-600 font-semibold hover:underline shrink-0"
               >
                 <Download className="w-4 h-4" /> Download
               </button>
             </div>
-            <hr className="border-gray-100 my-4" />
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Service</span>
-                <span className="font-medium">{booking.service_name}</span>
+            <div className="h-px bg-gray-100 my-4" />
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between text-gray-600">
+                <span>Service</span>
+                <span className="font-semibold text-gray-900">{booking.service_name}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Time</span>
-                <span className="font-medium">{booking.time_slot}</span>
+              <div className="flex justify-between text-gray-600">
+                <span>Date</span>
+                <span className="font-semibold text-gray-900">{formatDate(booking.date)}</span>
               </div>
-              <hr className="border-gray-100" />
+              <div className="flex justify-between text-gray-600">
+                <span>Time</span>
+                <span className="font-semibold text-gray-900">{booking.time_slot}</span>
+              </div>
+              <div className="h-px bg-gray-100" />
               <div className="flex justify-between">
                 <span className="font-bold text-gray-900">Total</span>
-                <span className="font-bold text-green-600 text-lg">{formatCurrency(booking.price)}</span>
+                <span className="font-black text-green-600 text-base">{formatCurrency(booking.price)}</span>
               </div>
             </div>
           </div>
         )}
 
-        {booking.status === "upcoming" && (
-          <div>
-            {!cancelCheck.allowed ? (
-              <div className="flex items-start gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-500">
-                <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
-                <span>
-                  {cancelCheck.reason ?? "This booking cannot be cancelled."}
-                </span>
+        {/* Review card */}
+        {booking.status === "completed" && (
+          <div className={cn(
+            "rounded-2xl border p-5 mb-4 flex items-center justify-between gap-4 flex-wrap",
+            hasReview ? "bg-amber-50 border-amber-200" : "bg-green-50 border-green-200"
+          )}>
+            <div className="flex items-center gap-3">
+              <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center shrink-0", hasReview ? "bg-amber-100" : "bg-green-100")}>
+                <Star className={cn("w-5 h-5", hasReview ? "fill-amber-400 text-amber-400" : "text-green-600")} />
               </div>
-            ) : !showConfirm ? (
-              <button
-                onClick={() => setShowConfirm(true)}
-                className="w-full border border-red-200 text-red-600 font-medium py-3 rounded-xl hover:bg-red-50 transition-colors text-sm"
-              >
-                Cancel Booking
-              </button>
-            ) : (
-              <div className="card border-red-200 bg-red-50">
-                <div className="flex items-start gap-3 mb-4">
-                  <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-bold text-red-800 text-sm">Cancel this booking?</p>
-                    <p className="text-xs text-red-600 mt-0.5">This action cannot be undone.</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowConfirm(false)}
-                    className="flex-1 border border-gray-200 text-gray-600 py-2 rounded-xl text-sm hover:bg-gray-50 transition-colors"
-                  >
-                    Keep Booking
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    disabled={cancelling}
-                    className="flex-1 bg-red-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60"
-                  >
-                    {cancelling ? "Cancelling..." : "Yes, Cancel"}
-                  </button>
-                </div>
+              <div>
+                <p className={cn("font-bold text-sm", hasReview ? "text-amber-900" : "text-green-900")}>
+                  {hasReview ? "Review submitted" : "How did we do?"}
+                </p>
+                <p className={cn("text-xs mt-0.5", hasReview ? "text-amber-700" : "text-green-700")}>
+                  {hasReview ? "Thank you for your feedback." : "Share your experience — it takes less than a minute."}
+                </p>
               </div>
+            </div>
+            {!hasReview && (
+              <Link href={`/review/${booking.id}`}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors shrink-0">
+                Leave a Review
+              </Link>
             )}
           </div>
         )}
+
+        {/* Cancel section */}
+        {booking.status === "upcoming" && (
+          !cancelCheck.allowed ? (
+            <div className="flex items-start gap-3 px-4 py-3.5 bg-white border border-gray-200 rounded-2xl text-sm text-gray-500 shadow-sm mb-3">
+              <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-gray-300" />
+              <span>{cancelCheck.reason ?? "This booking cannot be cancelled."}</span>
+            </div>
+          ) : !showConfirm ? (
+            <button
+              onClick={() => setShowConfirm(true)}
+              className="w-full border border-red-200 text-red-500 font-semibold py-3 rounded-2xl hover:bg-red-50 transition-colors text-sm mb-3"
+            >
+              Cancel Booking
+            </button>
+          ) : (
+            <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-3">
+              <div className="flex items-start gap-3 mb-5">
+                <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-4 h-4 text-red-600" />
+                </div>
+                <div>
+                  <p className="font-bold text-red-800 text-sm">Cancel this booking?</p>
+                  <p className="text-xs text-red-600 mt-0.5">This action cannot be undone.</p>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowConfirm(false)}
+                  className="flex-1 border border-gray-200 bg-white text-gray-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+                >
+                  Keep Booking
+                </button>
+                <button
+                  onClick={handleCancel}
+                  disabled={cancelling}
+                  className="flex-1 bg-red-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {cancelling ? "Cancelling…" : "Yes, Cancel"}
+                </button>
+              </div>
+            </div>
+          )
+        )}
+
+        {/* ── Reschedule section ── */}
+        {booking.status === "upcoming" && (
+          existingRequest?.status === "pending" ? (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                  <RefreshCw className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <p className="font-bold text-blue-900 text-sm">Reschedule requested</p>
+                  <p className="text-xs text-blue-600 mt-0.5">
+                    New date: {formatDate(existingRequest.requested_date)} at {existingRequest.requested_time}
+                  </p>
+                  <p className="text-xs text-blue-400 mt-0.5">Awaiting admin confirmation.</p>
+                </div>
+              </div>
+            </div>
+          ) : existingRequest?.status === "approved" ? (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center shrink-0">
+                  <CheckCircle className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <p className="font-bold text-emerald-900 text-sm">Reschedule approved</p>
+                  <p className="text-xs text-emerald-600 mt-0.5">Your booking date and time have been updated.</p>
+                </div>
+              </div>
+            </div>
+          ) : !showReschedule ? (
+            <button
+              onClick={() => setShowReschedule(true)}
+              className="w-full border border-blue-200 text-blue-600 font-semibold py-3 rounded-2xl hover:bg-blue-50 transition-colors text-sm"
+            >
+              Request to Reschedule
+            </button>
+          ) : (
+            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5">
+              <form onSubmit={handleReschedule} className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                    <RefreshCw className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-blue-900 text-sm">Request a new time</p>
+                    <p className="text-xs text-blue-600 mt-0.5">We'll confirm your new slot as soon as possible.</p>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">New date</label>
+                    <input
+                      type="date"
+                      required
+                      min={minDateStr}
+                      value={rescheduleDate}
+                      onChange={(e) => setRescheduleDate(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">New start time</label>
+                    <select
+                      value={rescheduleTime}
+                      onChange={(e) => setRescheduleTime(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    >
+                      {START_HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1.5">Reason (optional)</label>
+                  <input
+                    type="text"
+                    value={rescheduleReason}
+                    onChange={(e) => setRescheduleReason(e.target.value)}
+                    placeholder="e.g. Work commitment changed"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowReschedule(false)}
+                    className="flex-1 border border-gray-200 bg-white text-gray-700 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={rescheduling}
+                    className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors disabled:opacity-60"
+                  >
+                    {rescheduling ? "Sending…" : "Submit Request"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )
+        )}
+
       </div>
     </div>
   );

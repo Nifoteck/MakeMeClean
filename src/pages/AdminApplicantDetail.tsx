@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { useSettings } from "@/hooks/useSettings";
 
 type ApplicationStatus = "pending" | "reviewing" | "shortlisted" | "rejected" | "hired";
 
@@ -24,6 +25,7 @@ interface JobApplication {
   admin_notes: string | null;
   created_at: string;
   available_days: string[] | null;
+  available_hours: string | null;
   earliest_start: string | null;
   rtw_eligible: string | null;
   rtw_type: string | null;
@@ -98,6 +100,7 @@ function Field({ label, value, mono, href, className }: { label: string; value?:
 }
 
 export default function AdminApplicantDetail() {
+  const settings = useSettings();
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { user, loading } = useAuth();
@@ -186,11 +189,23 @@ export default function AdminApplicantDetail() {
 
       if (status === "hired") {
         // hire-applicant: creates auth user, staff row, sends portal login email, marks hired
-        const { error: hireErr } = await supabase.functions.invoke("hire-applicant", {
+        const { data: hireData, error: hireErr } = await supabase.functions.invoke("hire-applicant", {
           body: { applicationId: applicant.id },
           headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
         });
-        if (hireErr) { setError(hireErr.message); setSaving(false); return; }
+        if (hireErr) {
+          // Extract real error message from function response body
+          let detail = hireErr.message;
+          try {
+            const body = typeof (hireErr as any).context?.json === "function"
+              ? await (hireErr as any).context.json()
+              : hireData;
+            if (body?.error) detail = body.error;
+          } catch { /* ignore parse errors */ }
+          setError(detail);
+          setSaving(false);
+          return;
+        }
 
       } else if (status === "rejected") {
         const { error: err } = await supabase.from("job_applications").update({ status }).eq("id", applicant.id);
@@ -206,7 +221,7 @@ We would like to encourage you to keep an eye on our future vacancies, as we are
 
 We appreciate the effort you invested in your application and wish you every success in your future career endeavours.
 
-Should you have any questions, please feel free to contact us at aadeeniiyii@gmail.com.
+Should you have any questions, please feel free to contact us at ${settings.contact_email}.
 
 Kind regards,
 MakeMeClean Recruitment Team
@@ -282,7 +297,7 @@ Wales, UK`;
               <div>
                 <p className="text-base font-extrabold text-gray-900">Email applicant</p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  From: <span className="font-medium text-gray-600">recruitment@makemeclean.co.uk</span>
+                  From: <span className="font-medium text-gray-600">{settings.email_recruitment}</span>
                   <span className="mx-2 text-gray-200">·</span>
                   To: <span className="font-medium text-gray-600">{applicant.first_name} {applicant.last_name} &lt;{applicant.email}&gt;</span>
                 </p>
@@ -343,7 +358,7 @@ Wales, UK`;
                     disabled={emailSending}
                   />
                   <p className="text-xs text-gray-400 mt-1.5">
-                    Your message will be wrapped in a branded email template. The applicant can reply directly to recruitment@makemeclean.co.uk.
+                    Your message will be wrapped in a branded email template. The applicant can reply directly to {settings.email_recruitment}.
                   </p>
                 </div>
 
@@ -569,6 +584,7 @@ Wales, UK`;
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
               <Field label="Role applied for" value={applicant.role} />
               {applicant.employment_type && <Field label="Employment type" value={applicant.employment_type} />}
+              {applicant.available_hours && <Field label="Hours per week" value={applicant.available_hours} />}
               {applicant.earliest_start && <Field label="Earliest start date" value={applicant.earliest_start} />}
               {applicant.notice_period && <Field label="Notice period" value={applicant.notice_period} />}
             </div>

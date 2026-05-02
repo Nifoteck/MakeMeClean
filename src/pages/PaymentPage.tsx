@@ -130,7 +130,7 @@ export default function PaymentPage() {
           <hr className="border-gray-100" />
           <div className="flex justify-between"><span className="font-bold text-gray-900">Amount Paid</span><span className="font-bold text-green-600 text-lg">{formatCurrency(booking.price)}</span></div>
         </div>
-        <div className="flex gap-3 justify-center">
+        <div className="flex flex-wrap gap-3 justify-center">
           <button onClick={() => setLocation(`/invoice/${booking.id}`)} className="btn-secondary">Invoice</button>
           <button onClick={() => setLocation(`/bookings/${booking.id}`)} className="btn-primary">View Booking</button>
           <button onClick={() => setLocation("/dashboard")} className="btn-secondary">Dashboard</button>

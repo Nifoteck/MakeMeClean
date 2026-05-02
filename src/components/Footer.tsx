@@ -1,8 +1,13 @@
 import { Link } from "wouter";
 import { Phone, Mail, MapPin, Facebook, Instagram, Twitter, Briefcase } from "lucide-react";
 import logoUrl from "/logo.png";
+import { useSettings } from "@/hooks/useSettings";
+import { useServices } from "@/hooks/useServices";
 
 export default function Footer() {
+  const settings = useSettings();
+  const { services } = useServices();
+
   return (
     <footer className="bg-gray-950 text-gray-400">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-10">
@@ -34,24 +39,24 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Services */}
+          {/* Services — live from DB */}
           <div>
             <p className="text-xs font-semibold text-gray-300 uppercase tracking-widest mb-5">Services</p>
             <ul className="space-y-2.5 text-sm">
-              {[
-                "Standard Cleaning",
-                "Deep Cleaning",
-                "Airbnb Cleaning",
-                "Window Cleaning",
-                "Ironing Service",
-                "End of Tenancy",
-                "Spring Cleaning",
-                "Same Day Cleaning",
-              ].map((s) => (
-                <li key={s}>
-                  <Link href="/services" className="hover:text-green-400 transition-colors duration-100">{s}</Link>
-                </li>
-              ))}
+              {services.length > 0
+                ? services.map((s) => (
+                    <li key={s.id}>
+                      <Link href={`/book/${s.id}`} className="hover:text-green-400 transition-colors duration-100">
+                        {s.name}
+                      </Link>
+                    </li>
+                  ))
+                : ["Standard Cleaning", "Deep Cleaning", "Airbnb Cleaning", "End of Tenancy", "Window Cleaning", "Ironing Service"].map((name) => (
+                    <li key={name}>
+                      <Link href="/services" className="hover:text-green-400 transition-colors duration-100">{name}</Link>
+                    </li>
+                  ))
+              }
             </ul>
           </div>
 
@@ -69,7 +74,6 @@ export default function Footer() {
               </li>
               <li><Link href="/login" className="hover:text-green-400 transition-colors">Sign In</Link></li>
               <li><Link href="/register" className="hover:text-green-400 transition-colors">Create Account</Link></li>
-              <li><a href="#" className="hover:text-green-400 transition-colors">Privacy Policy</a></li>
             </ul>
           </div>
 
@@ -78,19 +82,19 @@ export default function Footer() {
             <p className="text-xs font-semibold text-gray-300 uppercase tracking-widest mb-5">Get in Touch</p>
             <ul className="space-y-4 text-sm">
               <li>
-                <a href="tel:+447362068202" className="flex items-start gap-3 hover:text-green-400 transition-colors group">
+                <a href={`tel:${settings.business_phone.replace(/\s/g, "")}`} className="flex items-start gap-3 hover:text-green-400 transition-colors group">
                   <div className="w-7 h-7 bg-gray-800 group-hover:bg-green-600/20 rounded-lg flex items-center justify-center shrink-0 transition-colors">
                     <Phone className="w-3.5 h-3.5 text-green-400" />
                   </div>
-                  +44 7362 068202
+                  {settings.business_phone}
                 </a>
               </li>
               <li>
-                <a href="mailto:aadeeniiyii@gmail.com" className="flex items-start gap-3 hover:text-green-400 transition-colors group">
+                <a href={`mailto:${settings.contact_email}`} className="flex items-start gap-3 hover:text-green-400 transition-colors group">
                   <div className="w-7 h-7 bg-gray-800 group-hover:bg-green-600/20 rounded-lg flex items-center justify-center shrink-0 transition-colors">
                     <Mail className="w-3.5 h-3.5 text-green-400" />
                   </div>
-                  aadeeniiyii@gmail.com
+                  {settings.contact_email}
                 </a>
               </li>
               <li>
@@ -104,14 +108,20 @@ export default function Footer() {
             </ul>
             <div className="mt-6 p-3 bg-green-950/60 border border-green-900/50 rounded-xl">
               <p className="text-xs text-green-300 font-semibold">Available 7 days a week</p>
-              <p className="text-xs text-gray-500 mt-0.5">8:00am – 8:00pm</p>
+              <p className="text-xs text-gray-500 mt-0.5">{settings.business_hours}</p>
             </div>
           </div>
         </div>
 
         <div className="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-gray-600">&copy; {new Date().getFullYear()} MakeMeClean Ltd. All rights reserved.</p>
-          <p className="text-xs text-gray-600">Professional cleaning services across Wales, UK</p>
+          <div className="flex items-center gap-4 text-xs text-gray-600">
+            <Link href="/privacy" className="hover:text-gray-400 transition-colors">Privacy Policy</Link>
+            <span className="text-gray-800">·</span>
+            <Link href="/terms" className="hover:text-gray-400 transition-colors">Terms &amp; Conditions</Link>
+            <span className="text-gray-800">·</span>
+            <span>Professional cleaning services across Wales, UK</span>
+          </div>
         </div>
       </div>
     </footer>

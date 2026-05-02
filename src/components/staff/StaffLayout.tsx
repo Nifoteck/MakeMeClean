@@ -1,6 +1,6 @@
 import { PropsWithChildren, ReactNode, useState } from "react";
 import { useLocation } from "wouter";
-import { LayoutDashboard, UsersRound, BriefcaseBusiness, Sparkles, LogOut, Menu, X, ChevronRight, Banknote, CalendarClock, MessageSquare, ExternalLink, Repeat, Settings } from "lucide-react";
+import { CalendarDays, LayoutDashboard, LogOut, Menu, X, ChevronRight, CalendarCheck, Banknote } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useScrollLock } from "@/hooks/useScrollLock";
@@ -8,25 +8,14 @@ import { useScrollLock } from "@/hooks/useScrollLock";
 type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
 
 const nav: NavItem[] = [
-  { href: "/admin",            label: "Bookings",    icon: LayoutDashboard  },
-  { href: "/admin/applicants", label: "Applicants",  icon: UsersRound       },
-  { href: "/admin/staff",      label: "Staff",       icon: BriefcaseBusiness },
-  { href: "/admin/services",   label: "Services",    icon: Sparkles         },
-  { href: "/admin/payroll",      label: "Payroll",      icon: Banknote        },
-  { href: "/admin/reschedules",  label: "Reschedules",  icon: CalendarClock   },
-  { href: "/admin/plans",        label: "Plans",        icon: Repeat          },
-  { href: "/admin/messages",     label: "Messages",     icon: MessageSquare   },
-  { href: "/admin/settings",    label: "Settings",     icon: Settings        },
+  { href: "/staff",             label: "My Shifts",      icon: CalendarDays  },
+  { href: "/staff/availability",label: "Availability",   icon: CalendarCheck },
+  { href: "/staff/payslips",    label: "My Payslips",    icon: Banknote      },
 ];
-
-function isActive(current: string, href: string) {
-  if (href === "/admin") return current === "/admin";
-  return current === href || current.startsWith(`${href}/`);
-}
 
 function NavLink({ item, current, onClick }: { item: NavItem; current: string; onClick?: () => void }) {
   const [, setLocation] = useLocation();
-  const active = isActive(current, item.href);
+  const active = current === item.href;
   const Icon = item.icon;
   return (
     <button
@@ -45,7 +34,7 @@ function NavLink({ item, current, onClick }: { item: NavItem; current: string; o
   );
 }
 
-export default function AdminLayout({
+export default function StaffLayout({
   title,
   subtitle,
   actions,
@@ -60,20 +49,22 @@ export default function AdminLayout({
     <div className="flex flex-col h-full">
       <div className="px-4 pt-6 pb-5 border-b border-gray-100">
         <p className="text-xl font-black text-gray-900 tracking-tight">MakeMeClean</p>
-        <p className="text-xs text-gray-400 mt-0.5 font-medium">Back office</p>
+        <p className="text-xs text-gray-400 mt-0.5 font-medium">Staff portal</p>
       </div>
+
       <nav className="flex-1 px-3 py-4 space-y-1">
         {nav.map((item) => (
           <NavLink key={item.href} item={item} current={location} onClick={() => setMobileOpen(false)} />
         ))}
       </nav>
+
       <div className="px-3 pb-6 border-t border-gray-100 pt-4 space-y-1">
         <button
-          onClick={() => setLocation("/")}
+          onClick={() => setLocation("/dashboard")}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
         >
-          <ExternalLink className="w-5 h-5 text-gray-400" />
-          View site
+          <LayoutDashboard className="w-5 h-5 text-gray-400" />
+          Customer dashboard
         </button>
         <button
           onClick={async () => { await signOut(); setLocation("/"); }}
@@ -123,8 +114,7 @@ export default function AdminLayout({
           <div className="w-9" />
         </header>
 
-        <main className="flex-1 p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          {/* Page header */}
+        <main className="flex-1 p-6 lg:p-8 max-w-5xl w-full mx-auto">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
               <h1 className="text-2xl font-black text-gray-900 tracking-tight">{title}</h1>

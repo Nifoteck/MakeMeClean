@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Sparkles, Eye, EyeOff, Mail, ShieldCheck, RefreshCw } from "lucide-react";
+import { Sparkles, Eye, EyeOff, Mail, ShieldCheck, RefreshCw, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { sendOtp, verifyOtp } from "@/lib/otp";
 
@@ -17,6 +17,7 @@ export default function Register() {
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [verifying, setVerifying] = useState(false);
@@ -39,6 +40,7 @@ export default function Register() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (!agreedToTerms) { setError("Please accept the Terms & Conditions to continue."); return; }
     setLoading(true);
     setError("");
     const result = await sendOtp(email, "registration");
@@ -210,9 +212,34 @@ export default function Register() {
                   </button>
                 </div>
               </div>
+              {/* T&C agreement */}
+              <label className="flex items-start gap-3 cursor-pointer group">
+                <button
+                  type="button"
+                  onClick={() => setAgreedToTerms((v) => !v)}
+                  className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
+                    agreedToTerms
+                      ? "bg-green-600 border-green-600"
+                      : "border-gray-300 bg-white group-hover:border-green-400"
+                  }`}
+                >
+                  {agreedToTerms && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                </button>
+                <span className="text-sm text-gray-600 leading-snug">
+                  I have read and agree to MakeMeClean's{" "}
+                  <Link href="/terms" target="_blank" className="text-green-600 font-semibold hover:underline">
+                    Terms &amp; Conditions
+                  </Link>
+                  {" "}and{" "}
+                  <Link href="/privacy" target="_blank" className="text-green-600 font-semibold hover:underline">
+                    Privacy Policy
+                  </Link>.
+                </span>
+              </label>
+
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !agreedToTerms}
                 className="btn-primary w-full disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? "Sending code..." : "Continue"}

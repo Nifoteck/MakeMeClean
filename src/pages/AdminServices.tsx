@@ -1,74 +1,60 @@
 import { useEffect, useState } from "react";
-import { RefreshCw, Sparkles, CheckCircle2 } from "lucide-react";
+import { Plus, X, Upload, Link as LinkIcon } from "lucide-react";
 import type { DbService } from "@/lib/services";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
 import { supabase } from "@/lib/supabase";
 import AdminLayout from "@/components/admin/AdminLayout";
+import { useScrollLock } from "@/hooks/useScrollLock";
+
+function Spinner() {
+  return <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />;
+}
 
 export default function AdminServices() {
   const { user, loading } = useAuth();
   const { isAdmin, loading: roleLoading } = useIsAdmin(user?.id);
-  const [services, setServices] = useState<DbService[]>([]);
-  const [fetching, setFetching] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState<Partial<DbService>>({});
-  const [uploadingImage, setUploadingImage] = useState(false);
-  const [useImageUrl, setUseImageUrl] = useState(false);
 
-  const slugify = (input: string) =>
-    (input ?? "")
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)+/g, "")
-      .slice(0, 64);
+  const [services, setServices]         = useState<DbService[]>([]);
+  const [fetching, setFetching]         = useState(false);
+  const [saving, setSaving]             = useState(false);
+  const [error, setError]               = useState("");
+  const [editingId, setEditingId]       = useState<string | null>(null);
+  useScrollLock(!!editingId);
+  const [draft, setDraft]               = useState<Partial<DbService>>({});
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [useImageUrl, setUseImageUrl]   = useState(false);
+
+  const slugify = (s: string) =>
+    (s ?? "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "").slice(0, 64);
 
   const fetchServices = async () => {
-    setFetching(true);
-    setError("");
-    const { data, error: err } = await supabase
-      .from("services")
+    setFetching(true); setError("");
+    const { data, error: err } = await supabase.from("services")
       .select("id, name, description, price, image_url, discount_percent, popular, active")
       .order("name", { ascending: true });
-    if (err) {
-      setError(err.message);
-      setServices([]);
-    } else {
-      setServices((data as DbService[]) ?? []);
-    }
+    if (err) { setError(err.message); setServices([]); }
+    else setServices((data as DbService[]) ?? []);
     setFetching(false);
   };
 
-  useEffect(() => {
-    if (isAdmin) fetchServices();
-  }, [isAdmin]);
+  useEffect(() => { if (isAdmin) fetchServices(); }, [isAdmin]);
 
-  const startEdit = (s?: DbService) => {
+  const openEdit = (s?: DbService) => {
     setEditingId(s?.id ?? "__new__");
-    setDraft(
-      s
-        ? { ...s }
-        : { name: "", description: "", price: 0, image_url: null, discount_percent: 0, popular: false, active: true }
-    );
+    setDraft(s ? { ...s } : { name:"", description:"", price:0, image_url:null, discount_percent:0, popular:false, active:true });
     setUseImageUrl(false);
     setError("");
   };
 
-  const save = async () => {
-    if (!draft.name || !draft.description) {
-      setError("Please fill: name and description.");
-      return;
-    }
+  const closeEdit = () => { setEditingId(null); setError(""); };
 
+  const save = async () => {
+    if (!draft.name?.trim() || !draft.description?.trim()) { setError("Name and description are required."); return; }
     const computedId = editingId === "__new__" ? slugify(String(draft.name)) : String((draft as DbService).id);
     if (!computedId) { setError("Service name is required."); return; }
-
-    setSaving(true);
-    setError("");
+    setSaving(true); setError("");
     const payload = {
       id: computedId,
       name: String(draft.name),
@@ -80,215 +66,210 @@ export default function AdminServices() {
       active: Boolean(draft.active),
     };
     const { error: err } = await supabase.from("services").upsert(payload, { onConflict: "id" });
-    if (err) setError(err.message);
-    setSaving(false);
-    setEditingId(null);
+    if (err) { setError(err.message); setSaving(false); return; }
+    setSaving(false); setEditingId(null);
     await fetchServices();
   };
 
   const uploadImage = async (file: File) => {
     const serviceId = editingId === "__new__" ? slugify(String(draft.name ?? "")) : String((draft as DbService).id ?? "");
-    if (!serviceId) { setError("Enter a service name first."); return; }
-
-    setUploadingImage(true);
-    setError("");
+    if (!serviceId) { setError("Enter a service name before uploading an image."); return; }
+    setUploadingImage(true); setError("");
     try {
       const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
-      const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
+      const safeExt = ["jpg","jpeg","png","webp"].includes(ext) ? ext : "jpg";
       const path = `services/${serviceId}.${safeExt}`;
-
-      const { error: upErr } = await supabase.storage
-        .from("service-images")
-        .upload(path, file, { upsert: true, contentType: file.type || undefined });
+      const { error: upErr } = await supabase.storage.from("service-images").upload(path, file, { upsert:true, contentType: file.type || undefined });
       if (upErr) throw new Error(upErr.message);
-
       const { data } = supabase.storage.from("service-images").getPublicUrl(path);
       setDraft((p) => ({ ...p, image_url: data.publicUrl }));
-    } catch (e) {
-      setError(String((e as Error)?.message ?? e));
-    } finally {
-      setUploadingImage(false);
-    }
+    } catch (e) { setError(String((e as Error)?.message ?? e)); }
+    finally { setUploadingImage(false); }
   };
 
-  if (loading || roleLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>;
-  if (!user || !isAdmin) return <div className="min-h-screen flex items-center justify-center"><p className="text-gray-500">{!user ? "Please log in." : "Admin access required."}</p></div>;
+  if (loading || roleLoading) return <div className="min-h-screen flex items-center justify-center"><Spinner /></div>;
+  if (!user || !isAdmin) return <div className="min-h-screen flex items-center justify-center text-gray-500">{!user ? "Please log in." : "Admin access required."}</div>;
+
+  const activeCount   = services.filter((s) => Boolean(s.active)).length;
+  const popularCount  = services.filter((s) => Boolean(s.popular)).length;
+  const inactiveCount = services.filter((s) => !Boolean(s.active)).length;
 
   return (
-    <AdminLayout
-      title="Services"
-      subtitle="Add/edit services and pricing shown on the site"
-      actions={<button onClick={() => startEdit()} className="btn-primary">New service</button>}
-    >
+    <AdminLayout title="Services" subtitle="Manage cleaning services and pricing" actions={
+      <button onClick={() => openEdit()} className="btn-primary flex items-center gap-2 text-sm">
+        <Plus className="w-4 h-4" /> New service
+      </button>
+    }>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {[
-          { label: "Total services", value: services.length, icon: Sparkles, tone: "bg-slate-50 text-slate-700" },
-          { label: "Active", value: services.filter((s) => Boolean(s.active)).length, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-700" },
-          { label: "Popular", value: services.filter((s) => Boolean(s.popular)).length, icon: Sparkles, tone: "bg-green-50 text-green-700" },
-          { label: "Inactive", value: services.filter((s) => !Boolean(s.active)).length, icon: RefreshCw, tone: "bg-gray-50 text-gray-700" },
-        ].map(({ label, value, icon: Icon, tone }) => (
-          <div key={label} className="card">
-            <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold mb-2", tone)}>
-              <Icon className="w-3.5 h-3.5" /> {label}
+      {/* Edit / New panel */}
+      {editingId && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !saving && closeEdit()} />
+          <div className="relative bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-y-auto max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <p className="text-base font-bold text-gray-900">
+                {editingId === "__new__" ? "Add new service" : "Edit service"}
+              </p>
+              <button onClick={closeEdit} disabled={saving}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 disabled:opacity-40">
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <div className="text-2xl font-extrabold text-gray-900">{value}</div>
+            <div className="px-6 py-6 space-y-5">
+              {error && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{error}</p>}
+
+              <div className="grid sm:grid-cols-2 gap-5">
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Service name</label>
+                  <input className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    placeholder="e.g. Deep Clean" value={draft.name ?? ""}
+                    onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Description</label>
+                  <textarea rows={3} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    value={draft.description ?? ""}
+                    onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Price per hour (£)</label>
+                  <input type="text" inputMode="decimal" placeholder="0.00"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    value={draft.price === undefined || draft.price === null ? "" : String(draft.price)}
+                    onChange={(e) => { const raw = e.target.value; if (raw.trim() === "") { setDraft((p) => ({ ...p, price: "" as unknown as number })); return; } setDraft((p) => ({ ...p, price: raw.replace(/[^\d.]/g,"") as unknown as number })); }}
+                    onBlur={() => { const n = Number(String(draft.price ?? "").replace(/[^\d.]/g,"")); setDraft((p) => ({ ...p, price: Number.isFinite(n) ? n : 0 })); }} />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Discount (%)</label>
+                  <input type="text" inputMode="decimal" placeholder="0"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    value={draft.discount_percent === undefined || draft.discount_percent === null ? "" : String(draft.discount_percent)}
+                    onChange={(e) => { const raw = e.target.value; if (raw.trim() === "") { setDraft((p) => ({ ...p, discount_percent: "" as unknown as number })); return; } setDraft((p) => ({ ...p, discount_percent: raw.replace(/[^\d.]/g,"") as unknown as number })); }}
+                    onBlur={() => { const n = Number(String(draft.discount_percent ?? "").replace(/[^\d.]/g,"")); setDraft((p) => ({ ...p, discount_percent: Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0 })); }} />
+                </div>
+
+                {/* Image */}
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Service image</label>
+                  <div className="grid sm:grid-cols-2 gap-4 items-start">
+                    <div>
+                      {!useImageUrl ? (
+                        <label className={cn("flex items-center gap-3 px-4 py-3 border-2 border-dashed rounded-xl cursor-pointer transition-colors text-sm",
+                          uploadingImage ? "border-green-300 bg-green-50 text-green-600" : "border-gray-200 text-gray-500 hover:border-green-300 hover:bg-green-50")}>
+                          <Upload className="w-4 h-4 shrink-0" />
+                          {uploadingImage ? "Uploading..." : "Upload image"}
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingImage}
+                            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); }} />
+                        </label>
+                      ) : (
+                        <input placeholder="https://..." className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                          value={String(draft.image_url ?? "")}
+                          onChange={(e) => setDraft((p) => ({ ...p, image_url: e.target.value }))} />
+                      )}
+                      <button type="button" onClick={() => setUseImageUrl((v) => !v)}
+                        className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-green-600 transition-colors">
+                        <LinkIcon className="w-3.5 h-3.5" />
+                        {useImageUrl ? "Upload a file instead" : "Use an image URL instead"}
+                      </button>
+                    </div>
+                    <div className={cn("rounded-2xl overflow-hidden border bg-gray-50 h-36",
+                      draft.image_url ? "border-gray-200" : "border-dashed border-gray-200")}>
+                      {draft.image_url
+                        ? <img src={String(draft.image_url)} alt="Preview" className="w-full h-full object-cover" />
+                        : <div className="w-full h-full flex items-center justify-center text-sm text-gray-300">No image</div>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Flags */}
+                <div className="sm:col-span-2 flex gap-6">
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" className="w-4 h-4 accent-green-600 rounded"
+                      checked={Boolean(draft.popular)} onChange={(e) => setDraft((p) => ({ ...p, popular: e.target.checked }))} />
+                    <span className="text-sm font-semibold text-gray-700">Mark as popular</span>
+                  </label>
+                  <label className="flex items-center gap-2.5 cursor-pointer">
+                    <input type="checkbox" className="w-4 h-4 accent-green-600 rounded"
+                      checked={Boolean(draft.active)} onChange={(e) => setDraft((p) => ({ ...p, active: e.target.checked }))} />
+                    <span className="text-sm font-semibold text-gray-700">Active (visible on site)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 pb-6 flex justify-end gap-3 border-t border-gray-100 pt-4">
+              <button onClick={closeEdit} disabled={saving}
+                className="px-5 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-40">
+                Cancel
+              </button>
+              <button onClick={save} disabled={saving}
+                className="px-5 py-2.5 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-60 flex items-center gap-2">
+                {saving ? <><Spinner /> Saving...</> : (editingId === "__new__" ? "Create service" : "Save changes")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[
+          { label: "Total services", value: services.length  },
+          { label: "Active",         value: activeCount      },
+          { label: "Popular",        value: popularCount     },
+          { label: "Inactive",       value: inactiveCount    },
+        ].map(({ label, value }) => (
+          <div key={label} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">{label}</p>
+            <p className="text-2xl font-black text-gray-900">{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="space-y-6">
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{error}</div>
-        )}
-
-        {editingId && (
-          <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <p className="font-bold text-gray-900">{editingId === "__new__" ? "Add service" : "Edit service"}</p>
-              <button onClick={() => setEditingId(null)} className="text-sm font-semibold text-gray-500 hover:text-gray-700">Close</button>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="label">Name</label>
-                <input className="input-field" value={draft.name ?? ""} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} placeholder="Deep Cleaning" />
-              </div>
-              <div className="md:col-span-2">
-                <label className="label">Description</label>
-                <textarea className="input-field resize-none" rows={3} value={draft.description ?? ""} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} />
-              </div>
-              <div>
-                <label className="label">Price per hour (£)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={draft.price === undefined || draft.price === null ? "" : String(draft.price)}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw.trim() === "") { setDraft((p) => ({ ...p, price: "" as unknown as number })); return; }
-                    const cleaned = raw.replace(/[^\d.]/g, "");
-                    setDraft((p) => ({ ...p, price: cleaned as unknown as number }));
-                  }}
-                  onBlur={() => {
-                    const num = Number(String(draft.price ?? "").replace(/[^\d.]/g, ""));
-                    setDraft((p) => ({ ...p, price: Number.isFinite(num) ? num : 0 }));
-                  }}
-                  className="input-field"
-                  placeholder="20"
-                />
-              </div>
-              <div>
-                <label className="label">Discount (%)</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  className="input-field"
-                  value={draft.discount_percent === undefined || draft.discount_percent === null ? "" : String(draft.discount_percent)}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw.trim() === "") { setDraft((p) => ({ ...p, discount_percent: "" as unknown as number })); return; }
-                    const cleaned = raw.replace(/[^\d.]/g, "");
-                    setDraft((p) => ({ ...p, discount_percent: cleaned as unknown as number }));
-                  }}
-                  onBlur={() => {
-                    const num = Number(String(draft.discount_percent ?? "").replace(/[^\d.]/g, ""));
-                    const bounded = Number.isFinite(num) ? Math.max(0, Math.min(100, num)) : 0;
-                    setDraft((p) => ({ ...p, discount_percent: bounded }));
-                  }}
-                  placeholder="0"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <div className="grid md:grid-cols-2 gap-4 items-start">
-                  <div>
-                    <label className="label">Service image</label>
-                    {!useImageUrl ? (
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/webp"
-                        className="input-field"
-                        disabled={uploadingImage}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) uploadImage(f);
-                        }}
-                      />
-                    ) : (
-                      <input
-                        className="input-field"
-                        value={String(draft.image_url ?? "")}
-                        onChange={(e) => setDraft((p) => ({ ...p, image_url: e.target.value }))}
-                        placeholder="https://..."
-                      />
-                    )}
-                    <button
-                      type="button"
-                      className="mt-2 text-sm font-semibold text-gray-600 hover:text-green-700"
-                      onClick={() => setUseImageUrl((v) => !v)}
-                    >
-                      {useImageUrl ? "Upload instead" : "Use image URL instead"}
-                    </button>
-                  </div>
-
-                  {draft.image_url ? (
-                    <div className="border border-gray-100 rounded-2xl overflow-hidden bg-gray-50 h-36 md:h-40">
-                      <img src={String(draft.image_url)} alt="Service" className="w-full h-full object-cover" />
-                    </div>
-                  ) : (
-                    <div className="border border-dashed border-gray-200 rounded-2xl bg-gray-50 h-36 md:h-40 flex items-center justify-center text-sm text-gray-400">
-                      No image selected
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <input type="checkbox" checked={Boolean(draft.popular)} onChange={(e) => setDraft((p) => ({ ...p, popular: e.target.checked }))} />
-                  Popular
-                </label>
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                  <input type="checkbox" checked={Boolean(draft.active)} onChange={(e) => setDraft((p) => ({ ...p, active: e.target.checked }))} />
-                  Active
-                </label>
-              </div>
-            </div>
-            <div className="mt-5 flex gap-2">
-              <button onClick={save} disabled={saving} className="btn-primary disabled:opacity-60">
-                {saving ? "Saving..." : "Save"}
-              </button>
-              <button onClick={() => setEditingId(null)} className="btn-secondary">Cancel</button>
-            </div>
-          </div>
-        )}
-
-        <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
-          <div className="grid grid-cols-12 px-5 py-3 bg-gray-50 text-xs font-semibold text-gray-500">
-            <div className="col-span-3">ID</div>
-            <div className="col-span-5">Name</div>
-            <div className="col-span-2 text-right">Price</div>
-            <div className="col-span-2 text-right">Actions</div>
-          </div>
+      {/* Service list */}
+      {fetching ? (
+        <div className="flex items-center justify-center py-20"><Spinner /></div>
+      ) : services.length === 0 ? (
+        <div className="bg-white border border-gray-100 rounded-2xl py-20 text-center shadow-sm">
+          <p className="text-gray-400 font-medium">No services yet. Add your first service.</p>
+        </div>
+      ) : (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {services.map((s) => (
-            <div key={s.id} className="grid grid-cols-12 px-5 py-4 border-t border-gray-100 items-center">
-              <div className="col-span-3 text-sm font-mono text-gray-500">{s.id}</div>
-              <div className="col-span-5">
-                <p className="text-sm font-semibold text-gray-900">{s.name}</p>
-                <p className="text-xs text-gray-400">
-                  {(Number(s.discount_percent ?? 0) > 0 ? `Discount ${Number(s.discount_percent ?? 0)}%` : (s.popular ? "Popular" : "Standard"))}
-                  {s.active ? "" : " • Inactive"}
-                </p>
+            <div key={s.id} className={cn("bg-white border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all",
+              s.active ? "border-gray-100" : "border-gray-100 opacity-60")}>
+              {/* Image */}
+              <div className="h-36 bg-gray-50 overflow-hidden">
+                {s.image_url
+                  ? <img src={s.image_url} alt={s.name} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-4xl">🧹</div>}
               </div>
-              <div className="col-span-2 text-right text-sm font-bold text-gray-900">{formatCurrency(Number(s.price))}</div>
-              <div className="col-span-2 text-right">
-                <button onClick={() => startEdit(s)} className="text-sm font-semibold text-green-700 hover:underline">Edit</button>
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <p className="text-base font-bold text-gray-900 leading-snug">{s.name}</p>
+                  <div className="flex gap-1 shrink-0">
+                    {s.popular && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-green-100 text-green-700">Popular</span>}
+                    {!s.active && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Inactive</span>}
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mb-3 line-clamp-2">{s.description}</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-lg font-black text-gray-900">{formatCurrency(Number(s.price))}</span>
+                    <span className="text-xs text-gray-400 ml-1">/ hr</span>
+                    {Number(s.discount_percent ?? 0) > 0 && (
+                      <span className="ml-2 text-xs font-bold text-green-600">{s.discount_percent}% off</span>
+                    )}
+                  </div>
+                  <button onClick={() => openEdit(s)}
+                    className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-green-200 hover:text-green-700 transition-colors">
+                    Edit
+                  </button>
+                </div>
               </div>
             </div>
           ))}
-          {services.length === 0 && (
-            <div className="px-5 py-10 text-center text-gray-400">No services found.</div>
-          )}
         </div>
-      </div>
+      )}
     </AdminLayout>
   );
 }

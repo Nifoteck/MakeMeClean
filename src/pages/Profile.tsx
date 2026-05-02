@@ -42,7 +42,20 @@ export default function Profile() {
     e.preventDefault();
     if (!user) return;
     setSaving(true);
+    // profiles is the master — update it first
     await supabase.from("profiles").upsert({ id: user.id, ...profile });
+    // propagate contact/location to every table that mirrors this user's personal data
+    const contactPatch = {
+      phone:    profile.phone    || null,
+      address:  profile.address  || null,
+      city:     profile.city     || null,
+      postcode: profile.postcode || null,
+    };
+    // staff table has no address column — sync only the fields it supports
+    await Promise.all([
+      supabase.from("staff").update({ phone: contactPatch.phone, city: contactPatch.city, postcode: contactPatch.postcode }).eq("user_id", user.id),
+      supabase.from("job_applications").update(contactPatch).eq("user_id", user.id),
+    ]);
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -131,21 +144,19 @@ export default function Profile() {
                 data-testid="input-address"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">City</label>
-                <select
-                  value={profile.city}
-                  onChange={(e) => setProfile({ ...profile, city: e.target.value })}
-                  className="input-field"
-                  data-testid="select-city"
-                >
-                  <option value="">Select city</option>
-                  {walesCities.map((c) => (
-                    <option key={c} value={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="label">City</label>
+              <select
+                value={profile.city}
+                onChange={(e) => setProfile({ ...profile, city: e.target.value })}
+                className="input-field"
+                data-testid="select-city"
+              >
+                <option value="">Select city</option>
+                {walesCities.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
             <button
               type="submit"

@@ -4,13 +4,8 @@ import { Sparkles, Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 async function getPostLoginRedirect(userId: string) {
-  // Order: admin -> staff -> normal user dashboard
   const { data: adminRow } = await supabase.from("admins").select("user_id").eq("user_id", userId).maybeSingle();
   if (adminRow) return "/admin";
-
-  const { data: staffRow } = await supabase.from("staff").select("id").eq("user_id", userId).maybeSingle();
-  if (staffRow) return "/staff";
-
   return "/dashboard";
 }
 

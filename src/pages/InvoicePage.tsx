@@ -4,6 +4,7 @@ import { ArrowLeft, Download, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useSettings } from "@/hooks/useSettings";
 
 interface Booking {
   id: string;
@@ -20,6 +21,7 @@ interface Booking {
 }
 
 export default function InvoicePage() {
+  const settings = useSettings();
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
   const params = useParams<{ bookingId: string }>();
@@ -110,11 +112,11 @@ export default function InvoicePage() {
 
         <div ref={invoiceRef} className="bg-white rounded-3xl shadow-lg border border-gray-100 overflow-hidden">
           <div className="px-8 py-8 border-b border-gray-100">
-            <div className="flex items-start justify-between gap-6">
+            <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">Invoice</p>
                 <h1 className="text-3xl font-black text-gray-900 mt-2">MakeMeClean</h1>
-                <p className="text-sm text-gray-500 mt-1">payment@makemeclean.co.uk</p>
+                <p className="text-sm text-gray-500 mt-1">{settings.email_payment}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-gray-500">Invoice number</p>
@@ -196,7 +198,7 @@ export default function InvoicePage() {
 
             <div className="mt-8 rounded-2xl bg-gray-50 p-5 text-xs text-gray-500">
               <p className="font-semibold text-gray-700 mb-1">Notes</p>
-              <p>Thank you for choosing MakeMeClean. For questions about this invoice, contact payment@makemeclean.co.uk.</p>
+              <p>Thank you for choosing MakeMeClean. For questions about this invoice, contact {settings.email_payment}.</p>
             </div>
           </div>
         </div>

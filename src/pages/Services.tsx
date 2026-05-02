@@ -18,23 +18,25 @@ export default function Services() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
-            Our Cleaning Services
-          </h1>
-          <p className="text-gray-500 max-w-xl mx-auto mb-8">
-            Professional cleaning across Wales — from quick standard cleans to full spring cleans. All our cleaners are vetted, insured, and dedicated to quality.
-          </p>
-          <div className="relative max-w-sm mx-auto">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search services..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="input-field pl-10"
-              data-testid="input-service-search"
-            />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+          <div className="max-w-2xl">
+            <h1 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-3">
+              Cleaning Services
+            </h1>
+            <p className="text-gray-500 mb-6">
+              Professional cleaning across Wales — vetted, insured, and available 7 days a week.
+            </p>
+            <div className="relative max-w-xs">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search services..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input-field pl-10"
+                data-testid="input-service-search"
+              />
+            </div>
           </div>
         </div>
       </div>

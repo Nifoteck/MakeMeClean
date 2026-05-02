@@ -35,7 +35,7 @@ export default function ChangePassword() {
     }
     setDone(true);
     setSubmitting(false);
-    setTimeout(() => setLocation("/staff"), 900);
+    setTimeout(() => setLocation("/dashboard"), 900);
   };
 
   if (loading) {

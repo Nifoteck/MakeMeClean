@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, User, Calendar, LogOut, ChevronDown, LayoutDashboard } from "lucide-react";
+import { Menu, X, User, Calendar, LogOut, ChevronDown, LayoutDashboard, Briefcase, Repeat } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin, useStaffRecord } from "@/hooks/useRole";
 import { cn } from "@/lib/utils";
 
 export default function Navbar() {
@@ -11,8 +12,9 @@ export default function Navbar() {
   const [location] = useLocation();
   const { user, signOut } = useAuth();
   const dropdownRef = useRef<HTMLDivElement>(null);
-
-  const isAdmin = user?.email === "aadeeniiyii@gmail.com";
+  const { staff } = useStaffRecord(user?.id);
+  const { isAdmin } = useIsAdmin(user?.id);
+  const isStaff = Boolean(staff);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -34,6 +36,7 @@ export default function Navbar() {
     { href: "/", label: "Home" },
     { href: "/services", label: "Services" },
     { href: "/book", label: "Book Now" },
+    { href: "/contact", label: "Contact" },
   ];
 
   const isActive = (href: string) =>
@@ -111,14 +114,24 @@ export default function Navbar() {
                     </div>
                     {[
                       { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-                      { href: "/bookings", icon: Calendar, label: "My Bookings" },
-                      { href: "/profile", icon: User, label: "Profile" },
+                      { href: "/bookings",  icon: Calendar,        label: "My Bookings" },
+                      { href: "/plans",     icon: Repeat,          label: "My Plans" },
+                      { href: "/profile",   icon: User,            label: "Profile" },
                     ].map(({ href, icon: Icon, label }) => (
                       <Link key={href} href={href} onClick={() => setDropdownOpen(false)}
                         className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                         <Icon className="w-4 h-4 text-gray-400" /> {label}
                       </Link>
                     ))}
+                    {isStaff && (
+                      <>
+                        <div className="h-px bg-gray-50 my-1" />
+                        <Link href="/staff" onClick={() => setDropdownOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-blue-700 hover:bg-blue-50 transition-colors">
+                          <Briefcase className="w-4 h-4" /> Staff Portal
+                        </Link>
+                      </>
+                    )}
                     {isAdmin && (
                       <>
                         <div className="h-px bg-gray-50 my-1" />
@@ -175,14 +188,21 @@ export default function Navbar() {
             <>
               {[
                 { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-                { href: "/bookings", icon: Calendar, label: "My Bookings" },
-                { href: "/profile", icon: User, label: "Profile" },
+                { href: "/bookings",  icon: Calendar,        label: "My Bookings" },
+                { href: "/plans",     icon: Repeat,          label: "My Plans" },
+                { href: "/profile",   icon: User,            label: "Profile" },
               ].map(({ href, icon: Icon, label }) => (
                 <Link key={href} href={href} onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm text-gray-700 hover:bg-gray-50">
                   <Icon className="w-4 h-4 text-gray-400" /> {label}
                 </Link>
               ))}
+              {isStaff && (
+                <Link href="/staff" onClick={() => setMobileOpen(false)}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-blue-700 hover:bg-blue-50">
+                  <Briefcase className="w-4 h-4" /> Staff Portal
+                </Link>
+              )}
               {isAdmin && (
                 <Link href="/admin" onClick={() => setMobileOpen(false)}
                   className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm font-medium text-green-700 hover:bg-green-50">
