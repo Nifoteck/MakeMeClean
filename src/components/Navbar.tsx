@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, User, Calendar, LogOut, ChevronDown, LayoutDashboard, Briefcase } from "lucide-react";
+import { Menu, X, User, Calendar, LogOut, ChevronDown, LayoutDashboard } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -34,7 +34,6 @@ export default function Navbar() {
     { href: "/", label: "Home" },
     { href: "/services", label: "Services" },
     { href: "/book", label: "Book Now" },
-    { href: "/careers", label: "Careers" },
   ];
 
   const isActive = (href: string) =>
@@ -168,7 +167,6 @@ export default function Navbar() {
                 "flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors",
                 isActive(link.href) ? "bg-green-50 text-green-700" : "text-gray-600 hover:bg-gray-50"
               )}>
-              {link.href === "/careers" && <Briefcase className="w-4 h-4" />}
               {link.label}
             </Link>
           ))}

@@ -46,6 +46,20 @@ export default function AdminApplicants() {
   const [saving, setSaving] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "all">("all");
+  const [activeRecruitment, setActiveRecruitment] = useState<{ id: string; title: string } | null>(null);
+  const [newRecruitmentTitle, setNewRecruitmentTitle] = useState("Recruitment");
+  const [recruitmentSaving, setRecruitmentSaving] = useState(false);
+
+  const fetchActiveRecruitment = async () => {
+    const { data } = await supabase
+      .from("recruitments")
+      .select("id,title")
+      .eq("status", "active")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setActiveRecruitment((data as { id: string; title: string } | null) ?? null);
+  };
 
   const fetchApplicants = async () => {
     setFetching(true);
@@ -56,6 +70,43 @@ export default function AdminApplicants() {
   };
 
   useEffect(() => { if (isAdmin) fetchApplicants(); }, [isAdmin]);
+  useEffect(() => { if (isAdmin) fetchActiveRecruitment(); }, [isAdmin]);
+
+  const startNewRecruitment = async () => {
+    setRecruitmentSaving(true);
+    setError("");
+    try {
+      if (activeRecruitment?.id) {
+        await supabase.from("recruitments").update({ status: "closed", closed_at: new Date().toISOString() }).eq("id", activeRecruitment.id);
+      }
+      const title = (newRecruitmentTitle || "Recruitment").trim();
+      const { error: err } = await supabase.from("recruitments").insert({ title, status: "active" });
+      if (err) throw new Error(err.message);
+      await fetchActiveRecruitment();
+    } catch (e) {
+      setError(String((e as Error)?.message ?? e));
+    } finally {
+      setRecruitmentSaving(false);
+    }
+  };
+
+  const closeRecruitment = async () => {
+    if (!activeRecruitment?.id) return;
+    setRecruitmentSaving(true);
+    setError("");
+    try {
+      const { error: err } = await supabase
+        .from("recruitments")
+        .update({ status: "closed", closed_at: new Date().toISOString() })
+        .eq("id", activeRecruitment.id);
+      if (err) throw new Error(err.message);
+      await fetchActiveRecruitment();
+    } catch (e) {
+      setError(String((e as Error)?.message ?? e));
+    } finally {
+      setRecruitmentSaving(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -110,6 +161,46 @@ export default function AdminApplicants() {
         </button>
       }
     >
+      {/* Recruitment */}
+      <div className="card mb-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-[220px]">
+            <p className="text-xs text-gray-400 mb-1">Recruitment status</p>
+            <p className="text-sm font-semibold text-gray-900">
+              {activeRecruitment ? `Active: ${activeRecruitment.title}` : "Closed (not recruiting)"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 items-end">
+            <div>
+              <p className="text-xs text-gray-400 mb-1">New recruitment title</p>
+              <input
+                className="input-field text-sm h-[42px]"
+                value={newRecruitmentTitle}
+                onChange={(e) => setNewRecruitmentTitle(e.target.value)}
+                placeholder="Recruitment"
+              />
+            </div>
+            <button
+              onClick={startNewRecruitment}
+              disabled={recruitmentSaving}
+              className="btn-primary text-sm py-2 disabled:opacity-60"
+            >
+              {recruitmentSaving ? "Saving..." : "Start new"}
+            </button>
+            <button
+              onClick={closeRecruitment}
+              disabled={recruitmentSaving || !activeRecruitment}
+              className="btn-secondary text-sm py-2 disabled:opacity-60"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-gray-500 mt-3">
+          Candidates can only apply while recruitment is active. Starting a new recruitment closes the previous one so candidates can reapply under a new ID.
+        </p>
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         {[

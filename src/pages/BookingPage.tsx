@@ -3,11 +3,10 @@ import { useLocation, useParams } from "wouter";
 import { CheckCircle, ArrowLeft, Calendar, Clock, MapPin, ArrowRight, Minus, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { HOURLY_RATE, START_HOURS, calcTimeSlot, walesCities, Service } from "@/lib/services";
+import { START_HOURS, calcTimeSlot, walesCities, Service } from "@/lib/services";
 import { formatCurrency, generateInvoiceNumber } from "@/lib/utils";
 import { sendTelegramBookingNotification } from "@/lib/telegram";
 import { useServices } from "@/hooks/useServices";
-import PostcodeAddressLookup from "@/components/PostcodeAddressLookup";
 
 type Step = 1 | 2 | 3;
 
@@ -61,7 +60,10 @@ export default function BookingPage() {
   minDate.setDate(minDate.getDate() + 1);
   const minDateStr = minDate.toISOString().split("T")[0];
 
-  const totalPrice = HOURLY_RATE * durationHours;
+  const baseHourlyPrice = selectedService?.price ?? 0;
+  const discount = Math.max(0, Math.min(100, Number(selectedService?.discount_percent ?? 0)));
+  const hourlyPrice = discount > 0 ? baseHourlyPrice * (1 - discount / 100) : baseHourlyPrice;
+  const totalPrice = hourlyPrice * durationHours;
   const timeSlot = calcTimeSlot(startHour, durationHours);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -151,7 +153,7 @@ export default function BookingPage() {
           </div>
           <hr className="border-gray-100" />
           <div className="flex justify-between text-sm text-gray-500">
-            <span>{formatCurrency(HOURLY_RATE)} × {durationHours} hrs</span>
+            <span>{formatCurrency(hourlyPrice)} × {durationHours} hrs</span>
           </div>
           <div className="flex justify-between">
             <span className="font-bold text-gray-900">Total</span>
@@ -210,7 +212,8 @@ export default function BookingPage() {
             <h2 className="text-xl font-bold text-gray-900 mb-4">Select a Service</h2>
             <div className="grid sm:grid-cols-2 gap-4">
               {services.map((s) => {
-                const Icon = s.icon;
+                const sDiscount = Math.max(0, Math.min(100, Number(s.discount_percent ?? 0)));
+                const sPrice = sDiscount > 0 ? s.price * (1 - sDiscount / 100) : s.price;
                 return (
                   <button
                     key={s.id}
@@ -218,14 +221,24 @@ export default function BookingPage() {
                     className={`text-left card hover:border-green-400 hover:shadow-md transition-all duration-200 group ${selectedService?.id === s.id ? "border-green-500 bg-green-50" : ""}`}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 bg-green-50 border border-green-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-green-100 transition-colors">
-                        <Icon className="w-5 h-5 text-green-600" />
+                      <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shrink-0">
+                        {s.image_url ? (
+                          <img src={s.image_url} alt={s.name} className="w-full h-full object-cover" loading="lazy" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">Image</div>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-gray-900 text-sm">{s.name}</div>
                         <div className="text-xs text-gray-400 mt-0.5 line-clamp-2">{s.description}</div>
                         <div className="mt-2">
-                          <span className="text-green-600 font-bold text-sm">{formatCurrency(HOURLY_RATE)}/hr</span>
+                          {sDiscount > 0 ? (
+                            <span className="text-green-600 font-bold text-sm">
+                              {formatCurrency(sPrice)}/hr <span className="text-gray-400 line-through font-semibold ml-1">{formatCurrency(s.price)}/hr</span>
+                            </span>
+                          ) : (
+                            <span className="text-green-600 font-bold text-sm">{formatCurrency(s.price)}/hr</span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -237,7 +250,6 @@ export default function BookingPage() {
         )}
 
         {step === 2 && selectedService && (() => {
-          const Icon = selectedService.icon;
           return (
             <div className="animate-fade-in">
               <button
@@ -248,12 +260,21 @@ export default function BookingPage() {
               </button>
 
               <div className="card border-green-200 bg-green-50 mb-6 flex items-center gap-3">
-                <div className="w-10 h-10 bg-white border border-green-200 rounded-xl flex items-center justify-center shrink-0">
-                  <Icon className="w-5 h-5 text-green-600" />
+                <div className="w-10 h-10 rounded-xl overflow-hidden border border-green-200 bg-white shrink-0">
+                  {selectedService.image_url ? (
+                    <img src={selectedService.image_url} alt={selectedService.name} className="w-full h-full object-cover" />
+                  ) : null}
                 </div>
                 <div className="flex-1">
                   <p className="font-bold text-gray-900">{selectedService.name}</p>
-                  <p className="text-xs text-gray-500">{formatCurrency(HOURLY_RATE)} per hour</p>
+                  {discount > 0 ? (
+                    <p className="text-xs text-gray-500">
+                      <span className="font-semibold">{formatCurrency(hourlyPrice)}</span> per hour{" "}
+                      <span className="text-gray-400 line-through ml-1">{formatCurrency(baseHourlyPrice)}</span>
+                    </p>
+                  ) : (
+                    <p className="text-xs text-gray-500">{formatCurrency(hourlyPrice)} per hour</p>
+                  )}
                 </div>
                 <span className="text-green-600 font-bold text-lg">{formatCurrency(totalPrice)}</span>
               </div>
@@ -291,7 +312,7 @@ export default function BookingPage() {
                       <Plus className="w-4 h-4 text-gray-600" />
                     </button>
                     <div className="flex-1 text-right">
-                      <p className="text-xs text-gray-400">{formatCurrency(HOURLY_RATE)} × {durationHours} hrs</p>
+                      <p className="text-xs text-gray-400">{formatCurrency(hourlyPrice)} × {durationHours} hrs</p>
                       <p className="text-lg font-extrabold text-green-600">{formatCurrency(totalPrice)}</p>
                     </div>
                   </div>
@@ -341,6 +362,18 @@ export default function BookingPage() {
                 </p>
 
                 <div>
+                  <label className="label">Postcode</label>
+                  <input
+                    type="text"
+                    required
+                    value={postcode}
+                    onChange={(e) => setPostcode(e.target.value.toUpperCase())}
+                    placeholder="CF10 1AB"
+                    className="input-field"
+                  />
+                </div>
+
+                <div>
                   <label className="label">Street Address</label>
                   <input
                     type="text"
@@ -351,31 +384,18 @@ export default function BookingPage() {
                     className="input-field"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="label">City (Wales)</label>
-                    <select
-                      required
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      className="input-field"
-                    >
-                      <option value="">Select city</option>
-                      {walesCities.map((c) => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <PostcodeAddressLookup
-                      postcode={postcode}
-                      onPostcodeChange={setPostcode}
-                      onSelect={(selected) => {
-                        if (selected.address) setAddress(selected.address);
-                        if (selected.postcode) setPostcode(selected.postcode);
-                        const cityGuess = (selected.city ?? "").trim();
-                        if (cityGuess && walesCities.includes(cityGuess)) setCity(cityGuess);
-                      }}
-                    />
-                  </div>
+
+                <div>
+                  <label className="label">City (Wales)</label>
+                  <select
+                    required
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="">Select city</option>
+                    {walesCities.map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
                 </div>
 
                 <div>

@@ -4,7 +4,6 @@ import { ArrowLeft, Calendar, Clock, MapPin, FileText, Download, AlertTriangle, 
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { defaultIcon } from "@/lib/services";
 
 interface Booking {
   id: string;
@@ -79,8 +78,6 @@ export default function BookingDetail() {
     setShowConfirm(false);
   };
 
-  const ServiceIcon = booking ? defaultIcon : null;
-
   if (loading || fetching) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -113,10 +110,7 @@ export default function BookingDetail() {
         <div className="card mb-5">
           <div className="flex items-start gap-4 mb-6">
             <div className="w-14 h-14 bg-green-50 border border-green-100 rounded-2xl flex items-center justify-center shrink-0">
-              {ServiceIcon
-                ? <ServiceIcon className="w-7 h-7 text-green-600" />
-                : <FileText className="w-7 h-7 text-green-600" />
-              }
+              <FileText className="w-7 h-7 text-green-600" />
             </div>
             <div className="flex-1">
               <h1 className="text-2xl font-extrabold text-gray-900">{booking.service_name}</h1>

@@ -17,9 +17,8 @@ export function useServices() {
       setError("");
       const { data, error: err } = await supabase
         .from("services")
-        .select("id, name, description, price, duration, icon_key, popular, active, sort_order")
+        .select("id, name, description, price, image_url, discount_percent, popular, active")
         .eq("active", true)
-        .order("sort_order", { ascending: true, nullsFirst: false })
         .order("name", { ascending: true });
 
       if (cancelled) return;
@@ -39,4 +38,3 @@ export function useServices() {
 
   return { services, loading, error };
 }
-

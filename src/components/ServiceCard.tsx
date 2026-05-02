@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { Clock, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Service } from "@/lib/services";
 import { formatCurrency, cn } from "@/lib/utils";
 
@@ -9,7 +9,9 @@ interface ServiceCardProps {
 }
 
 export default function ServiceCard({ service, compact = false }: ServiceCardProps) {
-  const Icon = service.icon;
+  const discount = Math.max(0, Math.min(100, Number(service.discount_percent ?? 0)));
+  const hasDiscount = discount > 0;
+  const discounted = hasDiscount ? service.price * (1 - discount / 100) : service.price;
 
   return (
     <div
@@ -25,11 +27,20 @@ export default function ServiceCard({ service, compact = false }: ServiceCardPro
         </span>
       )}
 
-      <div className={cn(
-        "bg-green-50 border border-green-100 rounded-xl flex items-center justify-center mb-5 group-hover:bg-green-100 group-hover:border-green-200 transition-all duration-200",
-        compact ? "w-10 h-10 mb-3" : "w-12 h-12"
-      )}>
-        <Icon className={cn("text-green-600", compact ? "w-5 h-5" : "w-6 h-6")} />
+      <div className={cn("rounded-2xl overflow-hidden border border-gray-100 mb-5 bg-gray-50", compact ? "h-28" : "h-40")}>
+        {service.image_url ? (
+          <img
+            src={service.image_url}
+            alt={service.name}
+            className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-300"
+            loading="lazy"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+            Add service image
+          </div>
+        )}
       </div>
 
       <h3 className={cn("font-bold text-gray-900 mb-1.5 leading-tight", compact ? "text-base" : "text-lg")}
@@ -43,12 +54,17 @@ export default function ServiceCard({ service, compact = false }: ServiceCardPro
 
       <div className="flex items-center justify-between mt-auto">
         <div>
-          <div className="text-green-600 font-black text-xl" style={{ fontFamily: "Outfit, sans-serif" }}>
-            {formatCurrency(service.price)}
+          <div className="text-green-600 font-black text-xl flex items-baseline gap-2" style={{ fontFamily: "Outfit, sans-serif" }}>
+            {hasDiscount ? (
+              <>
+                <span>{formatCurrency(discounted)}</span>
+                <span className="text-sm text-gray-400 line-through font-extrabold">{formatCurrency(service.price)}</span>
+              </>
+            ) : (
+              <span>{formatCurrency(service.price)}</span>
+            )}
           </div>
-          <div className="flex items-center gap-1 text-xs text-gray-400 mt-0.5">
-            <Clock className="w-3 h-3" /> {service.duration}
-          </div>
+          <div className="text-xs text-gray-400 mt-0.5">per hour</div>
         </div>
         <Link
           href={`/book/${service.id}`}

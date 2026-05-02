@@ -4,14 +4,24 @@ CREATE TABLE IF NOT EXISTS public.services (
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   price NUMERIC(10,2) NOT NULL,
-  duration TEXT NOT NULL,
-  icon_key TEXT NOT NULL DEFAULT 'home',
   popular BOOLEAN DEFAULT false,
   active BOOLEAN DEFAULT true,
-  sort_order INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Price is per-hour; booking duration is chosen at checkout
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE public.services ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(5,2) NOT NULL DEFAULT 0;
+ALTER TABLE public.services DROP COLUMN IF EXISTS duration;
+ALTER TABLE public.services DROP COLUMN IF EXISTS icon_key;
+ALTER TABLE public.services DROP COLUMN IF EXISTS sort_order;
+
+-- Ensure discount bounds
+ALTER TABLE public.services DROP CONSTRAINT IF EXISTS services_discount_percent_check;
+ALTER TABLE public.services
+  ADD CONSTRAINT services_discount_percent_check
+  CHECK (discount_percent >= 0 AND discount_percent <= 100);
 
 CREATE OR REPLACE FUNCTION public.set_updated_at()
 RETURNS TRIGGER AS $$
@@ -32,4 +42,3 @@ DROP POLICY IF EXISTS "Anyone can read active services" ON public.services;
 CREATE POLICY "Anyone can read active services"
   ON public.services FOR SELECT
   USING (active = true);
-

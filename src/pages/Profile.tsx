@@ -4,7 +4,6 @@ import { User, Phone, MapPin, Mail, Save } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { walesCities } from "@/lib/services";
-import PostcodeAddressLookup from "@/components/PostcodeAddressLookup";
 
 interface Profile {
   full_name: string;
@@ -111,6 +110,17 @@ export default function Profile() {
             <hr className="border-gray-100" />
             <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" /> Address Details</p>
             <div>
+              <label className="label">Postcode</label>
+              <input
+                type="text"
+                value={profile.postcode}
+                onChange={(e) => setProfile({ ...profile, postcode: e.target.value.toUpperCase() })}
+                placeholder="CF10 1AB"
+                className="input-field"
+                data-testid="input-postcode"
+              />
+            </div>
+            <div>
               <label className="label">Street Address</label>
               <input
                 type="text"
@@ -135,23 +145,6 @@ export default function Profile() {
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <PostcodeAddressLookup
-                  postcode={profile.postcode}
-                  onPostcodeChange={(value) => setProfile({ ...profile, postcode: value })}
-                  onSelect={(selected) => {
-                    setProfile((p) => {
-                      const cityGuess = (selected.city ?? "").trim();
-                      return {
-                        ...p,
-                        address: selected.address || p.address,
-                        postcode: selected.postcode || p.postcode,
-                        city: cityGuess && walesCities.includes(cityGuess) ? cityGuess : p.city,
-                      };
-                    });
-                  }}
-                />
               </div>
             </div>
             <button

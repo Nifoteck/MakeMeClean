@@ -1,28 +1,13 @@
-import {
-  Home,
-  Sparkles,
-  Key,
-  Zap,
-  Building2,
-  Wind,
-  Star,
-  AppWindow,
-  Leaf,
-  CalendarCheck,
-  BriefcaseBusiness,
-  type LucideIcon,
-} from "lucide-react";
-
 export interface DbService {
   id: string;
   name: string;
   description: string;
   price: number;
-  duration: string;
-  icon_key: string;
+  image_url: string | null;
+  discount_percent: number | string | null;
   popular: boolean | null;
   active: boolean | null;
-  sort_order: number | null;
+  sort_order?: number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -32,35 +17,20 @@ export interface Service {
   name: string;
   description: string;
   price: number;
-  duration: string;
-  icon: LucideIcon;
+  image_url?: string | null;
+  discount_percent?: number;
   popular?: boolean;
 }
 
-export const serviceIcons: Record<string, LucideIcon> = {
-  home: Home,
-  sparkles: Sparkles,
-  key: Key,
-  zap: Zap,
-  building: Building2,
-  wind: Wind,
-  star: Star,
-  window: AppWindow,
-  leaf: Leaf,
-  calendar: CalendarCheck,
-  briefcase: BriefcaseBusiness,
-};
-
-export const defaultIcon: LucideIcon = Home;
-
 export function mapDbService(s: DbService): Service {
+  const discount = Number(s.discount_percent ?? 0);
   return {
     id: s.id,
     name: s.name,
     description: s.description,
     price: Number(s.price),
-    duration: s.duration,
-    icon: serviceIcons[s.icon_key] ?? defaultIcon,
+    image_url: s.image_url ?? null,
+    discount_percent: Number.isFinite(discount) ? discount : 0,
     popular: Boolean(s.popular),
   };
 }

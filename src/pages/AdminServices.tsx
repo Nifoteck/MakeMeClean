@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { RefreshCw, Sparkles, CheckCircle2 } from "lucide-react";
 import type { DbService } from "@/lib/services";
-import { serviceIcons } from "@/lib/services";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
@@ -17,14 +16,23 @@ export default function AdminServices() {
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<DbService>>({});
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [useImageUrl, setUseImageUrl] = useState(false);
+
+  const slugify = (input: string) =>
+    (input ?? "")
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "")
+      .slice(0, 64);
 
   const fetchServices = async () => {
     setFetching(true);
     setError("");
     const { data, error: err } = await supabase
       .from("services")
-      .select("id, name, description, price, duration, icon_key, popular, active, sort_order")
-      .order("sort_order", { ascending: true, nullsFirst: false })
+      .select("id, name, description, price, image_url, discount_percent, popular, active")
       .order("name", { ascending: true });
     if (err) {
       setError(err.message);
@@ -44,38 +52,63 @@ export default function AdminServices() {
     setDraft(
       s
         ? { ...s }
-        : { id: "", name: "", description: "", price: 0, duration: "", icon_key: "home", popular: false, active: true, sort_order: 0 }
+        : { name: "", description: "", price: 0, image_url: null, discount_percent: 0, popular: false, active: true }
     );
+    setUseImageUrl(false);
     setError("");
   };
 
   const save = async () => {
-    if (!draft.id || !draft.name || !draft.description || !draft.duration) {
-      setError("Please fill: id, name, description, duration.");
+    if (!draft.name || !draft.description) {
+      setError("Please fill: name and description.");
       return;
     }
-    if (!draft.icon_key || !serviceIcons[draft.icon_key]) {
-      setError("Please choose a valid icon.");
-      return;
-    }
+
+    const computedId = editingId === "__new__" ? slugify(String(draft.name)) : String((draft as DbService).id);
+    if (!computedId) { setError("Service name is required."); return; }
+
     setSaving(true);
     setError("");
     const payload = {
-      id: String(draft.id),
+      id: computedId,
       name: String(draft.name),
       description: String(draft.description),
       price: Number(draft.price ?? 0),
-      duration: String(draft.duration),
-      icon_key: String(draft.icon_key),
+      image_url: draft.image_url ? String(draft.image_url) : null,
+      discount_percent: Number(draft.discount_percent ?? 0),
       popular: Boolean(draft.popular),
       active: Boolean(draft.active),
-      sort_order: Number(draft.sort_order ?? 0),
     };
     const { error: err } = await supabase.from("services").upsert(payload, { onConflict: "id" });
     if (err) setError(err.message);
     setSaving(false);
     setEditingId(null);
     await fetchServices();
+  };
+
+  const uploadImage = async (file: File) => {
+    const serviceId = editingId === "__new__" ? slugify(String(draft.name ?? "")) : String((draft as DbService).id ?? "");
+    if (!serviceId) { setError("Enter a service name first."); return; }
+
+    setUploadingImage(true);
+    setError("");
+    try {
+      const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+      const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "jpg";
+      const path = `services/${serviceId}.${safeExt}`;
+
+      const { error: upErr } = await supabase.storage
+        .from("service-images")
+        .upload(path, file, { upsert: true, contentType: file.type || undefined });
+      if (upErr) throw new Error(upErr.message);
+
+      const { data } = supabase.storage.from("service-images").getPublicUrl(path);
+      setDraft((p) => ({ ...p, image_url: data.publicUrl }));
+    } catch (e) {
+      setError(String((e as Error)?.message ?? e));
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   if (loading || roleLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>;
@@ -117,10 +150,6 @@ export default function AdminServices() {
             </div>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
-                <label className="label">ID (slug)</label>
-                <input className="input-field" value={draft.id ?? ""} onChange={(e) => setDraft((p) => ({ ...p, id: e.target.value }))} placeholder="deep-cleaning" />
-              </div>
-              <div>
                 <label className="label">Name</label>
                 <input className="input-field" value={draft.name ?? ""} onChange={(e) => setDraft((p) => ({ ...p, name: e.target.value }))} placeholder="Deep Cleaning" />
               </div>
@@ -129,24 +158,60 @@ export default function AdminServices() {
                 <textarea className="input-field resize-none" rows={3} value={draft.description ?? ""} onChange={(e) => setDraft((p) => ({ ...p, description: e.target.value }))} />
               </div>
               <div>
-                <label className="label">Price (£)</label>
+                <label className="label">Price per hour (£)</label>
                 <input type="number" step="0.01" className="input-field" value={String(draft.price ?? 0)} onChange={(e) => setDraft((p) => ({ ...p, price: Number(e.target.value) }))} />
               </div>
               <div>
-                <label className="label">Duration</label>
-                <input className="input-field" value={draft.duration ?? ""} onChange={(e) => setDraft((p) => ({ ...p, duration: e.target.value }))} placeholder="4–6 hours" />
+                <label className="label">Discount (%)</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min={0}
+                  max={100}
+                  className="input-field"
+                  value={String(draft.discount_percent ?? 0)}
+                  onChange={(e) => setDraft((p) => ({ ...p, discount_percent: Number(e.target.value) }))}
+                />
               </div>
               <div>
-                <label className="label">Icon</label>
-                <select className="input-field" value={draft.icon_key ?? "home"} onChange={(e) => setDraft((p) => ({ ...p, icon_key: e.target.value }))}>
-                  {Object.keys(serviceIcons).map((k) => (
-                    <option key={k} value={k}>{k}</option>
-                  ))}
-                </select>
+                <label className="label">Service image</label>
+                {!useImageUrl ? (
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="input-field"
+                    disabled={uploadingImage}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) uploadImage(f);
+                    }}
+                  />
+                ) : (
+                  <input
+                    className="input-field"
+                    value={String(draft.image_url ?? "")}
+                    onChange={(e) => setDraft((p) => ({ ...p, image_url: e.target.value }))}
+                    placeholder="https://..."
+                  />
+                )}
+                <button
+                  type="button"
+                  className="mt-2 text-sm font-semibold text-gray-600 hover:text-green-700"
+                  onClick={() => setUseImageUrl((v) => !v)}
+                >
+                  {useImageUrl ? "Upload instead" : "Use image URL instead"}
+                </button>
               </div>
-              <div>
-                <label className="label">Sort order</label>
-                <input type="number" className="input-field" value={String(draft.sort_order ?? 0)} onChange={(e) => setDraft((p) => ({ ...p, sort_order: Number(e.target.value) }))} />
+              <div className="md:col-span-2">
+                {draft.image_url ? (
+                  <div className="border border-gray-100 rounded-2xl overflow-hidden bg-gray-50 h-44">
+                    <img src={String(draft.image_url)} alt="Service" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="border border-dashed border-gray-200 rounded-2xl bg-gray-50 h-44 flex items-center justify-center text-sm text-gray-400">
+                    No image selected
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
@@ -180,7 +245,10 @@ export default function AdminServices() {
               <div className="col-span-3 text-sm font-mono text-gray-500">{s.id}</div>
               <div className="col-span-5">
                 <p className="text-sm font-semibold text-gray-900">{s.name}</p>
-                <p className="text-xs text-gray-400">{s.duration}{s.popular ? " • Popular" : ""}{s.active ? "" : " • Inactive"}</p>
+                <p className="text-xs text-gray-400">
+                  {(Number(s.discount_percent ?? 0) > 0 ? `Discount ${Number(s.discount_percent ?? 0)}%` : (s.popular ? "Popular" : "Standard"))}
+                  {s.active ? "" : " • Inactive"}
+                </p>
               </div>
               <div className="col-span-2 text-right text-sm font-bold text-gray-900">{formatCurrency(Number(s.price))}</div>
               <div className="col-span-2 text-right">

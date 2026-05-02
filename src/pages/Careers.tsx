@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { CheckCircle, Upload, X, MapPin, Clock, PoundSterling, Heart, Users, Leaf, Mail, RefreshCw, ShieldCheck } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { sendOtp, verifyOtp } from "@/lib/otp";
+import { useAuth } from "@/hooks/useAuth";
 
 const ROLES = [
   "Domestic Cleaner",
@@ -92,11 +93,15 @@ const defaultForm = {
 };
 
 export default function Careers() {
+  const { user, loading } = useAuth();
   const [step, setStep] = useState<Step>(1);
-  const [emailStage, setEmailStage] = useState<EmailStage>("entry");
+  const [emailStage, setEmailStage] = useState<EmailStage>("verified");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [activeRecruitment, setActiveRecruitment] = useState<{ id: string; title: string } | null>(null);
+  const [myApplications, setMyApplications] = useState<Array<{ id: string; role: string; status: string; created_at: string; recruitment_id: string | null }>>([]);
+  const [showNewApplication, setShowNewApplication] = useState(false);
 
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [files, setFiles] = useState<Record<string, File | null>>({ cv: null, id_proof: null, rtw_doc: null, dbs_cert: null });
@@ -148,6 +153,44 @@ export default function Careers() {
   const clearDraft = (email: string) => {
     try { localStorage.removeItem(DRAFT_KEY(email)); } catch {}
   };
+
+  useEffect(() => {
+    if (!user?.email) return;
+    setForm((f) => ({ ...f, email: user.email ?? f.email }));
+    setEmailStage("verified");
+  }, [user?.email]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("recruitments")
+          .select("id,title")
+          .eq("status", "active")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        setActiveRecruitment((data as { id: string; title: string } | null) ?? null);
+      } catch {
+        setActiveRecruitment(null);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from("job_applications")
+          .select("id,role,status,created_at,recruitment_id")
+          .order("created_at", { ascending: false });
+        setMyApplications((data as Array<{ id: string; role: string; status: string; created_at: string; recruitment_id: string | null }>) ?? []);
+      } catch {
+        setMyApplications([]);
+      }
+    })();
+  }, [user?.id]);
 
   useEffect(() => {
     if (form.email && emailStage === "entry") {
@@ -248,6 +291,19 @@ export default function Careers() {
     setSubmitting(true);
     setError("");
     try {
+      if (!user) throw new Error("Please log in to apply.");
+      if (!activeRecruitment?.id) throw new Error("Recruitment is currently closed.");
+
+      const alreadyAppliedToRoleThisRecruitment = myApplications.some(
+        (a) =>
+          (a.recruitment_id ?? "") === activeRecruitment.id &&
+          (a.role ?? "") === form.role &&
+          !["rejected", "hired"].includes((a.status ?? "").toLowerCase())
+      );
+      if (alreadyAppliedToRoleThisRecruitment) {
+        throw new Error("You already have an application in progress for this role.");
+      }
+
       const uploadedUrls: Record<string, string> = {};
       for (const field of FILE_FIELDS) {
         const file = files[field.key];
@@ -261,13 +317,15 @@ export default function Careers() {
       }
 
       const { error: insertErr } = await supabase.from("job_applications").insert({
+        user_id: user.id,
+        recruitment_id: activeRecruitment.id,
         role: form.role,
         employment_type: form.employment_type || null,
         available_days: form.available_days,
         earliest_start: form.earliest_start || null,
         first_name: form.first_name,
         last_name: form.last_name,
-        email: form.email,
+        email: user.email ?? form.email,
         phone: form.phone,
         address: form.address || null,
         city: form.city || null,
@@ -315,6 +373,63 @@ export default function Careers() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Careers</h1>
+          <p className="text-gray-500 mb-6">Please log in to view your applications or apply.</p>
+          <button onClick={() => (window.location.href = "/login")} className="btn-primary px-8">
+            Log in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!activeRecruitment && !showNewApplication) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-xl w-full text-center">
+          <h1 className="text-2xl font-extrabold text-gray-900 mb-2">We’re not recruiting right now</h1>
+          <p className="text-gray-500 mb-6">If you’ve applied before, you can still view your application status below.</p>
+
+          {myApplications.length > 0 ? (
+            <div className="card text-left space-y-3">
+              <div>
+                <p className="font-bold text-gray-900">Your applications</p>
+                <p className="text-xs text-gray-500">Latest first</p>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {myApplications.map((a) => (
+                  <div key={a.id} className="py-3 flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{a.role}</p>
+                      <p className="text-xs text-gray-500">Submitted {new Date(a.created_at).toLocaleDateString("en-GB")}</p>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">
+                      {a.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="card text-gray-500">No applications yet.</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -340,6 +455,43 @@ export default function Careers() {
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-10">
+        {!showNewApplication && (
+          <div className="card mb-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm text-gray-500">Recruitment</p>
+                <p className="text-lg font-extrabold text-gray-900 truncate">{activeRecruitment?.title ?? "Open"}</p>
+                {myApplications.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    You can start a new application if you don’t already have one in progress for the same role.
+                  </p>
+                )}
+              </div>
+              {activeRecruitment && (
+                <button className="btn-primary text-sm py-2" onClick={() => { setShowNewApplication(true); setStep(1); }}>
+                  New application
+                </button>
+              )}
+            </div>
+
+            {myApplications.length > 0 && (
+              <div className="mt-4 divide-y divide-gray-100">
+                {myApplications.map((a) => (
+                  <div key={a.id} className="py-3 flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 truncate">{a.role}</p>
+                      <p className="text-xs text-gray-500">Submitted {new Date(a.created_at).toLocaleDateString("en-GB")}</p>
+                    </div>
+                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 capitalize">
+                      {a.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Step indicator — only show when past email verification */}
         {emailStage === "verified" && (
           <div className="flex items-center justify-center gap-3 mb-8">
@@ -358,6 +510,12 @@ export default function Careers() {
                 {i < 2 && <div className={`w-8 h-px ${parseInt(n) < step ? "bg-green-400" : "bg-gray-200"}`} />}
               </div>
             ))}
+          </div>
+        )}
+
+        {!showNewApplication && (
+          <div className="text-center text-sm text-gray-500">
+            {activeRecruitment ? "Click New application to apply." : "Recruitment is closed."}
           </div>
         )}
 
@@ -465,7 +623,7 @@ export default function Careers() {
         )}
 
         {/* ── Step 1: Position & Contact ── */}
-        {emailStage === "verified" && step === 1 && (
+        {emailStage === "verified" && showNewApplication && step === 1 && (
           <div className="card space-y-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-1">Position & Contact</h2>
@@ -539,7 +697,18 @@ export default function Careers() {
 
             <button
               type="button"
-              disabled={!form.role || !form.first_name || !form.last_name || !form.phone}
+              disabled={
+                !form.role ||
+                !form.first_name ||
+                !form.last_name ||
+                !form.phone ||
+                myApplications.some(
+                  (a) =>
+                    (a.recruitment_id ?? "") === (activeRecruitment?.id ?? "") &&
+                    (a.role ?? "") === form.role &&
+                    !["rejected", "hired"].includes((a.status ?? "").toLowerCase())
+                )
+              }
               onClick={() => goToStep(2)}
               className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -549,7 +718,7 @@ export default function Careers() {
         )}
 
         {/* ── Step 2: Experience & RTW ── */}
-        {emailStage === "verified" && step === 2 && (
+        {emailStage === "verified" && showNewApplication && step === 2 && (
           <div className="card space-y-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-1">Experience & Eligibility</h2>
@@ -643,7 +812,7 @@ export default function Careers() {
         )}
 
         {/* ── Step 3: Documents & Submit ── */}
-        {emailStage === "verified" && step === 3 && (
+        {emailStage === "verified" && showNewApplication && step === 3 && (
           <div className="card space-y-5">
             <div>
               <h2 className="text-lg font-bold text-gray-900 mb-1">Documents & Declaration</h2>
