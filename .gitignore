@@ -1,6 +1,7 @@
 node_modules/
 dist/
 supabase/.temp/
+supabase/.cache/
 
 # Local env (may contain secrets)
 .env.local
@@ -8,4 +9,3 @@ supabase/.temp/
 
 # Keep .env out of git if you add secrets to it
 .env
-supabase/.temp/
