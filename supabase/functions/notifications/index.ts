@@ -222,6 +222,45 @@ function senderForEvent(event: NotificationEvent) {
   return { email: "info@makemeclean.co.uk", name: "MakeMeClean" };
 }
 
+async function sendTelegram(event: NotificationEvent, booking: any, customerEmail: string) {
+  const token = Deno.env.get("TELEGRAM_BOT_TOKEN");
+  const chatId = Deno.env.get("TELEGRAM_CHAT_ID");
+  if (!token || !chatId) return;
+
+  const invoice = booking.invoice_number ?? booking.id;
+  const title =
+    event.type === "payment_receipt"
+      ? "✅ Payment received"
+      : event.type === "booking_confirmation"
+        ? "🧾 Booking confirmed (paid)"
+        : "⏰ Booking reminder";
+
+  const lines = [
+    `*${title}*`,
+    "",
+    `*Service:* ${booking.service_name ?? "Cleaning"}`,
+    `*Date:* ${booking.date ?? ""}`,
+    booking.time_slot ? `*Time:* ${booking.time_slot}` : null,
+    booking.city ? `*City:* ${booking.city}` : null,
+    booking.price != null ? `*Amount:* ${formatGBP(Number(booking.price))}` : null,
+    invoice ? `*Invoice:* ${invoice}` : null,
+    `*Customer:* ${customerEmail}`,
+    "",
+    `*Booking ID:* \`${booking.id}\``,
+  ].filter(Boolean);
+
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: lines.join("\n"),
+      parse_mode: "Markdown",
+      disable_web_page_preview: true,
+    }),
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 200, headers: corsHeaders() });
@@ -270,6 +309,13 @@ Deno.serve(async (req) => {
         throw new Error(`Brevo error (${res.status}): ${text}`);
       }
     })();
+
+    // Optional internal notification
+    try {
+      await sendTelegram(payload, booking, userData.user.email);
+    } catch (e) {
+      console.error("[notifications] Telegram failed:", e);
+    }
 
     return json(200, { ok: true });
   } catch (e) {
