@@ -4,6 +4,7 @@ import { User, Phone, MapPin, Mail, Save } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { walesCities } from "@/lib/services";
+import PostcodeAddressLookup from "@/components/PostcodeAddressLookup";
 
 interface Profile {
   full_name: string;
@@ -136,14 +137,20 @@ export default function Profile() {
                 </select>
               </div>
               <div>
-                <label className="label">Postcode</label>
-                <input
-                  type="text"
-                  value={profile.postcode}
-                  onChange={(e) => setProfile({ ...profile, postcode: e.target.value.toUpperCase() })}
-                  placeholder="CF10 1AB"
-                  className="input-field"
-                  data-testid="input-postcode"
+                <PostcodeAddressLookup
+                  postcode={profile.postcode}
+                  onPostcodeChange={(value) => setProfile({ ...profile, postcode: value })}
+                  onSelect={(selected) => {
+                    setProfile((p) => {
+                      const cityGuess = (selected.city ?? "").trim();
+                      return {
+                        ...p,
+                        address: selected.address || p.address,
+                        postcode: selected.postcode || p.postcode,
+                        city: cityGuess && walesCities.includes(cityGuess) ? cityGuess : p.city,
+                      };
+                    });
+                  }}
                 />
               </div>
             </div>

@@ -78,33 +78,8 @@ export default function AdminServices() {
     await fetchServices();
   };
 
-  if (loading || roleLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full card text-center">
-          <p className="text-gray-600 font-semibold">Please log in to access admin.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full card text-center">
-          <p className="text-gray-600 font-semibold">You don't have admin access.</p>
-        </div>
-      </div>
-    );
-  }
+  if (loading || roleLoading) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>;
+  if (!user || !isAdmin) return <div className="min-h-screen flex items-center justify-center"><p className="text-gray-500">{!user ? "Please log in." : "Admin access required."}</p></div>;
 
   return (
     <AdminLayout

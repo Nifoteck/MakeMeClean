@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useLocation, useParams } from "wouter";
-import { CheckCircle, ArrowLeft, Calendar, Clock, MapPin, ArrowRight } from "lucide-react";
+import { CheckCircle, ArrowLeft, Calendar, Clock, MapPin, ArrowRight, Minus, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { timeSlots, walesCities, Service } from "@/lib/services";
+import { HOURLY_RATE, START_HOURS, calcTimeSlot, walesCities, Service } from "@/lib/services";
 import { formatCurrency, generateInvoiceNumber } from "@/lib/utils";
 import { sendTelegramBookingNotification } from "@/lib/telegram";
 import { useServices } from "@/hooks/useServices";
+import PostcodeAddressLookup from "@/components/PostcodeAddressLookup";
 
 type Step = 1 | 2 | 3;
 
@@ -19,7 +20,8 @@ export default function BookingPage() {
   const [step, setStep] = useState<Step>(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [date, setDate] = useState("");
-  const [timeSlot, setTimeSlot] = useState("");
+  const [startHour, setStartHour] = useState("09:00");
+  const [durationHours, setDurationHours] = useState(2);
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [postcode, setPostcode] = useState("");
@@ -37,7 +39,7 @@ export default function BookingPage() {
       const s = services.find((s) => s.id === params.serviceId);
       if (s) { setSelectedService(s); setStep(2); }
     }
-  }, [params.serviceId]);
+  }, [params.serviceId, services]);
 
   useEffect(() => {
     if (!user) return;
@@ -59,6 +61,9 @@ export default function BookingPage() {
   minDate.setDate(minDate.getDate() + 1);
   const minDateStr = minDate.toISOString().split("T")[0];
 
+  const totalPrice = HOURLY_RATE * durationHours;
+  const timeSlot = calcTimeSlot(startHour, durationHours);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !selectedService) return;
@@ -77,7 +82,7 @@ export default function BookingPage() {
         address,
         city,
         postcode,
-        price: selectedService.price,
+        price: totalPrice,
         notes: notes || null,
         status: "upcoming",
         payment_status: "pending",
@@ -88,7 +93,6 @@ export default function BookingPage() {
 
     if (err) { setError(err.message); setSubmitting(false); return; }
 
-    // Send Telegram notification (silently skips if not configured)
     await sendTelegramBookingNotification({
       id: data.id,
       service_name: selectedService.name,
@@ -97,7 +101,7 @@ export default function BookingPage() {
       address,
       city,
       postcode,
-      price: selectedService.price,
+      price: totalPrice,
       notes: notes || null,
       invoice_number: invoice,
       customer_email: user.email ?? undefined,
@@ -114,7 +118,6 @@ export default function BookingPage() {
     </div>
   );
 
-  // Step 3 — Booking confirmed, prompt payment
   if (step === 3 && selectedService) return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center animate-fade-in">
@@ -139,13 +142,20 @@ export default function BookingPage() {
             <span className="font-semibold">{timeSlot}</span>
           </div>
           <div className="flex justify-between text-sm">
+            <span className="text-gray-500">Duration</span>
+            <span className="font-semibold">{durationHours} {durationHours === 1 ? "hour" : "hours"}</span>
+          </div>
+          <div className="flex justify-between text-sm">
             <span className="text-gray-500">Location</span>
             <span className="font-semibold">{city}</span>
           </div>
           <hr className="border-gray-100" />
+          <div className="flex justify-between text-sm text-gray-500">
+            <span>{formatCurrency(HOURLY_RATE)} × {durationHours} hrs</span>
+          </div>
           <div className="flex justify-between">
             <span className="font-bold text-gray-900">Total</span>
-            <span className="font-bold text-green-600 text-lg">{formatCurrency(selectedService.price)}</span>
+            <span className="font-bold text-green-600 text-lg">{formatCurrency(totalPrice)}</span>
           </div>
         </div>
 
@@ -153,9 +163,8 @@ export default function BookingPage() {
           <button
             onClick={() => setLocation(`/pay/${bookingId}`)}
             className="btn-primary flex items-center justify-center gap-2"
-            data-testid="button-pay-now"
           >
-            Pay Now — {formatCurrency(selectedService.price)} <ArrowRight className="w-4 h-4" />
+            Pay Now — {formatCurrency(totalPrice)} <ArrowRight className="w-4 h-4" />
           </button>
           <button
             onClick={() => setLocation("/bookings")}
@@ -176,7 +185,6 @@ export default function BookingPage() {
           <p className="text-gray-500 mt-1">Complete your booking in a few steps.</p>
         </div>
 
-        {/* Progress */}
         <div className="flex items-center mb-8">
           {[["1", "Choose Service"], ["2", "Your Details"], ["3", "Confirm"]].map(([n, label], i) => (
             <div key={n} className="flex items-center flex-1 last:flex-none">
@@ -197,7 +205,6 @@ export default function BookingPage() {
           ))}
         </div>
 
-        {/* Step 1 — Choose Service */}
         {step === 1 && (
           <div className="animate-fade-in">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Select a Service</h2>
@@ -209,7 +216,6 @@ export default function BookingPage() {
                     key={s.id}
                     onClick={() => { setSelectedService(s); setStep(2); }}
                     className={`text-left card hover:border-green-400 hover:shadow-md transition-all duration-200 group ${selectedService?.id === s.id ? "border-green-500 bg-green-50" : ""}`}
-                    data-testid={`button-select-service-${s.id}`}
                   >
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 bg-green-50 border border-green-100 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-green-100 transition-colors">
@@ -218,9 +224,8 @@ export default function BookingPage() {
                       <div className="flex-1 min-w-0">
                         <div className="font-bold text-gray-900 text-sm">{s.name}</div>
                         <div className="text-xs text-gray-400 mt-0.5 line-clamp-2">{s.description}</div>
-                        <div className="flex justify-between items-center mt-2">
-                          <span className="text-green-600 font-bold text-sm">{formatCurrency(s.price)}</span>
-                          <span className="text-xs text-gray-400">{s.duration}</span>
+                        <div className="mt-2">
+                          <span className="text-green-600 font-bold text-sm">{formatCurrency(HOURLY_RATE)}/hr</span>
                         </div>
                       </div>
                     </div>
@@ -231,7 +236,6 @@ export default function BookingPage() {
           </div>
         )}
 
-        {/* Step 2 — Details */}
         {step === 2 && selectedService && (() => {
           const Icon = selectedService.icon;
           return (
@@ -243,16 +247,15 @@ export default function BookingPage() {
                 <ArrowLeft className="w-4 h-4" /> Change service
               </button>
 
-              {/* Summary card */}
               <div className="card border-green-200 bg-green-50 mb-6 flex items-center gap-3">
                 <div className="w-10 h-10 bg-white border border-green-200 rounded-xl flex items-center justify-center shrink-0">
                   <Icon className="w-5 h-5 text-green-600" />
                 </div>
                 <div className="flex-1">
                   <p className="font-bold text-gray-900">{selectedService.name}</p>
-                  <p className="text-xs text-gray-500">{selectedService.duration}</p>
+                  <p className="text-xs text-gray-500">{formatCurrency(HOURLY_RATE)} per hour</p>
                 </div>
-                <span className="text-green-600 font-bold text-lg">{formatCurrency(selectedService.price)}</span>
+                <span className="text-green-600 font-bold text-lg">{formatCurrency(totalPrice)}</span>
               </div>
 
               {error && (
@@ -260,10 +263,44 @@ export default function BookingPage() {
               )}
 
               <form onSubmit={handleSubmit} className="card space-y-5">
+
+                {/* Duration */}
+                <div>
+                  <label className="label flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5" /> Number of Hours
+                  </label>
+                  <div className="flex items-center gap-4 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setDurationHours((h) => Math.max(1, h - 1))}
+                      className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40"
+                      disabled={durationHours <= 1}
+                    >
+                      <Minus className="w-4 h-4 text-gray-600" />
+                    </button>
+                    <div className="text-center min-w-[60px]">
+                      <span className="text-2xl font-extrabold text-gray-900">{durationHours}</span>
+                      <span className="text-sm text-gray-500 ml-1">{durationHours === 1 ? "hr" : "hrs"}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDurationHours((h) => Math.min(12, h + 1))}
+                      className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40"
+                      disabled={durationHours >= 12}
+                    >
+                      <Plus className="w-4 h-4 text-gray-600" />
+                    </button>
+                    <div className="flex-1 text-right">
+                      <p className="text-xs text-gray-400">{formatCurrency(HOURLY_RATE)} × {durationHours} hrs</p>
+                      <p className="text-lg font-extrabold text-green-600">{formatCurrency(totalPrice)}</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <label className="label flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5" /> Preferred Date
+                      <Calendar className="w-3.5 h-3.5" /> Date
                     </label>
                     <input
                       type="date"
@@ -272,25 +309,31 @@ export default function BookingPage() {
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
                       className="input-field"
-                      data-testid="input-date"
                     />
                   </div>
                   <div>
                     <label className="label flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5" /> Time Slot
+                      <Clock className="w-3.5 h-3.5" /> Start Time
                     </label>
                     <select
                       required
-                      value={timeSlot}
-                      onChange={(e) => setTimeSlot(e.target.value)}
+                      value={startHour}
+                      onChange={(e) => setStartHour(e.target.value)}
                       className="input-field"
-                      data-testid="select-timeslot"
                     >
-                      <option value="">Select time</option>
-                      {timeSlots.map((t) => <option key={t} value={t}>{t}</option>)}
+                      {START_HOURS.map((h) => (
+                        <option key={h} value={h}>{h}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
+
+                {date && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-3 text-sm text-blue-700 flex items-center gap-2">
+                    <Clock className="w-4 h-4 shrink-0" />
+                    <span>Your session: <strong>{timeSlot}</strong> on <strong>{date}</strong></span>
+                  </div>
+                )}
 
                 <hr className="border-gray-100" />
                 <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
@@ -306,7 +349,6 @@ export default function BookingPage() {
                     onChange={(e) => setAddress(e.target.value)}
                     placeholder="12 High Street"
                     className="input-field"
-                    data-testid="input-address"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -317,22 +359,21 @@ export default function BookingPage() {
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
                       className="input-field"
-                      data-testid="select-city"
                     >
                       <option value="">Select city</option>
                       {walesCities.map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="label">Postcode</label>
-                    <input
-                      type="text"
-                      required
-                      value={postcode}
-                      onChange={(e) => setPostcode(e.target.value.toUpperCase())}
-                      placeholder="CF10 1AB"
-                      className="input-field"
-                      data-testid="input-postcode"
+                    <PostcodeAddressLookup
+                      postcode={postcode}
+                      onPostcodeChange={setPostcode}
+                      onSelect={(selected) => {
+                        if (selected.address) setAddress(selected.address);
+                        if (selected.postcode) setPostcode(selected.postcode);
+                        const cityGuess = (selected.city ?? "").trim();
+                        if (cityGuess && walesCities.includes(cityGuess)) setCity(cityGuess);
+                      }}
                     />
                   </div>
                 </div>
@@ -345,7 +386,6 @@ export default function BookingPage() {
                     rows={3}
                     placeholder="E.g. key under the mat, focus on kitchen..."
                     className="input-field resize-none"
-                    data-testid="input-notes"
                   />
                 </div>
 
@@ -361,9 +401,8 @@ export default function BookingPage() {
                     type="submit"
                     disabled={submitting}
                     className="btn-primary flex-1 disabled:opacity-60"
-                    data-testid="button-confirm-booking"
                   >
-                    {submitting ? "Booking..." : `Confirm — ${formatCurrency(selectedService.price)}`}
+                    {submitting ? "Booking..." : `Confirm — ${formatCurrency(totalPrice)}`}
                   </button>
                 </div>
               </form>

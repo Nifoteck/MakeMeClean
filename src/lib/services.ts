@@ -65,17 +65,19 @@ export function mapDbService(s: DbService): Service {
   };
 }
 
-export const timeSlots = [
-  "08:00 – 10:00",
-  "09:00 – 11:00",
-  "10:00 – 12:00",
-  "11:00 – 13:00",
-  "12:00 – 14:00",
-  "13:00 – 15:00",
-  "14:00 – 16:00",
-  "15:00 – 17:00",
-  "16:00 – 18:00",
+export const HOURLY_RATE = 20;
+
+export const START_HOURS = [
+  "07:00", "08:00", "09:00", "10:00", "11:00",
+  "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
 ];
+
+export function calcTimeSlot(startHour: string, durationHours: number): string {
+  const [h, m] = startHour.split(":").map(Number);
+  const endH = h + durationHours;
+  const endStr = `${String(endH).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  return `${startHour} – ${endStr}`;
+}
 
 export const walesCities = [
   "Cardiff",
@@ -99,4 +101,3 @@ export const walesCities = [
   "Abergavenny",
   "Brecon",
 ];
-

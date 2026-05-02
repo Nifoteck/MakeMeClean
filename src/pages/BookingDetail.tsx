@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
-import { ArrowLeft, Calendar, Clock, MapPin, FileText, Download, AlertTriangle, CreditCard, CheckCircle } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, FileText, Download, AlertTriangle, CreditCard, CheckCircle, XCircle } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { formatDate, formatCurrency } from "@/lib/utils";
@@ -21,6 +21,26 @@ interface Booking {
   notes: string | null;
   invoice_number: string | null;
   created_at: string;
+}
+
+function canCancelBooking(booking: Booking): { allowed: boolean; reason?: string } {
+  if (booking.status !== "upcoming") {
+    return { allowed: false, reason: "Booking is not upcoming." };
+  }
+
+  const startHour = booking.time_slot.split("–")[0].trim().split(" ")[0].trim();
+  const bookingDateTime = new Date(`${booking.date}T${startHour}:00`);
+  const now = new Date();
+  const hoursUntil = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+
+  if (hoursUntil <= 3) {
+    return {
+      allowed: false,
+      reason: `Cancellations must be made at least 3 hours before the booking time. Your booking starts at ${startHour} on ${booking.date}.`,
+    };
+  }
+
+  return { allowed: true };
 }
 
 export default function BookingDetail() {
@@ -81,6 +101,7 @@ export default function BookingDetail() {
   }
 
   const isPaid = booking.payment_status === "paid";
+  const cancelCheck = canCancelBooking(booking);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -89,7 +110,6 @@ export default function BookingDetail() {
           <ArrowLeft className="w-4 h-4" /> Back to bookings
         </Link>
 
-        {/* Main card */}
         <div className="card mb-5">
           <div className="flex items-start gap-4 mb-6">
             <div className="w-14 h-14 bg-green-50 border border-green-100 rounded-2xl flex items-center justify-center shrink-0">
@@ -125,7 +145,7 @@ export default function BookingDetail() {
             <div className="flex items-start gap-3">
               <Clock className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
               <div>
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Time Slot</p>
+                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Time</p>
                 <p className="text-sm font-semibold text-gray-900">{booking.time_slot}</p>
               </div>
             </div>
@@ -150,7 +170,6 @@ export default function BookingDetail() {
           </div>
         </div>
 
-        {/* Pay Now banner */}
         {!isPaid && booking.status === "upcoming" && (
           <div className="card border-amber-200 bg-amber-50 mb-5 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
@@ -163,14 +182,12 @@ export default function BookingDetail() {
             <Link
               href={`/pay/${booking.id}`}
               className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-5 py-2 rounded-xl text-sm transition-colors shrink-0"
-              data-testid="link-pay-now"
             >
               Pay {formatCurrency(booking.price)}
             </Link>
           </div>
         )}
 
-        {/* Paid banner */}
         {isPaid && (
           <div className="card border-emerald-200 bg-emerald-50 mb-5 flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -178,7 +195,6 @@ export default function BookingDetail() {
           </div>
         )}
 
-        {/* Invoice */}
         {booking.invoice_number && (
           <div className="card mb-5 border-dashed border-gray-200">
             <div className="flex items-center justify-between">
@@ -193,7 +209,6 @@ export default function BookingDetail() {
               </div>
               <button
                 className="flex items-center gap-1.5 text-sm text-blue-600 font-medium hover:underline"
-                data-testid="button-download-invoice"
                 onClick={() => {
                   const content = `INVOICE\n\nMakeMeClean — Professional Cleaning Services\nWales, UK | aadeeniiyii@gmail.com | +44 7362 068202\n\nInvoice Number: ${booking.invoice_number}\nDate Issued: ${new Date(booking.created_at).toLocaleDateString("en-GB")}\nPayment Status: ${booking.payment_status === "paid" ? "PAID" : "PENDING"}\n\n${"─".repeat(50)}\n\nSERVICE DETAILS\n\nService:  ${booking.service_name}\nDate:     ${booking.date}\nTime:     ${booking.time_slot}\nAddress:  ${booking.address}, ${booking.city}, ${booking.postcode}\n\n${"─".repeat(50)}\n\nAMOUNT DUE: ${formatCurrency(booking.price)}\n\n${"─".repeat(50)}\n\nThank you for choosing MakeMeClean!\nWe look forward to seeing you again.`;
                   const blob = new Blob([content], { type: "text/plain" });
@@ -215,8 +230,8 @@ export default function BookingDetail() {
                 <span className="font-medium">{booking.service_name}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Date</span>
-                <span className="font-medium">{booking.date}</span>
+                <span className="text-gray-500">Time</span>
+                <span className="font-medium">{booking.time_slot}</span>
               </div>
               <hr className="border-gray-100" />
               <div className="flex justify-between">
@@ -227,14 +242,19 @@ export default function BookingDetail() {
           </div>
         )}
 
-        {/* Cancel */}
         {booking.status === "upcoming" && (
           <div>
-            {!showConfirm ? (
+            {!cancelCheck.allowed ? (
+              <div className="flex items-start gap-3 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-500">
+                <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-gray-400" />
+                <span>
+                  {cancelCheck.reason ?? "This booking cannot be cancelled."}
+                </span>
+              </div>
+            ) : !showConfirm ? (
               <button
                 onClick={() => setShowConfirm(true)}
                 className="w-full border border-red-200 text-red-600 font-medium py-3 rounded-xl hover:bg-red-50 transition-colors text-sm"
-                data-testid="button-cancel-booking"
               >
                 Cancel Booking
               </button>
@@ -258,7 +278,6 @@ export default function BookingDetail() {
                     onClick={handleCancel}
                     disabled={cancelling}
                     className="flex-1 bg-red-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60"
-                    data-testid="button-confirm-cancel"
                   >
                     {cancelling ? "Cancelling..." : "Yes, Cancel"}
                   </button>
