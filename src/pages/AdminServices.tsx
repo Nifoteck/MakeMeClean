@@ -1,31 +1,22 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "wouter";
-import { ArrowLeft, RefreshCw } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
-import { supabase } from "@/lib/supabase";
+import { RefreshCw, Sparkles, CheckCircle2 } from "lucide-react";
 import type { DbService } from "@/lib/services";
 import { serviceIcons } from "@/lib/services";
 import { cn, formatCurrency } from "@/lib/utils";
-
-const ADMIN_EMAIL = "aadeeniiyii@gmail.com";
+import { useAuth } from "@/hooks/useAuth";
+import { useIsAdmin } from "@/hooks/useRole";
+import { supabase } from "@/lib/supabase";
+import AdminLayout from "@/components/admin/AdminLayout";
 
 export default function AdminServices() {
   const { user, loading } = useAuth();
-  const [, setLocation] = useLocation();
-
+  const { isAdmin, loading: roleLoading } = useIsAdmin(user?.id);
   const [services, setServices] = useState<DbService[]>([]);
-  const [fetching, setFetching] = useState(true);
+  const [fetching, setFetching] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<DbService>>({});
-
-  useEffect(() => {
-    if (!loading) {
-      if (!user) { setLocation("/login"); return; }
-      if (user.email !== ADMIN_EMAIL) { setLocation("/dashboard"); return; }
-    }
-  }, [user, loading]);
 
   const fetchServices = async () => {
     setFetching(true);
@@ -35,14 +26,18 @@ export default function AdminServices() {
       .select("id, name, description, price, duration, icon_key, popular, active, sort_order")
       .order("sort_order", { ascending: true, nullsFirst: false })
       .order("name", { ascending: true });
-    if (err) setError(err.message);
-    setServices((data as DbService[]) ?? []);
+    if (err) {
+      setError(err.message);
+      setServices([]);
+    } else {
+      setServices((data as DbService[]) ?? []);
+    }
     setFetching(false);
   };
 
   useEffect(() => {
-    if (user?.email === ADMIN_EMAIL) fetchServices();
-  }, [user]);
+    if (isAdmin) fetchServices();
+  }, [isAdmin]);
 
   const startEdit = (s?: DbService) => {
     setEditingId(s?.id ?? "__new__");
@@ -83,37 +78,58 @@ export default function AdminServices() {
     await fetchServices();
   };
 
-  if (loading || fetching) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  if (loading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
-  if (user?.email !== ADMIN_EMAIL) return null;
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-100 px-4 sm:px-6 lg:px-8 py-5">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setLocation("/admin")} className="btn-secondary inline-flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
-            <div>
-              <h1 className="text-xl font-extrabold text-gray-900">Services</h1>
-              <p className="text-xs text-gray-400">Add/edit services and pricing</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={fetchServices} className="btn-secondary inline-flex items-center gap-2" disabled={fetching}>
-              <RefreshCw className={cn("w-4 h-4", fetching && "animate-spin")} /> Refresh
-            </button>
-            <button onClick={() => startEdit()} className="btn-primary">New service</button>
-          </div>
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full card text-center">
+          <p className="text-gray-600 font-semibold">Please log in to access admin.</p>
         </div>
       </div>
+    );
+  }
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full card text-center">
+          <p className="text-gray-600 font-semibold">You don't have admin access.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <AdminLayout
+      title="Services"
+      subtitle="Add/edit services and pricing shown on the site"
+      actions={<button onClick={() => startEdit()} className="btn-primary">New service</button>}
+    >
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {[
+          { label: "Total services", value: services.length, icon: Sparkles, tone: "bg-slate-50 text-slate-700" },
+          { label: "Active", value: services.filter((s) => Boolean(s.active)).length, icon: CheckCircle2, tone: "bg-emerald-50 text-emerald-700" },
+          { label: "Popular", value: services.filter((s) => Boolean(s.popular)).length, icon: Sparkles, tone: "bg-green-50 text-green-700" },
+          { label: "Inactive", value: services.filter((s) => !Boolean(s.active)).length, icon: RefreshCw, tone: "bg-gray-50 text-gray-700" },
+        ].map(({ label, value, icon: Icon, tone }) => (
+          <div key={label} className="card">
+            <div className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold mb-2", tone)}>
+              <Icon className="w-3.5 h-3.5" /> {label}
+            </div>
+            <div className="text-2xl font-extrabold text-gray-900">{value}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-6">
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3">{error}</div>
         )}
@@ -174,7 +190,6 @@ export default function AdminServices() {
               </button>
               <button onClick={() => setEditingId(null)} className="btn-secondary">Cancel</button>
             </div>
-            <p className="text-xs text-gray-400 mt-3">Requires admin RLS policies on `public.services` for insert/update.</p>
           </div>
         )}
 
@@ -203,7 +218,6 @@ export default function AdminServices() {
           )}
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }
-

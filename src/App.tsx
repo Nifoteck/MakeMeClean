@@ -1,4 +1,5 @@
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -15,11 +16,21 @@ import PaymentPage from "@/pages/PaymentPage";
 import InvoicePage from "@/pages/InvoicePage";
 import AdminPanel from "@/pages/AdminPanel";
 import AdminServices from "@/pages/AdminServices";
+import AdminApplicants from "@/pages/AdminApplicants";
+import AdminStaff from "@/pages/AdminStaff";
+import StaffDashboard from "@/pages/StaffDashboard";
+import ChangePassword from "@/pages/ChangePassword";
 import Careers from "@/pages/Careers";
 import NotFound from "@/pages/NotFound";
 
 function App() {
-  const { loading } = useAuth();
+  const { loading, user } = useAuth();
+  const [location, setLocation] = useLocation();
+  const isAdminRoute = location.startsWith("/admin");
+
+  useEffect(() => {
+    if (!loading && user?.user_metadata?.must_change_password && location !== "/change-password") setLocation("/change-password");
+  }, [loading, user, location, setLocation]);
 
   if (loading) {
     return (
@@ -35,7 +46,7 @@ function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      <Navbar />
+      {!isAdminRoute && <Navbar />}
       <main className="flex-1">
         <Switch>
           <Route path="/" component={Home} />
@@ -51,11 +62,15 @@ function App() {
           <Route path="/invoice/:bookingId" component={InvoicePage} />
           <Route path="/admin" component={AdminPanel} />
           <Route path="/admin/services" component={AdminServices} />
+          <Route path="/admin/applicants" component={AdminApplicants} />
+          <Route path="/admin/staff" component={AdminStaff} />
+          <Route path="/staff" component={StaffDashboard} />
+          <Route path="/change-password" component={ChangePassword} />
           <Route path="/careers" component={Careers} />
           <Route component={NotFound} />
         </Switch>
       </main>
-      <Footer />
+      {!isAdminRoute && <Footer />}
     </div>
   );
 }
