@@ -1,0 +1,31 @@
+-- Run this in your Supabase SQL editor (Dashboard → SQL Editor → New query)
+
+alter table job_applications add column if not exists date_of_birth                 text;
+alter table job_applications add column if not exists emergency_contact_name        text;
+alter table job_applications add column if not exists emergency_contact_phone       text;
+alter table job_applications add column if not exists heard_about_us                text;
+alter table job_applications add column if not exists own_transport                 text;
+alter table job_applications add column if not exists has_convictions               text;
+alter table job_applications add column if not exists convictions_details           text;
+alter table job_applications add column if not exists ref1_name                     text;
+alter table job_applications add column if not exists ref1_company                  text;
+alter table job_applications add column if not exists ref1_phone                    text;
+alter table job_applications add column if not exists ref1_email                    text;
+alter table job_applications add column if not exists ref2_name                     text;
+alter table job_applications add column if not exists ref2_company                  text;
+alter table job_applications add column if not exists ref2_phone                    text;
+alter table job_applications add column if not exists ref2_email                    text;
+alter table job_applications add column if not exists notice_period                 text;
+alter table job_applications add column if not exists current_employer              text;
+alter table job_applications add column if not exists current_job_title             text;
+alter table job_applications add column if not exists reason_for_leaving            text;
+alter table job_applications add column if not exists health_declaration            text;
+alter table job_applications add column if not exists health_details               text;
+alter table job_applications add column if not exists equal_opps_gender             text;
+alter table job_applications add column if not exists equal_opps_age                text;
+alter table job_applications add column if not exists equal_opps_ethnicity          text;
+alter table job_applications add column if not exists equal_opps_disability         text;
+alter table job_applications add column if not exists equal_opps_sexual_orientation text;
+alter table job_applications add column if not exists equal_opps_religion           text;
+alter table job_applications add column if not exists has_staff_relationship        text;
+alter table job_applications add column if not exists staff_relationship_details    text;
