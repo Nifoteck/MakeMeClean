@@ -79,8 +79,7 @@ export default function Home() {
                 <Link href="/book" className="btn-primary px-8 py-3.5 text-base">
                   Book a Clean
                 </Link>
-                <Link href="/services" c
-                lassName="btn-secondary px-8 py-3.5 text-base">
+                <Link href="/services" className="btn-secondary px-8 py-3.5 text-base">
                   See Prices
                 </Link>
               </div>
