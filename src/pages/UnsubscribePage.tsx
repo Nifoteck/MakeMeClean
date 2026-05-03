@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Mail, CheckCircle2, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Link } from "wouter";
+import { useSettings } from "@/hooks/useSettings";
 
 export default function UnsubscribePage() {
+  const settings = useSettings();
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
