@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation, useParams } from "wouter";
 import {
   ArrowLeft, Calendar, Clock, MapPin, FileText, Download,
-  AlertTriangle, CreditCard, CheckCircle, XCircle, Star, Receipt, RefreshCw,
+  AlertTriangle, CreditCard, CheckCircle, XCircle, Star, Receipt, RefreshCw, Image as ImageIcon, DollarSign,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -283,6 +283,25 @@ export default function BookingDetail() {
           </div>
         )}
 
+        {/* Photo upload (completed only) */}
+        {booking.status === "completed" && (
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl p-5 mb-4 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center shrink-0">
+                <ImageIcon className="w-5 h-5 text-purple-600" />
+              </div>
+              <div>
+                <p className="font-bold text-purple-900 text-sm">Share your photos</p>
+                <p className="text-xs text-purple-700 mt-0.5">Show us your clean home and help us build trust with future customers.</p>
+              </div>
+            </div>
+            <Link href={`/bookings/${booking.id}/photos`}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors shrink-0">
+              Upload Photos
+            </Link>
+          </div>
+        )}
+
         {/* Review card */}
         {booking.status === "completed" && (
           <div className={cn(
@@ -308,6 +327,25 @@ export default function BookingDetail() {
                 Leave a Review
               </Link>
             )}
+          </div>
+        )}
+
+        {/* Refund request (not completed/cancelled) */}
+        {(booking.status === "upcoming" || booking.status === "completed") && (
+          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 mb-4 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
+                <DollarSign className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="font-bold text-blue-900 text-sm">Need a refund?</p>
+                <p className="text-xs text-blue-700 mt-0.5">Submit a refund request and we'll review it promptly.</p>
+              </div>
+            </div>
+            <Link href={`/bookings/${booking.id}/refund`}
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors shrink-0">
+              Request Refund
+            </Link>
           </div>
         )}
 

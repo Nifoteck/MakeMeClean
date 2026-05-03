@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Save, CheckCircle2, AlertCircle, Phone, Mail, Clock, Info } from "lucide-react";
+import { Save, CheckCircle2, AlertCircle, Phone, Mail, Clock, Info, Send, Bell } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -28,6 +28,113 @@ const FIELDS: { key: keyof FormValues; label: string; sub: string; icon: React.C
   { key: "email_staffing",    label: "Staffing email",      sub: "Used in staff shift assignment emails",                  icon: Mail  },
 ];
 
+const CRON_SCHEDULES = [
+  { label: "Every hour", cron: "0 * * * *" },
+  { label: "Every 6 hours", cron: "0 */6 * * *" },
+  { label: "Every 12 hours", cron: "0 */12 * * *" },
+  { label: "Every day at 8 AM", cron: "0 8 * * *" },
+  { label: "Every day at 9 AM", cron: "0 9 * * *" },
+  { label: "Every day at 10 AM", cron: "0 10 * * *" },
+];
+
+function ScheduleDropdown() {
+  const [cron, setCron]       = useState("0 * * * *");
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from("settings").select("value").eq("key", "reminder_schedule_cron").maybeSingle()
+      .then(({ data }) => { if (data?.value) setCron(data.value); setLoading(false); });
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    await supabase.from("settings").upsert({ key: "reminder_schedule_cron", value: cron, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  if (loading) return <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />;
+
+  return (
+    <div className="flex items-end gap-3 flex-wrap mb-6">
+      <div>
+        <label className="block text-xs font-bold text-gray-700 mb-2">Schedule for sending reminders</label>
+        <select
+          value={cron}
+          onChange={(e) => setCron(e.target.value)}
+          className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+        >
+          {CRON_SCHEDULES.map((s) => (
+            <option key={s.cron} value={s.cron}>{s.label}</option>
+          ))}
+        </select>
+        <p className="text-xs text-gray-400 mt-1.5">Cron: <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono text-xs">{cron}</code></p>
+      </div>
+      <button
+        onClick={save}
+        disabled={saving}
+        className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-sm font-bold rounded-xl transition-colors"
+      >
+        {saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+        {saving ? "Saving…" : saved ? "Saved!" : "Save"}
+      </button>
+    </div>
+  );
+}
+
+function ReminderHoursSetting() {
+  const [hours, setHours]     = useState("24");
+  const [saving, setSaving]   = useState(false);
+  const [saved, setSaved]     = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.from("settings").select("value").eq("key", "reminder_hours_before").maybeSingle()
+      .then(({ data }) => { if (data?.value) setHours(data.value); setLoading(false); });
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    await supabase.from("settings").upsert({ key: "reminder_hours_before", value: hours, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  if (loading) return <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />;
+
+  return (
+    <div className="flex items-end gap-3 flex-wrap">
+      <div>
+        <label className="block text-xs font-bold text-gray-700 mb-2">Send reminder how many hours before booking?</label>
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min="1"
+            max="168"
+            value={hours}
+            onChange={(e) => setHours(e.target.value)}
+            className="w-24 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+          <span className="text-sm text-gray-500 font-medium">hours before</span>
+        </div>
+        <p className="text-xs text-gray-400 mt-1.5">e.g. 24 = reminder sent 24 hours before the booking time</p>
+      </div>
+      <button
+        onClick={save}
+        disabled={saving}
+        className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-sm font-bold rounded-xl transition-colors"
+      >
+        {saved ? <CheckCircle2 className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+        {saving ? "Saving…" : saved ? "Saved!" : "Save"}
+      </button>
+    </div>
+  );
+}
+
 export default function AdminSettings() {
   const { user, loading } = useAuth();
   const { isAdmin, loading: roleLoading } = useIsAdmin(user?.id);
@@ -38,6 +145,12 @@ export default function AdminSettings() {
   const [saving, setSaving]     = useState(false);
   const [success, setSuccess]   = useState(false);
   const [error, setError]       = useState("");
+
+  const [newsletterSubject, setNewsletterSubject] = useState("");
+  const [newsletterBody, setNewsletterBody] = useState("");
+  const [sendingNewsletter, setSendingNewsletter] = useState(false);
+  const [newsletterSuccess, setNewsletterSuccess] = useState(false);
+  const [newsletterError, setNewsletterError] = useState("");
 
   useEffect(() => {
     if (loading || roleLoading || !isAdmin) return;
@@ -72,6 +185,49 @@ export default function AdminSettings() {
       setTimeout(() => setSuccess(false), 4000);
     }
     setSaving(false);
+  };
+
+  const sendNewsletter = async () => {
+    if (!newsletterSubject.trim() || !newsletterBody.trim()) {
+      setNewsletterError("Subject and body are required");
+      return;
+    }
+
+    setSendingNewsletter(true);
+    setNewsletterError("");
+    setNewsletterSuccess(false);
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-newsletter`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session?.access_token}`,
+          },
+          body: JSON.stringify({
+            subject: newsletterSubject.trim(),
+            bodyText: newsletterBody.trim(),
+          }),
+        }
+      );
+
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error ?? "Failed to send newsletter");
+      }
+
+      setNewsletterSuccess(true);
+      setNewsletterSubject("");
+      setNewsletterBody("");
+      setTimeout(() => setNewsletterSuccess(false), 5000);
+    } catch (e: any) {
+      setNewsletterError(e.message ?? "Error sending newsletter");
+    } finally {
+      setSendingNewsletter(false);
+    }
   };
 
   if (loading || roleLoading) return null;
@@ -171,6 +327,84 @@ export default function AdminSettings() {
                 The actual sending address for automated emails (booking confirmations, staff assignments, etc.)
                 is controlled by your Brevo account. To change the sender, update it there.
               </p>
+            </div>
+          </div>
+
+          {/* Booking Reminders Section */}
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h2 className="text-sm font-black text-gray-900">Booking Reminders</h2>
+              <p className="text-xs text-gray-400 mt-1">Automatic email reminders sent to customers before their booking</p>
+            </div>
+            <div className="p-6">
+              <div className="flex items-start gap-3 bg-blue-50 border border-blue-100 rounded-xl p-4 mb-5">
+                <Bell className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-blue-700 mb-1">How to set up automatic reminders</p>
+                  <p className="text-xs text-blue-600 leading-relaxed">
+                    To enable automatic reminders, schedule the <code className="bg-blue-100 px-1 py-0.5 rounded">send-booking-reminders</code> Edge Function
+                    in your Supabase dashboard under <strong>Edge Functions → Schedules</strong>.
+                    Choose a schedule below, and the function will automatically read the hours setting.
+                  </p>
+                </div>
+              </div>
+              <ScheduleDropdown />
+              <ReminderHoursSetting />
+            </div>
+          </div>
+
+          {/* Newsletter Section */}
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h2 className="text-sm font-black text-gray-900">Newsletter</h2>
+              <p className="text-xs text-gray-400 mt-1">Send email to all newsletter subscribers</p>
+            </div>
+            <div className="p-6 space-y-4">
+              {newsletterSuccess && (
+                <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
+                  <p className="text-sm font-semibold text-green-800">Newsletter sent successfully!</p>
+                </div>
+              )}
+              {newsletterError && (
+                <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                  <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                  <p className="text-sm text-red-700">{newsletterError}</p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-2">Subject</label>
+                <input
+                  type="text"
+                  value={newsletterSubject}
+                  onChange={(e) => setNewsletterSubject(e.target.value)}
+                  placeholder="e.g. Spring Cleaning Tips"
+                  disabled={sendingNewsletter}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-2">Message</label>
+                <textarea
+                  value={newsletterBody}
+                  onChange={(e) => setNewsletterBody(e.target.value)}
+                  placeholder="Write your newsletter message..."
+                  disabled={sendingNewsletter}
+                  rows={6}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-50"
+                />
+              </div>
+
+              <button
+                onClick={sendNewsletter}
+                disabled={sendingNewsletter || !newsletterSubject.trim() || !newsletterBody.trim()}
+                className="flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-sm font-bold rounded-xl transition-colors disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4" />
+                {sendingNewsletter ? "Sending..." : "Send Newsletter"}
+              </button>
             </div>
           </div>
 

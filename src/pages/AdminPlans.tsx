@@ -27,9 +27,9 @@ export default function AdminPlans() {
   const [fetching, setFetching] = useState(true);
   const [cancelling, setCancelling] = useState<string | null>(null);
 
-  // Discount settings
-  const [discounts, setDiscounts]     = useState<Discounts>({ weekly: 15, fortnightly: 10, monthly: 5 });
-  const [draft, setDraft]             = useState<Discounts>({ weekly: 15, fortnightly: 10, monthly: 5 });
+  // Discount settings — loaded from database, no hardcoded defaults
+  const [discounts, setDiscounts]     = useState<Discounts>({ weekly: 0, fortnightly: 0, monthly: 0 });
+  const [draft, setDraft]             = useState<Discounts>({ weekly: 0, fortnightly: 0, monthly: 0 });
   const [saving, setSaving]           = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError]     = useState("");
@@ -53,9 +53,9 @@ export default function AdminPlans() {
       const map: Record<string, number> = {};
       for (const row of data) map[row.key] = Number(row.value) || 0;
       const d: Discounts = {
-        weekly:      map["discount_weekly"]      ?? 15,
-        fortnightly: map["discount_fortnightly"] ?? 10,
-        monthly:     map["discount_monthly"]     ?? 5,
+        weekly:      map["discount_weekly"]      ?? 0,
+        fortnightly: map["discount_fortnightly"] ?? 0,
+        monthly:     map["discount_monthly"]     ?? 0,
       };
       setDiscounts(d);
       setDraft(d);

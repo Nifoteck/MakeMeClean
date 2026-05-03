@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Calendar, Clock, MapPin, ArrowRight, Plus, LayoutDashboard, User, Star } from "lucide-react";
+import { Calendar, Clock, MapPin, ArrowRight, Plus, LayoutDashboard, User, Star, Trophy } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { cn, formatDate, formatCurrency } from "@/lib/utils";
@@ -90,10 +90,11 @@ export default function Dashboard() {
         </div>
 
         {/* Quick actions */}
-        <div className="grid sm:grid-cols-3 gap-3 mb-8">
+        <div className="grid sm:grid-cols-4 gap-3 mb-8">
           {[
             { href: "/book",     icon: Plus,            label: "New Booking",  sub: "Book a cleaning service"   },
             { href: "/bookings", icon: Calendar,        label: "My Bookings",  sub: "View & manage bookings"    },
+            { href: "/loyalty",  icon: Trophy,          label: "My Rewards",   sub: "View loyalty points"       },
             { href: "/profile",  icon: User,            label: "My Profile",   sub: "Edit your details"         },
           ].map(({ href, icon: Icon, label, sub }) => (
             <Link key={href} href={href}

@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   price          NUMERIC(10,2) NOT NULL,
   notes          TEXT,
   invoice_number TEXT,
+  reminder_sent  BOOLEAN DEFAULT FALSE,
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -533,6 +534,16 @@ INSERT INTO storage.buckets (id, name, public)
 VALUES ('applications', 'applications', true)
 ON CONFLICT (id) DO NOTHING;
 
+-- Service images (uploaded via admin panel)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('service-images', 'service-images', true)
+ON CONFLICT (id) DO NOTHING;
+
+
+-- ─────────────────────────────────────────────────────────────
+-- 9. STORAGE BUCKET POLICIES
+-- ─────────────────────────────────────────────────────────────
+
 DROP POLICY IF EXISTS "Anyone can upload applications" ON storage.objects;
 DROP POLICY IF EXISTS "Public read applications"       ON storage.objects;
 CREATE POLICY "Anyone can upload applications"
@@ -541,11 +552,6 @@ CREATE POLICY "Anyone can upload applications"
 CREATE POLICY "Public read applications"
   ON storage.objects FOR SELECT
   USING (bucket_id = 'applications');
-
--- Service images (uploaded via admin panel)
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('service-images', 'service-images', true)
-ON CONFLICT (id) DO NOTHING;
 
 DROP POLICY IF EXISTS "Public read service images"   ON storage.objects;
 DROP POLICY IF EXISTS "Admins insert service images" ON storage.objects;
@@ -567,57 +573,10 @@ CREATE POLICY "Admins delete service images"
 
 
 -- ─────────────────────────────────────────────────────────────
--- 9. SEED DATA — Services
--- ─────────────────────────────────────────────────────────────
-
-INSERT INTO public.services (id, name, description, price, image_url, discount_percent, popular, active)
-VALUES
-  ('standard-cleaning',   'Standard cleaning',    'A thorough clean for everyday freshness.',                              20.00, NULL, 0, true,  true),
-  ('regular-cleaning',    'Regular cleaning',     'Recurring cleaning to keep your home consistently tidy.',              20.00, NULL, 0, true,  true),
-  ('one-off-cleaning',    'One-off cleaning',     'A single clean session for when you need it most.',                    20.00, NULL, 0, false, true),
-  ('deep-cleaning',       'Deep cleaning',        'A detailed deep clean focusing on built-up dirt and grime.',           20.00, NULL, 0, true,  true),
-  ('spring-cleaning',     'Spring cleaning',      'A seasonal refresh to get your home spotless.',                        20.00, NULL, 0, false, true),
-  ('same-day-cleaning',   'Same day cleaning',    'Fast turnaround cleaning subject to availability.',                    20.00, NULL, 0, false, true),
-  ('airbnb-cleaning',     'Airbnb cleaning',      'Turnover cleaning for short lets, with attention to detail.',          20.00, NULL, 0, false, true),
-  ('ironing-service',     'Ironing service',      'Professional ironing and folding at your convenience.',                20.00, NULL, 0, false, true),
-  ('cleaning-and-ironing','Cleaning and ironing', 'Combined cleaning plus ironing in one visit.',                         20.00, NULL, 0, false, true),
-  ('housekeeping',        'Housekeeping',         'Ongoing housekeeping support to help you stay on top of chores.',      20.00, NULL, 0, false, true)
-ON CONFLICT (id) DO UPDATE SET
-  name             = excluded.name,
-  description      = excluded.description,
-  price            = excluded.price,
-  image_url        = excluded.image_url,
-  discount_percent = excluded.discount_percent,
-  popular          = excluded.popular,
-  active           = excluded.active,
-  updated_at       = NOW();
-
--- Set service images (Unsplash CDN)
-UPDATE public.services SET image_url = CASE id
-  WHEN 'standard-cleaning'    THEN 'https://images.unsplash.com/photo-1764344815057-15a438b636ed?auto=format&fit=crop&w=1600&q=80'
-  WHEN 'regular-cleaning'     THEN 'https://images.unsplash.com/photo-1758523670739-0d26a3ee976d?auto=format&fit=crop&w=1600&q=80'
-  WHEN 'one-off-cleaning'     THEN 'https://images.unsplash.com/photo-1550963295-019d8a8a61c5?auto=format&fit=crop&w=1600&q=80'
-  WHEN 'deep-cleaning'        THEN 'https://images.unsplash.com/photo-1759846865576-84caf9a9e32c?auto=format&fit=crop&w=1600&q=80'
-  WHEN 'spring-cleaning'      THEN 'https://images.unsplash.com/photo-1765970101624-31e3a737d90e?auto=format&fit=crop&w=1600&q=80'
-  WHEN 'same-day-cleaning'    THEN 'https://images.unsplash.com/photo-1762500825301-569628303acb?auto=format&fit=crop&w=1600&q=80'
-  WHEN 'airbnb-cleaning'      THEN 'https://images.unsplash.com/photo-1772476361154-e894ba10d757?auto=format&fit=crop&w=1600&q=80'
-  WHEN 'ironing-service'      THEN 'https://images.unsplash.com/photo-1758279744970-b32360a5e907?auto=format&fit=crop&w=1600&q=80'
-  WHEN 'cleaning-and-ironing' THEN 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?auto=format&fit=crop&w=1600&q=80'
-  WHEN 'housekeeping'         THEN 'https://images.unsplash.com/photo-1765970101654-337b573142fb?auto=format&fit=crop&w=1600&q=80'
-  ELSE image_url
-END
-WHERE id IN (
-  'standard-cleaning', 'regular-cleaning', 'one-off-cleaning', 'deep-cleaning',
-  'spring-cleaning', 'same-day-cleaning', 'airbnb-cleaning',
-  'ironing-service', 'cleaning-and-ironing', 'housekeeping'
-);
-
-
--- ─────────────────────────────────────────────────────────────
 -- 10. GRANT ADMIN ACCESS
 -- ─────────────────────────────────────────────────────────────
 -- After signing up in the app, go to Supabase → Authentication → Users,
--- copy your UUID, then run:
+-- copy your UUID, then run (in supabase-seed.sql or directly):
 --
 -- INSERT INTO public.admins (user_id)
 -- VALUES ('<YOUR-UUID-HERE>')
@@ -800,22 +759,6 @@ CREATE TABLE IF NOT EXISTS public.settings (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Seed default recurring discounts (safe to re-run)
-INSERT INTO public.settings (key, value) VALUES
-  ('discount_weekly',      '15'),
-  ('discount_fortnightly', '10'),
-  ('discount_monthly',     '5'),
-  -- Business contact info (admin-editable via /admin/settings)
-  ('business_phone',    '+44 7362 068202'),
-  ('contact_email',     'aadeeniiyii@gmail.com'),
-  ('business_hours',    '7 days a week, 8am–8pm'),
-  ('email_info',        'info@makemeclean.co.uk'),
-  ('email_recruitment', 'recruitment@makemeclean.co.uk'),
-  ('email_payment',     'payment@makemeclean.co.uk'),
-  ('email_payroll',     'payroll@makemeclean.co.uk'),
-  ('email_staffing',    'staffing@makemeclean.co.uk')
-ON CONFLICT (key) DO NOTHING;
-
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "settings_public_read" ON public.settings
@@ -823,3 +766,133 @@ CREATE POLICY "settings_public_read" ON public.settings
 
 CREATE POLICY "settings_admin_write" ON public.settings
   FOR ALL USING (auth.uid() IN (SELECT user_id FROM public.admins));
+
+-- Newsletter Subscriptions
+CREATE TABLE IF NOT EXISTS public.newsletter_subscriptions (
+  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  email         TEXT NOT NULL UNIQUE,
+  subscribed_at TIMESTAMPTZ DEFAULT NOW(),
+  unsubscribed_at TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS newsletter_subscriptions_email_idx ON public.newsletter_subscriptions (email);
+
+ALTER TABLE public.newsletter_subscriptions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "newsletter_public_insert" ON public.newsletter_subscriptions
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "newsletter_admin_read" ON public.newsletter_subscriptions
+  FOR SELECT USING (auth.uid() IN (SELECT user_id FROM public.admins));
+
+-- ─────────────────────────────────────────────────────────────
+-- 19. REFUND REQUESTS
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.refund_requests (
+  id            UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  booking_id    UUID NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
+  user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  reason        TEXT NOT NULL,
+  requested_at  TIMESTAMPTZ DEFAULT NOW(),
+  status        TEXT DEFAULT 'pending',
+  admin_notes   TEXT,
+  refund_amount NUMERIC(10,2),
+  processed_at  TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS refund_requests_booking_idx ON public.refund_requests (booking_id);
+CREATE INDEX IF NOT EXISTS refund_requests_user_idx ON public.refund_requests (user_id);
+CREATE INDEX IF NOT EXISTS refund_requests_status_idx ON public.refund_requests (status);
+
+ALTER TABLE public.refund_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "refund_requests_user_view" ON public.refund_requests
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "refund_requests_user_create" ON public.refund_requests
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "refund_requests_admin_all" ON public.refund_requests
+  FOR ALL USING (auth.uid() IN (SELECT user_id FROM public.admins));
+
+-- ─────────────────────────────────────────────────────────────
+-- 20. BOOKING PHOTOS
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.booking_photos (
+  id           UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  booking_id   UUID NOT NULL REFERENCES public.bookings(id) ON DELETE CASCADE,
+  user_id      UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  storage_path TEXT NOT NULL,
+  uploaded_at  TIMESTAMPTZ DEFAULT NOW(),
+  created_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS booking_photos_booking_idx ON public.booking_photos (booking_id);
+CREATE INDEX IF NOT EXISTS booking_photos_user_idx ON public.booking_photos (user_id);
+
+ALTER TABLE public.booking_photos ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "booking_photos_user_view" ON public.booking_photos
+  FOR SELECT USING (auth.uid() = user_id OR auth.uid() IN (SELECT user_id FROM public.admins));
+
+CREATE POLICY "booking_photos_user_upload" ON public.booking_photos
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "booking_photos_user_delete" ON public.booking_photos
+  FOR DELETE USING (auth.uid() = user_id OR auth.uid() IN (SELECT user_id FROM public.admins));
+
+CREATE POLICY "booking_photos_admin_all" ON public.booking_photos
+  FOR ALL USING (auth.uid() IN (SELECT user_id FROM public.admins));
+
+-- ─────────────────────────────────────────────────────────────
+-- 21. LOYALTY POINTS & REWARDS
+-- ─────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.loyalty_points (
+  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id    UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  booking_id UUID REFERENCES public.bookings(id) ON DELETE SET NULL,
+  points     INTEGER NOT NULL,
+  reason     TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS loyalty_points_user_idx ON public.loyalty_points (user_id);
+
+ALTER TABLE public.loyalty_points ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "loyalty_points_user_view" ON public.loyalty_points
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "loyalty_points_admin_all" ON public.loyalty_points
+  FOR ALL USING (auth.uid() IN (SELECT user_id FROM public.admins));
+
+CREATE TABLE IF NOT EXISTS public.loyalty_rewards (
+  id               UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name             TEXT NOT NULL,
+  description      TEXT DEFAULT '',
+  points_required  INTEGER NOT NULL,
+  active           BOOLEAN DEFAULT TRUE,
+  created_at       TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.loyalty_rewards ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "loyalty_rewards_public_read" ON public.loyalty_rewards
+  FOR SELECT USING (true);
+
+CREATE POLICY "loyalty_rewards_admin_all" ON public.loyalty_rewards
+  FOR ALL USING (auth.uid() IN (SELECT user_id FROM public.admins));
+
+-- ─────────────────────────────────────────────────────────────
+-- 22. STORAGE BUCKETS
+-- ─────────────────────────────────────────────────────────────
+
+-- Booking photos bucket (already exists in typical Supabase, but defined here for completeness)
+-- Create via Supabase Dashboard: Storage → New Bucket → Name: "booking-photos" → Public
+
+-- Service images bucket (already in use)
+-- Create via Supabase Dashboard: Storage → New Bucket → Name: "service-images" → Public

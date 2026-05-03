@@ -111,7 +111,7 @@ export default function Home() {
             <div className="mt-4 lg:mt-0">
               <div className="rounded-2xl overflow-hidden">
                 <img
-                  src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&q=85&auto=format&fit=crop"
+                  src="/images/home-hero-before.jpg"
                   alt="Cleaner working in a Welsh home"
                   className="w-full h-64 sm:h-80 lg:h-[500px] object-cover"
                 />
@@ -202,7 +202,7 @@ export default function Home() {
             <div className="mt-10 lg:mt-0">
               <div className="rounded-2xl overflow-hidden">
                 <img
-                  src="https://images.unsplash.com/photo-1527515637462-cff94eecc1ac?w=700&q=85&auto=format&fit=crop"
+                  src="/images/home-hero-after.jpg"
                   alt="Cleaner vacuuming a living room floor"
                   className="w-full h-64 sm:h-80 lg:h-[540px] object-cover"
                 />
@@ -305,12 +305,14 @@ export default function Home() {
             >
               Book a Clean <ArrowRight className="w-4 h-4" />
             </Link>
-            <a
-              href={`tel:${settings.business_phone.replace(/\s/g, "")}`}
-              className="border-2 border-white/40 text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-white/10 transition-all duration-150 flex items-center gap-2 justify-center text-base"
-            >
-              <Phone className="w-4 h-4" /> {settings.business_phone}
-            </a>
+            {settings.business_phone && (
+              <a
+                href={`tel:${settings.business_phone.replace(/\s/g, "")}`}
+                className="border-2 border-white/40 text-white font-semibold px-8 py-3.5 rounded-xl hover:bg-white/10 transition-all duration-150 flex items-center gap-2 justify-center text-base"
+              >
+                <Phone className="w-4 h-4" /> {settings.business_phone}
+              </a>
+            )}
           </div>
         </div>
       </section>

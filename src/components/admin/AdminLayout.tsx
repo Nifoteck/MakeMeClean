@@ -1,6 +1,6 @@
 import { PropsWithChildren, ReactNode, useState } from "react";
 import { useLocation } from "wouter";
-import { LayoutDashboard, UsersRound, BriefcaseBusiness, Sparkles, LogOut, Menu, X, ChevronRight, Banknote, CalendarClock, MessageSquare, ExternalLink, Repeat, Settings } from "lucide-react";
+import { LayoutDashboard, UsersRound, BriefcaseBusiness, Sparkles, LogOut, Menu, X, ChevronRight, Banknote, CalendarClock, MessageSquare, ExternalLink, Repeat, Settings, DollarSign, Image as ImageIcon, Trophy } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useScrollLock } from "@/hooks/useScrollLock";
@@ -16,6 +16,9 @@ const nav: NavItem[] = [
   { href: "/admin/reschedules",  label: "Reschedules",  icon: CalendarClock   },
   { href: "/admin/plans",        label: "Plans",        icon: Repeat          },
   { href: "/admin/messages",     label: "Messages",     icon: MessageSquare   },
+  { href: "/admin/refunds",      label: "Refunds",      icon: DollarSign      },
+  { href: "/admin/photos",       label: "Photos",       icon: ImageIcon       },
+  { href: "/admin/loyalty",      label: "Loyalty",      icon: Trophy          },
   { href: "/admin/settings",    label: "Settings",     icon: Settings        },
 ];
 

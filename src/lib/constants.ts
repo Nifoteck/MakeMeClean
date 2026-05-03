@@ -66,11 +66,4 @@ export const FREQ_LABELS_SHORT: Record<string, string> = {
   monthly:     "Monthly",
 };
 
-// ─── Recurring discount defaults (%) ─────────────────────────────────────────
-
-export const DEFAULT_DISCOUNTS: Record<string, number> = {
-  none:        0,
-  weekly:      15,
-  fortnightly: 10,
-  monthly:     5,
-};
+// Discount percentages are now fetched from database (settings table) — no hardcoded defaults

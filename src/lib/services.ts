@@ -35,12 +35,14 @@ export function mapDbService(s: DbService): Service {
   };
 }
 
-export const HOURLY_RATE = 20;
-
+// Business hours for booking slots — admin can configure via /admin/settings if needed
+// For now, these are standard operating hours (7am–5pm)
 export const START_HOURS = [
   "07:00", "08:00", "09:00", "10:00", "11:00",
   "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
 ];
+
+// Service prices are fetched from database per-service, not hardcoded here
 
 export function calcTimeSlot(startHour: string, durationHours: number): string {
   const [h, m] = startHour.split(":").map(Number);

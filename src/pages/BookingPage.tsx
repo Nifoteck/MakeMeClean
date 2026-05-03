@@ -11,8 +11,9 @@ import { useServices } from "@/hooks/useServices";
 type Step = 1 | 2 | 3;
 type RecurringFreq = "none" | "weekly" | "fortnightly" | "monthly";
 
-const DEFAULT_DISCOUNTS: Record<RecurringFreq, number> = {
-  none: 0, weekly: 15, fortnightly: 10, monthly: 5,
+// Discount defaults loaded from database, not hardcoded
+const EMPTY_DISCOUNTS: Record<RecurringFreq, number> = {
+  none: 0, weekly: 0, fortnightly: 0, monthly: 0,
 };
 
 const FREQ_LABELS: Record<string, string> = {
@@ -35,7 +36,7 @@ export default function BookingPage() {
   const [postcode, setPostcode]             = useState("");
   const [notes, setNotes]                   = useState("");
   const [recurringFreq, setRecurringFreq]   = useState<RecurringFreq>("none");
-  const [liveDiscounts, setLiveDiscounts]   = useState<Record<RecurringFreq, number>>(DEFAULT_DISCOUNTS);
+  const [liveDiscounts, setLiveDiscounts]   = useState<Record<RecurringFreq, number>>(EMPTY_DISCOUNTS);
   const [submitting, setSubmitting]         = useState(false);
   const [error, setError]                   = useState("");
   const [bookingId, setBookingId]           = useState("");
@@ -55,9 +56,9 @@ export default function BookingPage() {
         for (const row of data) map[row.key] = Number(row.value) || 0;
         setLiveDiscounts({
           none:        0,
-          weekly:      map["discount_weekly"]      ?? DEFAULT_DISCOUNTS.weekly,
-          fortnightly: map["discount_fortnightly"] ?? DEFAULT_DISCOUNTS.fortnightly,
-          monthly:     map["discount_monthly"]     ?? DEFAULT_DISCOUNTS.monthly,
+          weekly:      Number(map["discount_weekly"])      || 0,
+          fortnightly: Number(map["discount_fortnightly"]) || 0,
+          monthly:     Number(map["discount_monthly"])     || 0,
         });
       });
   }, []);

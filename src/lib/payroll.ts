@@ -1,16 +1,16 @@
-// UK 2024/25 payroll rates
+// UK 2024/25 payroll tax rates and thresholds
+// These are statutory UK tax rates and cannot be changed — they are not business config
+const ANNUAL_PERSONAL_ALLOWANCE = 12570;   // Standard tax-free allowance
+const BASIC_RATE_BAND            = 37700;   // Band for 20% tax rate
+const UPPER_EARNINGS_LIMIT       = 50270;   // Annual threshold for different NI rates
+const PRIMARY_THRESHOLD          = 12570;   // Employee NI threshold (annual)
+const SECONDARY_THRESHOLD        =  9100;   // Employer NI threshold (annual)
 
-const ANNUAL_PERSONAL_ALLOWANCE = 12570;   // 1257L tax code
-const BASIC_RATE_BAND            = 37700;   // 20% on income above allowance, up to this
-const UPPER_EARNINGS_LIMIT       = 50270;   // annual
-const PRIMARY_THRESHOLD          = 12570;   // employee NI starts here (annual)
-const SECONDARY_THRESHOLD        =  9100;   // employer NI starts here (annual)
-
-const BASIC_RATE         = 0.20;
-const HIGHER_RATE        = 0.40;
-const NI_EMPLOYEE_MAIN   = 0.08;   // 8%  PT–UEL
-const NI_EMPLOYEE_UPPER  = 0.02;   // 2%  above UEL
-const NI_EMPLOYER_RATE   = 0.138;  // 13.8% above secondary threshold
+const BASIC_RATE         = 0.20;   // 20% income tax rate
+const HIGHER_RATE        = 0.40;   // 40% income tax rate
+const NI_EMPLOYEE_MAIN   = 0.08;   // 8% employee NI (main band)
+const NI_EMPLOYEE_UPPER  = 0.02;   // 2% employee NI (upper band)
+const NI_EMPLOYER_RATE   = 0.138;  // 13.8% employer NI rate
 
 export interface PayslipCalc {
   grossPay:         number;

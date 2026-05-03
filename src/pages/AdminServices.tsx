@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, X, Upload, Link as LinkIcon } from "lucide-react";
+import { Plus, X, Upload } from "lucide-react";
 import type { DbService } from "@/lib/services";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,7 +24,6 @@ export default function AdminServices() {
   useScrollLock(!!editingId);
   const [draft, setDraft]               = useState<Partial<DbService>>({});
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [useImageUrl, setUseImageUrl]   = useState(false);
 
   const slugify = (s: string) =>
     (s ?? "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "").slice(0, 64);
@@ -152,26 +151,13 @@ export default function AdminServices() {
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Service image</label>
                   <div className="grid sm:grid-cols-2 gap-4 items-start">
-                    <div>
-                      {!useImageUrl ? (
-                        <label className={cn("flex items-center gap-3 px-4 py-3 border-2 border-dashed rounded-xl cursor-pointer transition-colors text-sm",
-                          uploadingImage ? "border-green-300 bg-green-50 text-green-600" : "border-gray-200 text-gray-500 hover:border-green-300 hover:bg-green-50")}>
-                          <Upload className="w-4 h-4 shrink-0" />
-                          {uploadingImage ? "Uploading..." : "Upload image"}
-                          <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingImage}
-                            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); }} />
-                        </label>
-                      ) : (
-                        <input placeholder="https://..." className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                          value={String(draft.image_url ?? "")}
-                          onChange={(e) => setDraft((p) => ({ ...p, image_url: e.target.value }))} />
-                      )}
-                      <button type="button" onClick={() => setUseImageUrl((v) => !v)}
-                        className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-gray-400 hover:text-green-600 transition-colors">
-                        <LinkIcon className="w-3.5 h-3.5" />
-                        {useImageUrl ? "Upload a file instead" : "Use an image URL instead"}
-                      </button>
-                    </div>
+                    <label className={cn("flex items-center gap-3 px-4 py-3 border-2 border-dashed rounded-xl cursor-pointer transition-colors text-sm",
+                      uploadingImage ? "border-green-300 bg-green-50 text-green-600" : "border-gray-200 text-gray-500 hover:border-green-300 hover:bg-green-50")}>
+                      <Upload className="w-4 h-4 shrink-0" />
+                      {uploadingImage ? "Uploading..." : "Upload image"}
+                      <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploadingImage}
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); }} />
+                    </label>
                     <div className={cn("rounded-2xl overflow-hidden border bg-gray-50 h-36",
                       draft.image_url ? "border-gray-200" : "border-dashed border-gray-200")}>
                       {draft.image_url

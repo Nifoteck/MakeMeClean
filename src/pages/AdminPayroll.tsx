@@ -62,8 +62,9 @@ export default function AdminPayroll() {
   const { user, loading }                    = useAuth();
   const { isAdmin, loading: roleLoading }    = useIsAdmin(user?.id);
 
+  // No hardcoded defaults — all loaded from database in fetchAll()
   const [settings, setSettings] = useState<PayrollSettings>({
-    pay_period: "monthly", hourly_rate: 12, default_tax_code: "1257L", ni_category: "A",
+    pay_period: "monthly", hourly_rate: 0, default_tax_code: "1257L", ni_category: "A",
   });
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsSaved,  setSettingsSaved]  = useState(false);

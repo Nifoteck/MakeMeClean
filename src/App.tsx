@@ -4,6 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import ConsentBanner from "@/components/ConsentBanner";
+import AIChatWidget from "@/components/AIChatWidget";
+import { updatePageMeta, seoDefaults } from "@/lib/seo";
+import { initializeAnalytics, trackPageView } from "@/lib/analytics";
 const Home = lazy(() => import("@/pages/Home"));
 const Services = lazy(() => import("@/pages/Services"));
 const BookingPage = lazy(() => import("@/pages/BookingPage"));
@@ -37,11 +40,25 @@ const MyPlans = lazy(() => import("@/pages/MyPlans"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const TermsPage = lazy(() => import("@/pages/TermsPage"));
 const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"));
+const CancellationPolicy = lazy(() => import("@/pages/CancellationPolicy"));
+const AccessibilityStatement = lazy(() => import("@/pages/AccessibilityStatement"));
+const ComplaintsProcedure = lazy(() => import("@/pages/ComplaintsProcedure"));
+const ServiceTerms = lazy(() => import("@/pages/ServiceTerms"));
+const Blog = lazy(() => import("@/pages/Blog"));
+const BlogArticle = lazy(() => import("@/pages/BlogArticle"));
+const UnsubscribePage = lazy(() => import("@/pages/UnsubscribePage"));
+const BookingPhotos = lazy(() => import("@/pages/BookingPhotos"));
+const BookingRefundRequest = lazy(() => import("@/pages/BookingRefundRequest"));
+const AdminRefunds = lazy(() => import("@/pages/AdminRefunds"));
+const AdminPhotos = lazy(() => import("@/pages/AdminPhotos"));
+const Loyalty = lazy(() => import("@/pages/Loyalty"));
+const AdminLoyalty = lazy(() => import("@/pages/AdminLoyalty"));
 
 function ScrollToTop() {
   const [location] = useLocation();
   useEffect(() => {
     window.scrollTo(0, 0);
+    trackPageView(location, document.title);
   }, [location]);
   return null;
 }
@@ -51,6 +68,13 @@ function App() {
   const [location, setLocation] = useLocation();
   const isAdminRoute = location.startsWith("/admin");
   const isStaffRoute = location.startsWith("/staff");
+
+  useEffect(() => {
+    // Initialize Google Analytics on first load
+    initializeAnalytics();
+    // Update SEO meta tags based on current page
+    updatePageMeta(seoDefaults.home);
+  }, []);
 
   useEffect(() => {
     if (!loading && user?.user_metadata?.must_change_password && location !== "/change-password") setLocation("/change-password");
@@ -107,12 +131,26 @@ function App() {
             <Route path="/review/:bookingId" component={ReviewPage} />
             <Route path="/terms" component={TermsPage} />
             <Route path="/privacy" component={PrivacyPage} />
+            <Route path="/cancellation" component={CancellationPolicy} />
+            <Route path="/accessibility" component={AccessibilityStatement} />
+            <Route path="/complaints" component={ComplaintsProcedure} />
+            <Route path="/service-terms" component={ServiceTerms} />
+            <Route path="/blog/:slug" component={BlogArticle} />
+            <Route path="/blog" component={Blog} />
+            <Route path="/unsubscribe" component={UnsubscribePage} />
+            <Route path="/bookings/:bookingId/photos" component={BookingPhotos} />
+            <Route path="/bookings/:bookingId/refund" component={BookingRefundRequest} />
+            <Route path="/admin/refunds" component={AdminRefunds} />
+            <Route path="/admin/photos" component={AdminPhotos} />
+            <Route path="/loyalty" component={Loyalty} />
+            <Route path="/admin/loyalty" component={AdminLoyalty} />
             <Route component={NotFound} />
           </Switch>
         </Suspense>
       </main>
       {!isAdminRoute && !isStaffRoute && <Footer />}
       {!isAdminRoute && !isStaffRoute && <ConsentBanner />}
+      {!isAdminRoute && !isStaffRoute && <AIChatWidget />}
     </div>
   );
 }

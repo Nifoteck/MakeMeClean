@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, User, Calendar, LogOut, ChevronDown, LayoutDashboard, Briefcase, Repeat } from "lucide-react";
+import { Menu, X, User, Calendar, LogOut, ChevronDown, LayoutDashboard, Briefcase, Repeat, Trophy } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin, useStaffRecord } from "@/hooks/useRole";
 import { cn } from "@/lib/utils";
@@ -116,6 +116,7 @@ export default function Navbar() {
                       { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
                       { href: "/bookings",  icon: Calendar,        label: "My Bookings" },
                       { href: "/plans",     icon: Repeat,          label: "My Plans" },
+                      { href: "/loyalty",   icon: Trophy,          label: "Loyalty Rewards" },
                       { href: "/profile",   icon: User,            label: "Profile" },
                     ].map(({ href, icon: Icon, label }) => (
                       <Link key={href} href={href} onClick={() => setDropdownOpen(false)}
@@ -190,6 +191,7 @@ export default function Navbar() {
                 { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
                 { href: "/bookings",  icon: Calendar,        label: "My Bookings" },
                 { href: "/plans",     icon: Repeat,          label: "My Plans" },
+                { href: "/loyalty",   icon: Trophy,          label: "Loyalty Rewards" },
                 { href: "/profile",   icon: User,            label: "Profile" },
               ].map(({ href, icon: Icon, label }) => (
                 <Link key={href} href={href} onClick={() => setMobileOpen(false)}

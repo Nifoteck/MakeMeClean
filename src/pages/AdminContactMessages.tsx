@@ -207,7 +207,7 @@ export default function AdminContactMessages() {
                       <div className="space-y-3">
                         <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">
                           Reply to {msg.name}
-                          <span className="ml-1 normal-case font-normal text-gray-400">— from info@makemeclean.co.uk</span>
+                          <span className="ml-1 normal-case font-normal text-gray-400">— {msg.email}</span>
                         </p>
                         <textarea
                           rows={5}
