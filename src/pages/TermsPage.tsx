@@ -199,8 +199,8 @@ export default function TermsPage() {
             <div className="bg-gray-100 rounded-2xl p-5 text-sm text-gray-500">
               <p>
                 Questions about these Terms?{" "}
-                <a href={`mailto:${settings.contact_email || "contact@makemeclean.co.uk"}`} className="text-green-600 font-semibold hover:underline">
-                  {settings.contact_email || "contact@makemeclean.co.uk"}
+                <a href={`mailto:${settings.contact_email}`} className="text-green-600 font-semibold hover:underline">
+                  {settings.contact_email}
                 </a>
                 {settings.business_phone && <>{" "}or call{" "}<a href={`tel:${settings.business_phone.replace(/\s/g, "")}`} className="text-green-600 font-semibold hover:underline">{settings.business_phone}</a>.</>}
                 {" "}You may also wish to read our{" "}

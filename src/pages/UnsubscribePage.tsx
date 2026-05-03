@@ -107,7 +107,7 @@ export default function UnsubscribePage() {
               Privacy Policy
             </Link>
             <span className="text-gray-300">·</span>
-            <a href="mailto:contact@makemeclean.co.uk" className="text-xs text-green-600 hover:text-green-700 font-semibold">
+            <a href={`mailto:${settings.contact_email}`} className="text-xs text-green-600 hover:text-green-700 font-semibold">
               Contact Us
             </a>
           </div>

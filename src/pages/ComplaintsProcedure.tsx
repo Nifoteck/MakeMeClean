@@ -22,7 +22,7 @@ export default function ComplaintsProcedure() {
               Please contact us immediately to discuss your concern. Most issues are resolved at this stage.
             </p>
             <div className="bg-gray-50 p-6 rounded-lg space-y-2">
-              <p><strong className="text-gray-900">Email:</strong> <a href={`mailto:${settings.contact_email || "contact@makemeclean.co.uk"}`} className="text-green-600 font-semibold hover:underline">{settings.contact_email || "contact@makemeclean.co.uk"}</a></p>
+              <p><strong className="text-gray-900">Email:</strong> <a href={`mailto:${settings.contact_email}`} className="text-green-600 font-semibold hover:underline">{settings.contact_email}</a></p>
               {settings.business_phone && <p><strong className="text-gray-900">Phone:</strong> <a href={`tel:${settings.business_phone.replace(/\s/g, "")}`} className="text-green-600 font-semibold hover:underline">{settings.business_phone}</a></p>}
               <p><strong className="text-gray-900">Contact Form:</strong> <a href="/contact" className="text-green-600 font-semibold hover:underline">Use our contact page</a></p>
               <p className="text-sm text-gray-500 pt-2">Please include your booking reference, service date, and details of the issue.</p>
