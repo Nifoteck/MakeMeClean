@@ -7,39 +7,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
 import Pagination from "@/components/Pagination";
+import { ApplicationStatus, JobApplication } from "@/types";
+import { APPLICATION_STATUS_STYLES, PAGE_SIZE } from "@/lib/constants";
+import Spinner from "@/components/Spinner";
 
-const PAGE_SIZE = 15;
-
-type ApplicationStatus = "pending" | "reviewing" | "shortlisted" | "rejected" | "hired";
-
-interface JobApplication {
-  id: string;
-  role: string;
-  employment_type: string | null;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  address: string | null;
-  city: string | null;
-  postcode: string | null;
-  status: ApplicationStatus;
-  admin_notes: string | null;
-  created_at: string;
-  [key: string]: unknown;
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  pending:     "bg-amber-100 text-amber-700",
-  reviewing:   "bg-blue-100 text-blue-700",
-  shortlisted: "bg-purple-100 text-purple-700",
-  hired:       "bg-emerald-100 text-emerald-700",
-  rejected:    "bg-red-100 text-red-700",
-};
-
-function Spinner() {
-  return <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />;
-}
+const STATUS_STYLES = APPLICATION_STATUS_STYLES;
 
 export default function AdminApplicants() {
   const { user, loading } = useAuth();

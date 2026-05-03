@@ -19,7 +19,8 @@ let _pending: Promise<Record<string, string>> | null = null;
 async function loadSettings(): Promise<Record<string, string>> {
   if (_cache) return _cache;
   if (_pending) return _pending;
-  _pending = supabase
+  _pending = Promise.resolve(
+    supabase
     .from("settings")
     .select("key, value")
     .then(({ data }) => {
@@ -28,8 +29,9 @@ async function loadSettings(): Promise<Record<string, string>> {
       _cache = map;
       _pending = null;
       return map;
-    });
-  return _pending;
+    })
+  );
+  return _pending ?? SETTING_DEFAULTS;
 }
 
 export function invalidateSettingsCache() {

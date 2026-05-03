@@ -7,37 +7,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { useSettings } from "@/hooks/useSettings";
+import { ApplicationStatus, JobApplication } from "@/types";
+import { APPLICATION_STATUS_STYLES } from "@/lib/constants";
 
-type ApplicationStatus = "pending" | "reviewing" | "shortlisted" | "rejected" | "hired";
-
-interface JobApplication {
-  id: string;
-  role: string;
-  employment_type: string | null;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  address: string | null;
-  city: string | null;
-  postcode: string | null;
-  status: ApplicationStatus;
-  admin_notes: string | null;
-  created_at: string;
-  available_days: string[] | null;
-  available_hours: string | null;
-  earliest_start: string | null;
-  rtw_eligible: string | null;
-  rtw_type: string | null;
-  ni_number: string | null;
-  years_experience: string | null;
-  experience_types: string[] | null;
-  own_equipment: string | null;
-  driving_licence: string | null;
-  cv_url?: string | null;
-  id_proof_url?: string | null;
-  rtw_doc_url?: string | null;
-  dbs_cert_url?: string | null;
+type _ExtendedJobApplication = JobApplication & {
   date_of_birth?: string | null;
   emergency_contact_name?: string | null;
   emergency_contact_phone?: string | null;
@@ -69,13 +42,7 @@ interface JobApplication {
   staff_relationship_details?: string | null;
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  pending: "bg-amber-100 text-amber-700",
-  reviewing: "bg-blue-100 text-blue-700",
-  shortlisted: "bg-purple-100 text-purple-700",
-  hired: "bg-emerald-100 text-emerald-700",
-  rejected: "bg-red-100 text-red-700",
-};
+const STATUS_STYLES = APPLICATION_STATUS_STYLES;
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
   return (
@@ -106,7 +73,7 @@ export default function AdminApplicantDetail() {
   const { user, loading } = useAuth();
   const { isAdmin, loading: roleLoading } = useIsAdmin(user?.id);
 
-  const [applicant, setApplicant] = useState<JobApplication | null>(null);
+  const [applicant, setApplicant] = useState<_ExtendedJobApplication | null>(null);
   const [fetching, setFetching] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");

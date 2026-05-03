@@ -6,46 +6,13 @@ import { supabase } from "@/lib/supabase";
 import { cn, formatCurrency } from "@/lib/utils";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { calculatePayslip, parseShiftHours } from "@/lib/payroll";
-
-interface PayrollSettings {
-  pay_period:       "weekly" | "monthly";
-  hourly_rate:      number;
-  default_tax_code: string;
-  ni_category:      string;
-}
-
-interface StaffMember {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-}
-
-interface Payslip {
-  id: string;
-  staff_id: string;
-  period_start: string;
-  period_end: string;
-  shifts_count: number;
-  gross_hours: number;
-  gross_pay: number;
-  tax_code: string;
-  paye_tax: number;
-  ni_employee: number;
-  ni_employer: number;
-  net_pay: number;
-  status: "draft" | "finalised";
-  generated_at: string;
-}
+import { StaffMember, Payslip, PayrollSettings } from "@/types";
+import Spinner from "@/components/Spinner";
 
 interface PeriodOption {
   start: string;
   end: string;
   label: string;
-}
-
-function Spinner() {
-  return <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />;
 }
 
 function formatPeriod(start: string, end: string) {

@@ -1,40 +1,41 @@
 import { Route, Switch, useLocation } from "wouter";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import Home from "@/pages/Home";
-import Services from "@/pages/Services";
-import BookingPage from "@/pages/BookingPage";
-import Login from "@/pages/Login";
-import Register from "@/pages/Register";
-import Dashboard from "@/pages/Dashboard";
-import Profile from "@/pages/Profile";
-import Bookings from "@/pages/Bookings";
-import BookingDetail from "@/pages/BookingDetail";
-import PaymentPage from "@/pages/PaymentPage";
-import InvoicePage from "@/pages/InvoicePage";
-import AdminPanel from "@/pages/AdminPanel";
-import AdminServices from "@/pages/AdminServices";
-import AdminApplicants from "@/pages/AdminApplicants";
-import AdminApplicantDetail from "@/pages/AdminApplicantDetail";
-import AdminStaff from "@/pages/AdminStaff";
-import AdminReschedules from "@/pages/AdminReschedules";
-import AdminContactMessages from "@/pages/AdminContactMessages";
-import AdminPlans from "@/pages/AdminPlans";
-import AdminSettings from "@/pages/AdminSettings";
-import StaffDashboard from "@/pages/StaffDashboard";
-import StaffAvailability from "@/pages/StaffAvailability";
-import StaffPayslips from "@/pages/StaffPayslips";
-import AdminPayroll from "@/pages/AdminPayroll";
-import ChangePassword from "@/pages/ChangePassword";
-import Careers from "@/pages/Careers";
-import ReviewPage from "@/pages/ReviewPage";
-import ContactPage from "@/pages/ContactPage";
-import MyPlans from "@/pages/MyPlans";
-import NotFound from "@/pages/NotFound";
-import TermsPage from "@/pages/TermsPage";
-import PrivacyPage from "@/pages/PrivacyPage";
+import ConsentBanner from "@/components/ConsentBanner";
+const Home = lazy(() => import("@/pages/Home"));
+const Services = lazy(() => import("@/pages/Services"));
+const BookingPage = lazy(() => import("@/pages/BookingPage"));
+const Login = lazy(() => import("@/pages/Login"));
+const Register = lazy(() => import("@/pages/Register"));
+const Dashboard = lazy(() => import("@/pages/Dashboard"));
+const Profile = lazy(() => import("@/pages/Profile"));
+const Bookings = lazy(() => import("@/pages/Bookings"));
+const BookingDetail = lazy(() => import("@/pages/BookingDetail"));
+const PaymentPage = lazy(() => import("@/pages/PaymentPage"));
+const InvoicePage = lazy(() => import("@/pages/InvoicePage"));
+const AdminPanel = lazy(() => import("@/pages/AdminPanel"));
+const AdminServices = lazy(() => import("@/pages/AdminServices"));
+const AdminApplicants = lazy(() => import("@/pages/AdminApplicants"));
+const AdminApplicantDetail = lazy(() => import("@/pages/AdminApplicantDetail"));
+const AdminStaff = lazy(() => import("@/pages/AdminStaff"));
+const AdminReschedules = lazy(() => import("@/pages/AdminReschedules"));
+const AdminContactMessages = lazy(() => import("@/pages/AdminContactMessages"));
+const AdminPlans = lazy(() => import("@/pages/AdminPlans"));
+const AdminSettings = lazy(() => import("@/pages/AdminSettings"));
+const StaffDashboard = lazy(() => import("@/pages/StaffDashboard"));
+const StaffAvailability = lazy(() => import("@/pages/StaffAvailability"));
+const StaffPayslips = lazy(() => import("@/pages/StaffPayslips"));
+const AdminPayroll = lazy(() => import("@/pages/AdminPayroll"));
+const ChangePassword = lazy(() => import("@/pages/ChangePassword"));
+const Careers = lazy(() => import("@/pages/Careers"));
+const ReviewPage = lazy(() => import("@/pages/ReviewPage"));
+const ContactPage = lazy(() => import("@/pages/ContactPage"));
+const MyPlans = lazy(() => import("@/pages/MyPlans"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const TermsPage = lazy(() => import("@/pages/TermsPage"));
+const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"));
 
 function ScrollToTop() {
   const [location] = useLocation();
@@ -71,42 +72,45 @@ function App() {
       <ScrollToTop />
       {!isAdminRoute && !isStaffRoute && <Navbar />}
       <main className="flex-1">
-        <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/services" component={Services} />
-          <Route path="/book/:serviceId?" component={BookingPage} />
-          <Route path="/login" component={Login} />
-          <Route path="/register" component={Register} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/profile" component={Profile} />
-          <Route path="/bookings" component={Bookings} />
-          <Route path="/bookings/:id" component={BookingDetail} />
-          <Route path="/pay/:bookingId" component={PaymentPage} />
-          <Route path="/invoice/:bookingId" component={InvoicePage} />
-          <Route path="/contact" component={ContactPage} />
-          <Route path="/plans" component={MyPlans} />
-          <Route path="/admin" component={AdminPanel} />
-          <Route path="/admin/services" component={AdminServices} />
-          <Route path="/admin/applicants/:id" component={AdminApplicantDetail} />
-          <Route path="/admin/applicants" component={AdminApplicants} />
-          <Route path="/admin/staff" component={AdminStaff} />
-          <Route path="/admin/reschedules" component={AdminReschedules} />
-          <Route path="/admin/plans" component={AdminPlans} />
-          <Route path="/admin/messages" component={AdminContactMessages} />
-          <Route path="/admin/settings" component={AdminSettings} />
-          <Route path="/staff" component={StaffDashboard} />
-          <Route path="/staff/availability" component={StaffAvailability} />
-          <Route path="/staff/payslips" component={StaffPayslips} />
-          <Route path="/admin/payroll" component={AdminPayroll} />
-          <Route path="/change-password" component={ChangePassword} />
-          <Route path="/careers" component={Careers} />
-          <Route path="/review/:bookingId" component={ReviewPage} />
-          <Route path="/terms" component={TermsPage} />
-          <Route path="/privacy" component={PrivacyPage} />
-          <Route component={NotFound} />
-        </Switch>
+        <Suspense fallback={<div className="min-h-[40vh] flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/services" component={Services} />
+            <Route path="/book/:serviceId?" component={BookingPage} />
+            <Route path="/login" component={Login} />
+            <Route path="/register" component={Register} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route path="/profile" component={Profile} />
+            <Route path="/bookings" component={Bookings} />
+            <Route path="/bookings/:id" component={BookingDetail} />
+            <Route path="/pay/:bookingId" component={PaymentPage} />
+            <Route path="/invoice/:bookingId" component={InvoicePage} />
+            <Route path="/contact" component={ContactPage} />
+            <Route path="/plans" component={MyPlans} />
+            <Route path="/admin" component={AdminPanel} />
+            <Route path="/admin/services" component={AdminServices} />
+            <Route path="/admin/applicants/:id" component={AdminApplicantDetail} />
+            <Route path="/admin/applicants" component={AdminApplicants} />
+            <Route path="/admin/staff" component={AdminStaff} />
+            <Route path="/admin/reschedules" component={AdminReschedules} />
+            <Route path="/admin/plans" component={AdminPlans} />
+            <Route path="/admin/messages" component={AdminContactMessages} />
+            <Route path="/admin/settings" component={AdminSettings} />
+            <Route path="/staff" component={StaffDashboard} />
+            <Route path="/staff/availability" component={StaffAvailability} />
+            <Route path="/staff/payslips" component={StaffPayslips} />
+            <Route path="/admin/payroll" component={AdminPayroll} />
+            <Route path="/change-password" component={ChangePassword} />
+            <Route path="/careers" component={Careers} />
+            <Route path="/review/:bookingId" component={ReviewPage} />
+            <Route path="/terms" component={TermsPage} />
+            <Route path="/privacy" component={PrivacyPage} />
+            <Route component={NotFound} />
+          </Switch>
+        </Suspense>
       </main>
       {!isAdminRoute && !isStaffRoute && <Footer />}
+      {!isAdminRoute && !isStaffRoute && <ConsentBanner />}
     </div>
   );
 }

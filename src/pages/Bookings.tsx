@@ -5,33 +5,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { cn, formatDate, formatCurrency } from "@/lib/utils";
 import Pagination from "@/components/Pagination";
-
-const PAGE_SIZE = 15;
-
-interface Booking {
-  id: string;
-  service_name: string;
-  service_type: string;
-  date: string;
-  time_slot: string;
-  city: string;
-  status: string;
-  price: number;
-  invoice_number: string | null;
-  created_at: string;
-}
+import { Booking } from "@/types";
+import { BOOKING_STATUS_STYLES, PAGE_SIZE } from "@/lib/constants";
+import Spinner from "@/components/Spinner";
 
 type FilterStatus = "all" | "upcoming" | "completed" | "cancelled";
-
-const STATUS_STYLES: Record<string, string> = {
-  upcoming:  "bg-blue-100 text-blue-700",
-  completed: "bg-emerald-100 text-emerald-700",
-  cancelled: "bg-red-100 text-red-600",
-};
-
-function Spinner() {
-  return <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />;
-}
 
 export default function Bookings() {
   const { user, loading } = useAuth();
@@ -199,7 +177,7 @@ export default function Bookings() {
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-gray-900 truncate">{b.service_name}</p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", STATUS_STYLES[b.status] ?? "bg-gray-100 text-gray-600")}>
+                      <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", BOOKING_STATUS_STYLES[b.status] ?? "bg-gray-100 text-gray-600")}>
                         {b.status}
                       </span>
                       {b.status === "completed" && (

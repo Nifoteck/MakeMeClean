@@ -5,35 +5,14 @@ import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/supabase";
 import { cn, formatCurrency } from "@/lib/utils";
+import { RecurringPlan } from "@/types";
+import { FREQ_LABELS_SHORT, PLAN_STATUS_STYLES } from "@/lib/constants";
 
 type Tab = "plans" | "discounts";
-
-type RecurringPlan = {
-  id: string;
-  user_id: string;
-  service_name: string;
-  frequency: "weekly" | "fortnightly" | "monthly";
-  start_time: string;
-  duration_hours: number;
-  city: string;
-  price_per_visit: number;
-  discount_percent: number;
-  status: "active" | "paused" | "cancelled";
-  created_at: string;
-  profiles?: { full_name: string | null; email?: string | null } | null;
-};
-
 type Discounts = { weekly: number; fortnightly: number; monthly: number };
 
-const FREQ_LABELS: Record<string, string> = {
-  weekly: "Weekly", fortnightly: "Fortnightly", monthly: "Monthly",
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  active:    "bg-green-50 text-green-700 border-green-200",
-  paused:    "bg-yellow-50 text-yellow-700 border-yellow-200",
-  cancelled: "bg-gray-50 text-gray-400 border-gray-200",
-};
+const FREQ_LABELS = FREQ_LABELS_SHORT;
+const STATUS_STYLES = PLAN_STATUS_STYLES;
 
 function fmtDate(s: string) {
   return new Date(s).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });

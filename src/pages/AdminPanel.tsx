@@ -7,46 +7,13 @@ import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
 import Pagination from "@/components/Pagination";
 import { useScrollLock } from "@/hooks/useScrollLock";
-
-const PAGE_SIZE = 15;
-
-interface Booking {
-  id: string;
-  service_name: string;
-  service_type: string;
-  date: string;
-  time_slot: string;
-  address: string;
-  city: string;
-  postcode: string;
-  status: string;
-  payment_status: string;
-  price: number;
-  notes: string | null;
-  invoice_number: string | null;
-  created_at: string;
-  user_id: string;
-  profiles: { full_name: string | null; phone: string | null } | null;
-}
-
-interface StaffMember {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-}
+import { Booking, StaffMember } from "@/types";
+import { BOOKING_STATUS_STYLES, PAGE_SIZE } from "@/lib/constants";
+import Spinner from "@/components/Spinner";
 
 type StatusFilter = "all" | "upcoming" | "completed" | "cancelled";
 
-const STATUS_PILL: Record<string, string> = {
-  upcoming:  "bg-blue-100 text-blue-700",
-  completed: "bg-emerald-100 text-emerald-700",
-  cancelled: "bg-red-100 text-red-700",
-};
-
-function Spinner() {
-  return <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />;
-}
+const STATUS_PILL = BOOKING_STATUS_STYLES;
 
 export default function AdminPanel() {
   const { user, loading } = useAuth();

@@ -3,15 +3,8 @@ import { useParams, useLocation, Link } from "wouter";
 import { Star, CheckCircle2, ArrowLeft, ThumbsUp, ThumbsDown } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { formatDate } from "@/lib/utils";
-import { cn } from "@/lib/utils";
-
-interface Booking {
-  id: string;
-  service_name: string;
-  date: string;
-  status: string;
-}
+import { formatDate, cn } from "@/lib/utils";
+import { Booking } from "@/types";
 
 function StarRow({
   label,
@@ -99,7 +92,7 @@ export default function ReviewPage() {
         supabase.from("bookings").select("id, service_name, date, status").eq("id", params.bookingId).eq("user_id", user.id).maybeSingle(),
         supabase.from("reviews").select("id").eq("booking_id", params.bookingId).maybeSingle(),
       ]);
-      setBooking(b ?? null);
+      setBooking(b as Booking ?? null);
       setAlreadyReviewed(!!r);
       setFetching(false);
     })();

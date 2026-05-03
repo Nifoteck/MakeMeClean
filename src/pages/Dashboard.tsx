@@ -4,27 +4,9 @@ import { Calendar, Clock, MapPin, ArrowRight, Plus, LayoutDashboard, User, Star 
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { cn, formatDate, formatCurrency } from "@/lib/utils";
-
-interface Booking {
-  id: string;
-  service_name: string;
-  service_type: string;
-  date: string;
-  time_slot: string;
-  city: string;
-  status: string;
-  price: number;
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  upcoming:  "bg-blue-100 text-blue-700",
-  completed: "bg-emerald-100 text-emerald-700",
-  cancelled: "bg-red-100 text-red-600",
-};
-
-function Spinner() {
-  return <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />;
-}
+import { Booking } from "@/types";
+import { BOOKING_STATUS_STYLES } from "@/lib/constants";
+import Spinner from "@/components/Spinner";
 
 export default function Dashboard() {
   const { user, loading } = useAuth();
@@ -44,7 +26,7 @@ export default function Dashboard() {
     Promise.all([
       supabase
         .from("bookings")
-        .select("id, service_name, service_type, date, time_slot, city, status, price")
+        .select("id, service_name, service_type, date, time_slot, city, status, price, created_at")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(5),
@@ -184,7 +166,7 @@ export default function Dashboard() {
                   {/* Right */}
                   <div className="text-right shrink-0 flex flex-col items-end gap-1">
                     <p className="text-sm font-black text-gray-900">{formatCurrency(b.price)}</p>
-                    <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", STATUS_STYLES[b.status] ?? "bg-gray-100 text-gray-600")}>
+                    <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", BOOKING_STATUS_STYLES[b.status] ?? "bg-gray-100 text-gray-600")}>
                       {b.status}
                     </span>
                     {b.status === "completed" && !reviewedIds.has(b.id) && (

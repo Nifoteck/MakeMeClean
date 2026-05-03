@@ -144,7 +144,6 @@ export default function PrivacyPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-gray-900 text-white py-16 px-4">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-4">
@@ -164,15 +163,12 @@ export default function PrivacyPage() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
         <div className="flex flex-col lg:flex-row gap-8">
-
-          {/* Sticky TOC */}
           <aside className="hidden lg:block w-56 shrink-0">
             <div className="sticky top-6 bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Contents</p>
               <nav className="space-y-0.5">
                 {sections.map((s) => (
-                  <a key={s.id} href={`#${s.id}`}
-                    className="block text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg px-3 py-1.5 transition-colors">
+                  <a key={s.id} href={`#${s.id}`} className="block text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg px-3 py-1.5 transition-colors">
                     {s.title}
                   </a>
                 ))}
@@ -180,10 +176,7 @@ export default function PrivacyPage() {
             </div>
           </aside>
 
-          {/* Main content */}
           <div className="flex-1 min-w-0 space-y-8">
-
-            {/* Intro box */}
             <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
               <p className="text-sm text-green-900 leading-relaxed">
                 Your privacy matters to us. This policy explains exactly what personal data MakeMeClean Ltd collects, why we collect it, and how you can exercise your rights under UK data protection law.

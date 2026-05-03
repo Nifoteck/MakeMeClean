@@ -4,29 +4,8 @@ import { RefreshCw, Calendar, Clock, MapPin, Pause, Play, X, ArrowRight, Repeat 
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { cn, formatCurrency } from "@/lib/utils";
-
-interface RecurringPlan {
-  id: string;
-  service_name: string;
-  service_type: string;
-  frequency: "weekly" | "fortnightly" | "monthly";
-  start_time: string;
-  duration_hours: number;
-  address: string;
-  city: string;
-  postcode: string;
-  price_per_visit: number;
-  discount_percent: number;
-  notes: string | null;
-  status: "active" | "paused" | "cancelled";
-  created_at: string;
-}
-
-const FREQ_LABELS: Record<string, string> = {
-  weekly: "Every week",
-  fortnightly: "Every 2 weeks",
-  monthly: "Every month",
-};
+import { RecurringPlan } from "@/types";
+import { FREQ_LABELS } from "@/lib/constants";
 
 const FREQ_COLORS: Record<string, string> = {
   weekly:      "bg-green-50 text-green-700 border-green-200",

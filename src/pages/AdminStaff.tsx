@@ -7,28 +7,11 @@ import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
 import Pagination from "@/components/Pagination";
 import { useScrollLock } from "@/hooks/useScrollLock";
+import { StaffRecord } from "@/types";
+import { PAGE_SIZE } from "@/lib/constants";
+import Spinner from "@/components/Spinner";
 
-const PAGE_SIZE = 15;
-
-interface Staff {
-  id: string;
-  user_id: string | null;
-  application_id: string | null;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string | null;
-  address: string | null;
-  city: string | null;
-  postcode: string | null;
-  role: string | null;
-  active: boolean | null;
-  created_at: string;
-  // resolved from profiles (master) → staff table → job_applications
-  _city: string | null;
-  _postcode: string | null;
-  _phone: string | null;
-}
+type Staff = StaffRecord;
 
 interface ApplicantLite {
   id: string;
@@ -37,10 +20,6 @@ interface ApplicantLite {
   email: string;
   role: string;
   status: string;
-}
-
-function Spinner() {
-  return <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />;
 }
 
 export default function AdminStaff() {

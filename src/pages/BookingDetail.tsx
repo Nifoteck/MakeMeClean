@@ -8,35 +8,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { cn, formatDate, formatCurrency } from "@/lib/utils";
 import { START_HOURS } from "@/lib/services";
+import { Booking, RescheduleRequest } from "@/types";
+import { BOOKING_STATUS_STYLES } from "@/lib/constants";
 
-interface Booking {
-  id: string;
-  service_name: string;
-  service_type: string;
-  date: string;
-  time_slot: string;
-  address: string;
-  city: string;
-  postcode: string;
-  status: string;
-  payment_status: string | null;
-  price: number;
-  notes: string | null;
-  invoice_number: string | null;
-  created_at: string;
-}
-
-interface RescheduleRequest {
-  requested_date: string;
-  requested_time: string;
-  status: "pending" | "approved" | "rejected";
-}
-
-const STATUS_STYLES: Record<string, string> = {
-  upcoming:  "bg-blue-100 text-blue-700",
-  completed: "bg-emerald-100 text-emerald-700",
-  cancelled: "bg-red-100 text-red-600",
-};
+const STATUS_STYLES = BOOKING_STATUS_STYLES;
 
 function canCancelBooking(booking: Booking): { allowed: boolean; reason?: string } {
   if (booking.status !== "upcoming") return { allowed: false, reason: "Booking is not upcoming." };
@@ -139,7 +114,7 @@ export default function BookingDetail() {
       requested_time: rescheduleTime,
       reason: rescheduleReason || null,
     });
-    setExistingRequest({ requested_date: rescheduleDate, requested_time: rescheduleTime, status: "pending" });
+    setExistingRequest({ id: "", booking_id: booking.id, user_id: user!.id, created_at: new Date().toISOString(), requested_date: rescheduleDate, requested_time: rescheduleTime, status: "pending" });
     setShowReschedule(false);
     setRescheduling(false);
   };

@@ -5,18 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { sendNotification } from "@/lib/notifications";
-
-interface Booking {
-  id: string;
-  service_name: string;
-  date: string;
-  time_slot: string;
-  city: string;
-  price: number;
-  invoice_number: string | null;
-  status: string;
-  payment_status: string | null;
-}
+import { Booking } from "@/types";
 
 function formatCardNumber(value: string) {
   return value.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();

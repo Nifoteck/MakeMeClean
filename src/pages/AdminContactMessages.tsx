@@ -5,17 +5,8 @@ import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
-
-type ContactMessage = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  subject: string | null;
-  message: string;
-  status: string | null;
-  created_at: string;
-};
+import { ContactMessage } from "@/types";
+import { MESSAGE_STATUS_STYLES } from "@/lib/constants";
 
 function fmtDate(s: string) {
   return new Date(s).toLocaleString("en-GB", {
@@ -24,11 +15,7 @@ function fmtDate(s: string) {
   });
 }
 
-const STATUS_STYLES: Record<string, string> = {
-  new:     "bg-blue-50 text-blue-700 border-blue-200",
-  read:    "bg-gray-50 text-gray-500 border-gray-200",
-  replied: "bg-green-50 text-green-700 border-green-200",
-};
+const STATUS_STYLES = MESSAGE_STATUS_STYLES;
 
 export default function AdminContactMessages() {
   const { user, loading } = useAuth();

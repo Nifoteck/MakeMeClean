@@ -5,27 +5,7 @@ import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
 import { supabase } from "@/lib/supabase";
 import { cn, formatDate } from "@/lib/utils";
-
-interface RescheduleRequest {
-  id: string;
-  booking_id: string;
-  user_id: string;
-  requested_date: string;
-  requested_time: string;
-  reason: string | null;
-  status: "pending" | "approved" | "rejected";
-  admin_note: string | null;
-  created_at: string;
-  bookings: {
-    service_name: string;
-    date: string;
-    time_slot: string;
-    address: string;
-    city: string;
-    postcode: string;
-    profiles: { full_name: string | null; phone: string | null } | null;
-  } | null;
-}
+import { RescheduleRequest } from "@/types";
 
 function calcNewTimeSlot(originalTimeSlot: string, newStartTime: string): string {
   const match = originalTimeSlot.match(/(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})/);

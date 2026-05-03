@@ -5,20 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useSettings } from "@/hooks/useSettings";
-
-interface Booking {
-  id: string;
-  service_name: string;
-  date: string;
-  time_slot: string;
-  address: string;
-  city: string;
-  postcode: string;
-  price: number;
-  invoice_number: string | null;
-  payment_status: string | null;
-  created_at?: string;
-}
+import { Booking } from "@/types";
 
 export default function InvoicePage() {
   const settings = useSettings();

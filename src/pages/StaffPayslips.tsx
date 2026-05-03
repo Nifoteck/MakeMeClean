@@ -7,23 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { cn, formatCurrency } from "@/lib/utils";
 import StaffLayout from "@/components/staff/StaffLayout";
 import { useSettings } from "@/hooks/useSettings";
-
-interface Payslip {
-  id: string;
-  period_start: string;
-  period_end: string;
-  shifts_count: number;
-  gross_hours: number;
-  gross_pay: number;
-  tax_code: string;
-  paye_tax: number;
-  ni_employee: number;
-  ni_employer: number;
-  net_pay: number;
-  notes: string | null;
-  status: "draft" | "finalised";
-  generated_at: string;
-}
+import { Payslip } from "@/types";
 
 function formatPeriod(start: string, end: string) {
   const s = new Date(start + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" });
