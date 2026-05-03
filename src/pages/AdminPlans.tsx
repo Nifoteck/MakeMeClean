@@ -38,9 +38,24 @@ export default function AdminPlans() {
     setFetching(true);
     const { data } = await supabase
       .from("recurring_plans")
-      .select("*, profiles(full_name)")
+      .select("*")
       .order("created_at", { ascending: false });
-    setPlans((data as RecurringPlan[]) ?? []);
+    
+    // Fetch user details separately
+    const userIds = (data ?? []).map((p: any) => p.user_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", userIds);
+    const pfMap: Record<string, any> = {};
+    for (const p of profiles ?? []) pfMap[p.id] = p;
+
+    const mapped = (data ?? []).map((p: any) => ({
+      ...p,
+      profiles: pfMap[p.user_id],
+    }));
+    
+    setPlans((mapped as RecurringPlan[]) ?? []);
     setFetching(false);
   };
 

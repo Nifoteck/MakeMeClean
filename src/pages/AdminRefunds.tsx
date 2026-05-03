@@ -37,16 +37,32 @@ export default function AdminRefunds() {
 
   const fetchRefunds = async () => {
     setFetching(true);
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from("refund_requests")
-      .select(`
-        *,
-        booking:booking_id (service_name, amount, date),
-        profile:user_id (full_name, email)
-      `)
+      .select("*")
       .order("requested_at", { ascending: false });
 
-    if (!error) setRefunds((data as RefundRequest[]) ?? []);
+    // Fetch bookings and profiles separately to avoid RLS issues
+    const bookingIds = (data ?? []).map((r: any) => r.booking_id);
+    const userIds = (data ?? []).map((r: any) => r.user_id);
+    
+    const [{ data: bookings }, { data: profiles }] = await Promise.all([
+      supabase.from("bookings").select("id, service_name, amount, date").in("id", bookingIds),
+      supabase.from("profiles").select("id, full_name").in("id", userIds),
+    ]);
+
+    const bkMap: Record<string, any> = {};
+    for (const b of bookings ?? []) bkMap[b.id] = b;
+    const pfMap: Record<string, any> = {};
+    for (const p of profiles ?? []) pfMap[p.id] = p;
+
+    const mapped = (data ?? []).map((r: any) => ({
+      ...r,
+      booking: bkMap[r.booking_id] || null,
+      profile: pfMap[r.user_id] || null,
+    }));
+
+    setRefunds((mapped as RefundRequest[]) ?? []);
     setFetching(false);
   };
 

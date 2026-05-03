@@ -79,8 +79,8 @@ export default function AccessibilityStatement() {
               If you experience accessibility barriers on our website, please let us know:
             </p>
             <ul className="list-disc list-inside space-y-2 text-gray-600">
-              <li><strong>Email:</strong> <a href={`mailto:${settings.contact_email}`} className="text-green-600 font-semibold hover:underline">{settings.contact_email}</a></li>
-              <li><strong>Phone:</strong> <a href={`tel:${settings.business_phone.replace(/\s/g, "")}`} className="text-green-600 font-semibold hover:underline">{settings.business_phone}</a></li>
+              <li><strong>Email:</strong> <a href={`mailto:${settings.contact_email || "contact@makemeclean.co.uk"}`} className="text-green-600 font-semibold hover:underline">{settings.contact_email || "contact@makemeclean.co.uk"}</a></li>
+              {settings.business_phone && <li><strong>Phone:</strong> <a href={`tel:${settings.business_phone.replace(/\s/g, "")}`} className="text-green-600 font-semibold hover:underline">{settings.business_phone}</a></li>}
               <li><strong>Contact form:</strong> Use our <a href="/contact" className="text-green-600 font-semibold hover:underline">contact page</a></li>
             </ul>
             <p className="text-gray-600 leading-relaxed mt-4">

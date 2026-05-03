@@ -8,4 +8,4 @@ dist/
 
 # Keep .env out of git if you add secrets to it
 .env
-supabase/.temp/ 
+supabase/.temp/

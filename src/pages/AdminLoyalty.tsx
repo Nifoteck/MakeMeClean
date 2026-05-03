@@ -61,20 +61,30 @@ export default function AdminLoyalty() {
       supabase.from("loyalty_rewards").select("*").order("points_required"),
       supabase
         .from("loyalty_points")
-        .select("user_id, points, profile:user_id(full_name, email)"),
+        .select("user_id, points"),
     ]);
 
     setRewards((rws ?? []) as Reward[]);
+
+    // Fetch user details separately to avoid RLS issues
+    const userIds = (pts ?? []).map((p: any) => p.user_id);
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", userIds);
+    const profileMap: Record<string, any> = {};
+    for (const p of profiles ?? []) profileMap[p.id] = p;
 
     // Aggregate points per user
     const map: Record<string, LeaderEntry> = {};
     for (const row of pts ?? []) {
       if (!map[row.user_id]) {
+        const profile = profileMap[row.user_id];
         map[row.user_id] = {
           user_id: row.user_id,
           total: 0,
-          full_name: (row as any).profile?.full_name ?? "Unknown",
-          email: (row as any).profile?.email ?? "",
+          full_name: profile?.full_name ?? "Unknown",
+          email: "",
         };
       }
       map[row.user_id].total += row.points;

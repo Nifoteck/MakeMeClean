@@ -92,7 +92,7 @@ export default function CancellationPolicy() {
           <section>
             <h2 className="text-xl font-bold text-gray-900 mb-4">Questions?</h2>
             <p className="text-gray-600 leading-relaxed">
-              If you have any questions about this policy, please contact us at <a href={`mailto:${settings.contact_email}`} className="text-green-600 font-semibold hover:underline">{settings.contact_email}</a> or call <a href={`tel:${settings.business_phone.replace(/\s/g, "")}`} className="text-green-600 font-semibold hover:underline">{settings.business_phone}</a>.
+              If you have any questions about this policy, please contact us at <a href={`mailto:${settings.contact_email || "contact@makemeclean.co.uk"}`} className="text-green-600 font-semibold hover:underline">{settings.contact_email || "contact@makemeclean.co.uk"}</a>{settings.business_phone && <> or call <a href={`tel:${settings.business_phone.replace(/\s/g, "")}`} className="text-green-600 font-semibold hover:underline">{settings.business_phone}</a></>}.
             </p>
           </section>
 

@@ -12,17 +12,17 @@
 
 INSERT INTO public.services (id, name, description, price, image_url, discount_percent, popular, active)
 VALUES
-  ('standard-cleaning',   'Standard cleaning',    'A thorough clean for everyday freshness.',                              20.00, '/images/service-standard-clean.png', 0, true,  true),
-  ('regular-cleaning',    'Regular cleaning',     'Recurring cleaning to keep your home consistently tidy.',              20.00, '/images/service-regular-cleaning.png', 0, true,  true),
-  ('one-off-cleaning',    'One-off cleaning',     'A single clean session for when you need it most.',                    20.00, '/images/service-one-off-cleaning.png', 0, false, true),
-  ('deep-cleaning',       'Deep cleaning',        'A detailed deep clean focusing on built-up dirt and grime.',           20.00, '/images/service-deep-cleaning.png', 0, true,  true),
-  ('spring-cleaning',     'Spring cleaning',      'A seasonal refresh to get your home spotless.',                        20.00, '/images/service-spring-cleaning.png', 0, false, true),
-  ('same-day-cleaning',   'Same day cleaning',    'Fast turnaround cleaning subject to availability.',                    20.00, '/images/service-same-day-cleaning.png', 0, false, true),
-  ('airbnb-cleaning',     'Airbnb cleaning',      'Turnover cleaning for short lets, with attention to detail.',          20.00, '/images/service-airbnb-cleaning.png', 0, false, true),
-  ('ironing-service',     'Ironing service',      'Professional ironing and folding at your convenience.',                20.00, '/images/service-ironing-service.png', 0, false, true),
-  ('cleaning-and-ironing','Cleaning and ironing', 'Combined cleaning plus ironing in one visit.',                         20.00, '/images/service-cleaning-and-ironing.png', 0, false, true),
-  ('housekeeping',        'Housekeeping',         'Ongoing housekeeping support to help you stay on top of chores.',      20.00, '/images/service-housekeeping.png', 0, false, true),
-  ('office-cleaning',     'Office cleaning',      'Professional cleaning for office spaces and commercial buildings.',    20.00, '/images/service-office-cleaning.png', 0, false, true)
+  ('standard-cleaning',   'Standard cleaning',    'A thorough clean for everyday freshness.',                              20.00, '/images/service-standard-clean.jpg', 0, true,  true),
+  ('regular-cleaning',    'Regular cleaning',     'Recurring cleaning to keep your home consistently tidy.',              20.00, '/images/service-regular-cleaning.jpg', 0, true,  true),
+  ('one-off-cleaning',    'One-off cleaning',     'A single clean session for when you need it most.',                    20.00, '/images/service-one-off-cleaning.jpg', 0, false, true),
+  ('deep-cleaning',       'Deep cleaning',        'A detailed deep clean focusing on built-up dirt and grime.',           20.00, '/images/service-deep-cleaning.jpg', 0, true,  true),
+  ('spring-cleaning',     'Spring cleaning',      'A seasonal refresh to get your home spotless.',                        20.00, '/images/service-spring-cleaning.jpg', 0, false, true),
+  ('same-day-cleaning',   'Same day cleaning',    'Fast turnaround cleaning subject to availability.',                    20.00, '/images/service-same-day-cleaning.jpg', 0, false, true),
+  ('airbnb-cleaning',     'Airbnb cleaning',      'Turnover cleaning for short lets, with attention to detail.',          20.00, '/images/service-airbnb-cleaning.jpg', 0, false, true),
+  ('ironing-service',     'Ironing service',      'Professional ironing and folding at your convenience.',                20.00, '/images/service-ironing-service.jpg', 0, false, true),
+  ('cleaning-and-ironing','Cleaning and ironing', 'Combined cleaning plus ironing in one visit.',                         20.00, '/images/service-cleaning-and-ironing.jpg', 0, false, true),
+  ('housekeeping',        'Housekeeping',         'Ongoing housekeeping support to help you stay on top of chores.',      20.00, '/images/service-housekeeping.jpg', 0, false, true),
+  ('office-cleaning',     'Office cleaning',      'Professional cleaning for office spaces and commercial buildings.',    20.00, '/images/service-office-cleaning.jpg', 0, false, true)
 ON CONFLICT (id) DO UPDATE SET
   name             = excluded.name,
   description      = excluded.description,

@@ -111,7 +111,7 @@ export default function Home() {
             <div className="mt-4 lg:mt-0">
               <div className="rounded-2xl overflow-hidden">
                 <img
-                  src="/images/home-hero-before.png"
+                  src="/images/home-hero-before.jpg"
                   alt="Cleaner working in a Welsh home"
                   className="w-full h-64 sm:h-80 lg:h-[500px] object-cover"
                 />
@@ -202,7 +202,7 @@ export default function Home() {
             <div className="mt-10 lg:mt-0">
               <div className="rounded-2xl overflow-hidden">
                 <img
-                  src="/images/home-hero-after.png"
+                  src="/images/home-hero-after.jpg"
                   alt="Cleaner vacuuming a living room floor"
                   className="w-full h-64 sm:h-80 lg:h-[540px] object-cover"
                 />
