@@ -36,10 +36,22 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Check if a user is an admin (used in RLS policies)
 CREATE OR REPLACE FUNCTION public.is_admin(uid UUID)
 RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 STABLE
 AS $$
-  SELECT EXISTS (SELECT 1 FROM public.admins a WHERE a.user_id = uid);
+DECLARE
+  exists_admins BOOLEAN;
+BEGIN
+  IF to_regclass('public.admins') IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  EXECUTE 'SELECT EXISTS (SELECT 1 FROM public.admins WHERE user_id = $1)'
+    INTO exists_admins
+    USING uid;
+
+  RETURN exists_admins;
+END;
 $$;
 
 
@@ -722,10 +734,10 @@ CREATE TABLE IF NOT EXISTS public.reschedule_requests (
 
 ALTER TABLE public.reschedule_requests ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "reschedule_own" ON public.reschedule_requests
+CREATE POLICY "reschedule_own" ON public.reschedule_requests
   FOR ALL USING (user_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS "reschedule_admin" ON public.reschedule_requests
+CREATE POLICY "reschedule_admin" ON public.reschedule_requests
   FOR ALL USING (auth.uid() IN (SELECT user_id FROM public.admins));
 
 -- ─────────────────────────────────────────────────────────────
@@ -744,10 +756,10 @@ CREATE TABLE IF NOT EXISTS public.contact_messages (
 
 ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "contact_insert" ON public.contact_messages
+CREATE POLICY "contact_insert" ON public.contact_messages
   FOR INSERT WITH CHECK (true);
 
-CREATE POLICY IF NOT EXISTS "contact_admin_read" ON public.contact_messages
+CREATE POLICY "contact_admin_read" ON public.contact_messages
   FOR ALL USING (auth.uid() IN (SELECT user_id FROM public.admins));
 
 -- ─────────────────────────────────────────────────────────────
@@ -773,10 +785,10 @@ CREATE TABLE IF NOT EXISTS public.recurring_plans (
 
 ALTER TABLE public.recurring_plans ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "recurring_own" ON public.recurring_plans
+CREATE POLICY "recurring_own" ON public.recurring_plans
   FOR ALL USING (user_id = auth.uid());
 
-CREATE POLICY IF NOT EXISTS "recurring_admin" ON public.recurring_plans
+CREATE POLICY "recurring_admin" ON public.recurring_plans
   FOR ALL USING (auth.uid() IN (SELECT user_id FROM public.admins));
 
 -- ─────────────────────────────────────────────────────────────
@@ -806,8 +818,8 @@ ON CONFLICT (key) DO NOTHING;
 
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "settings_public_read" ON public.settings
+CREATE POLICY "settings_public_read" ON public.settings
   FOR SELECT USING (true);
 
-CREATE POLICY IF NOT EXISTS "settings_admin_write" ON public.settings
+CREATE POLICY "settings_admin_write" ON public.settings
   FOR ALL USING (auth.uid() IN (SELECT user_id FROM public.admins));
