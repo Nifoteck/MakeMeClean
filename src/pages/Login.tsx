@@ -23,11 +23,7 @@ export default function Login() {
     setError("");
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      if (error.status === 400 || error.message?.includes("Invalid")) {
-        setError("No account found with this email address. Please sign up first.");
-      } else {
-        setError(error.message || "Sign in failed. Please try again.");
-      }
+      setError(error.message || "Sign in failed. Please try again.");
     } else {
       const userId = data.user?.id;
       if (userId) {
