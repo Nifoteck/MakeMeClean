@@ -38,8 +38,6 @@ export default function Home() {
         profiles:user_id ( full_name ),
         bookings:booking_id ( service_name, city )
       `)
-      .not("comments", "is", null)
-      .neq("comments", "")
       .order("created_at", { ascending: false })
       .limit(8)
       .then(({ data }) => {
