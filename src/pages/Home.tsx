@@ -35,18 +35,14 @@ export default function Home() {
       .select(`
         overall_rating,
         comments,
-        profiles:user_id ( full_name ),
         bookings:booking_id ( service_name, city )
       `)
       .order("created_at", { ascending: false })
       .limit(8)
       .then(({ data }) => {
         const mapped: Testimonial[] = (data ?? []).map((r: any) => {
-          const fullName: string = r.profiles?.full_name ?? "Customer";
-          const firstName = fullName.split(" ")[0];
-          const lastInitial = fullName.split(" ")[1]?.[0] ?? "";
           return {
-            name: lastInitial ? `${firstName} ${lastInitial}.` : firstName,
+            name: "Customer",
             city: r.bookings?.city ?? "Wales",
             rating: r.overall_rating ?? 5,
             text: r.comments,
