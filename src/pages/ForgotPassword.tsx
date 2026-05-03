@@ -112,16 +112,22 @@ export default function ForgotPassword() {
     setLoading(true);
     setError("");
 
-    const { error: updateError } = await supabase.auth.updateUser({ password });
-    if (updateError) {
-      setError(updateError.message || "Failed to reset password");
+    try {
+      const res = await supabase.functions.invoke("reset-password", {
+        body: { email, password },
+      });
+      if (!res.data?.ok) {
+        setError(res.data?.error || "Failed to reset password");
+        setLoading(false);
+        return;
+      }
+      setStage("done");
       setLoading(false);
-      return;
+      setTimeout(() => setLocation("/login"), 2000);
+    } catch (err) {
+      setError("Failed to reset password. Please try again.");
+      setLoading(false);
     }
-
-    setStage("done");
-    setLoading(false);
-    setTimeout(() => setLocation("/login"), 2000);
   };
 
   if (stage === "done") {
