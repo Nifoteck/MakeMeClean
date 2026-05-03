@@ -33,7 +33,11 @@ export default function AdminPhotos() {
         `)
         .order("uploaded_at", { ascending: false })
         .then(({ data }) => {
-          setPhotos((data ?? []) as BookingPhoto[]);
+          const photos = (data ?? []).map((p: any) => ({
+            ...p,
+            booking: Array.isArray(p.booking) ? p.booking[0] : p.booking
+          }));
+          setPhotos(photos as BookingPhoto[]);
           setFetching(false);
         });
     }

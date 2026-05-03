@@ -43,7 +43,6 @@ export default function AdminServices() {
   const openEdit = (s?: DbService) => {
     setEditingId(s?.id ?? "__new__");
     setDraft(s ? { ...s } : { name:"", description:"", price:0, image_url:null, discount_percent:0, popular:false, active:true });
-    setUseImageUrl(false);
     setError("");
   };
 
