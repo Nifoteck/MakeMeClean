@@ -1,25 +1,22 @@
 import { useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Sparkles, Eye, EyeOff, Mail, ShieldCheck, RefreshCw, Check } from "lucide-react";
+import { Sparkles, Eye, EyeOff, Mail, CheckCircle, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { sendOtp, verifyOtp } from "@/lib/otp";
 
-type Stage = "form" | "verify" | "done";
+type Stage = "email" | "verify" | "reset" | "done";
 
-export default function Register() {
+export default function ForgotPassword() {
   const [, setLocation] = useLocation();
-  const [stage, setStage] = useState<Stage>("form");
+  const [stage, setStage] = useState<Stage>("email");
 
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [phone, setPhone] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [verifying, setVerifying] = useState(false);
@@ -41,9 +38,6 @@ export default function Register() {
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
-    if (password !== confirmPassword) { setError("Passwords do not match."); return; }
-    if (!agreedToTerms) { setError("Please accept the Terms & Conditions to continue."); return; }
     setLoading(true);
     setError("");
     const result = await sendOtp(email, "registration");
@@ -94,18 +88,8 @@ export default function Register() {
       setVerifying(false);
       return;
     }
-    const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: fullName, phone }, emailRedirectTo: undefined },
-    });
-    if (signUpError) { setError(signUpError.message); setVerifying(false); return; }
-    if (data.user) {
-      await supabase.from("profiles").upsert({ id: data.user.id, full_name: fullName, phone });
-    }
-    setStage("done");
+    setStage("reset");
     setVerifying(false);
-    setTimeout(() => setLocation("/dashboard"), 2000);
   };
 
   const resendCode = async () => {
@@ -120,15 +104,35 @@ export default function Register() {
     setTimeout(() => otpRefs.current[0]?.focus(), 100);
   };
 
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    if (password !== confirmPassword) { setError("Passwords do not match."); return; }
+
+    setLoading(true);
+    setError("");
+
+    const { error: updateError } = await supabase.auth.updateUser({ password });
+    if (updateError) {
+      setError(updateError.message || "Failed to reset password");
+      setLoading(false);
+      return;
+    }
+
+    setStage("done");
+    setLoading(false);
+    setTimeout(() => setLocation("/login"), 2000);
+  };
+
   if (stage === "done") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <ShieldCheck className="w-8 h-8 text-green-600" />
+            <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Created!</h2>
-          <p className="text-gray-500 text-sm">Redirecting you to your dashboard...</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Reset</h2>
+          <p className="text-gray-500 text-sm">Your password has been updated. Redirecting to login...</p>
         </div>
       </div>
     );
@@ -145,12 +149,14 @@ export default function Register() {
             <span className="text-2xl font-bold text-gray-900">Make<span className="text-green-600">Me</span>Clean</span>
           </Link>
           <h1 className="text-2xl font-extrabold text-gray-900">
-            {stage === "form" ? "Create your account" : "Check your email"}
+            {stage === "email" && "Reset your password"}
+            {stage === "verify" && "Check your email"}
+            {stage === "reset" && "Create new password"}
           </h1>
           <p className="text-gray-500 text-sm mt-1">
-            {stage === "form"
-              ? "Book cleaning services across Wales"
-              : `We sent a 6-digit code to ${email}`}
+            {stage === "email" && "Enter your email address to get started"}
+            {stage === "verify" && `We sent a 6-digit code to ${email}`}
+            {stage === "reset" && "Enter your new password"}
           </p>
         </div>
 
@@ -161,19 +167,8 @@ export default function Register() {
             </div>
           )}
 
-          {stage === "form" && (
+          {stage === "email" && (
             <form onSubmit={handleSendOtp} className="space-y-4">
-              <div>
-                <label className="label">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Jane Smith"
-                  className="input-field"
-                />
-              </div>
               <div>
                 <label className="label">Email address</label>
                 <input
@@ -185,87 +180,12 @@ export default function Register() {
                   className="input-field"
                 />
               </div>
-              <div>
-                <label className="label">Phone Number</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+44 7700 000000"
-                  className="input-field"
-                />
-              </div>
-              <div>
-                <label className="label">Password</label>
-                <div className="relative">
-                  <input
-                    type={showPw ? "text" : "password"}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min. 6 characters"
-                    className="input-field pr-11"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPw(!showPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="label">Confirm Password</label>
-                <div className="relative">
-                  <input
-                    type={showConfirmPw ? "text" : "password"}
-                    required
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirm password"
-                    className="input-field pr-11"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPw(!showConfirmPw)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  >
-                    {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-              </div>
-              {/* T&C agreement */}
-              <label className="flex items-start gap-3 cursor-pointer group">
-                <button
-                  type="button"
-                  onClick={() => setAgreedToTerms((v) => !v)}
-                  className={`mt-0.5 w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
-                    agreedToTerms
-                      ? "bg-green-600 border-green-600"
-                      : "border-gray-300 bg-white group-hover:border-green-400"
-                  }`}
-                >
-                  {agreedToTerms && <Check className="w-3 h-3 text-white stroke-[3]" />}
-                </button>
-                <span className="text-sm text-gray-600 leading-snug">
-                  I have read and agree to MakeMeClean's{" "}
-                  <Link href="/terms" target="_blank" className="text-green-600 font-semibold hover:underline">
-                    Terms &amp; Conditions
-                  </Link>
-                  {" "}and{" "}
-                  <Link href="/privacy" target="_blank" className="text-green-600 font-semibold hover:underline">
-                    Privacy Policy
-                  </Link>.
-                </span>
-              </label>
-
               <button
                 type="submit"
-                disabled={loading || !agreedToTerms}
+                disabled={loading}
                 className="btn-primary w-full disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {loading ? "Sending code..." : "Continue"}
+                {loading ? "Sending code..." : "Send Reset Code"}
               </button>
             </form>
           )}
@@ -310,20 +230,64 @@ export default function Register() {
                   <RefreshCw className="w-3.5 h-3.5" />
                   {resending ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
                 </button>
-                <br />
-                <button
-                  onClick={() => { setStage("form"); setError(""); setOtp(["", "", "", "", "", ""]); }}
-                  className="text-sm text-gray-400 hover:text-gray-600"
-                >
-                  Use a different email
-                </button>
               </div>
             </div>
           )}
 
+          {stage === "reset" && (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div>
+                <label className="label">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showPw ? "text" : "password"}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min. 6 characters"
+                    className="input-field pr-11"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(!showPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="label">Confirm Password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPw ? "text" : "password"}
+                    required
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm password"
+                    className="input-field pr-11"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPw(!showConfirmPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className="btn-primary w-full disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {loading ? "Updating..." : "Update Password"}
+              </button>
+            </form>
+          )}
+
           <p className="text-center text-sm text-gray-500 mt-5">
-            Already have an account?{" "}
-            <Link href="/login" className="text-green-600 font-semibold hover:underline">Sign in</Link>
+            <Link href="/login" className="text-green-600 font-semibold hover:underline">Back to login</Link>
           </p>
         </div>
       </div>
