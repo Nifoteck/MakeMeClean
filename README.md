@@ -62,12 +62,18 @@ pnpm install
 
 ### Environment Setup
 
-Create a `.env.local` file:
+Create a `.env.local` file (frontend / Vite):
 
 ```
 VITE_SUPABASE_URL=your_supabase_url
 VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-VITE_GROQ_API_KEY=your_groq_api_key
+```
+
+Set server-side secrets for Supabase Edge Functions (NOT Vercel env vars):
+
+```bash
+supabase secrets set GROQ_API_KEY=your_groq_api_key
+supabase secrets set BREVO_API_KEY=your_brevo_api_key
 ```
 
 ### Development

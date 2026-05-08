@@ -45,7 +45,9 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
   try {
-    const groqKey = Deno.env.get("VITE_GROQ_API_KEY");
+    // Server-side secret for the Edge Function. Prefer a non-VITE name.
+    // NOTE: Vercel env vars do not automatically propagate to Supabase Edge Functions.
+    const groqKey = Deno.env.get("GROQ_API_KEY") ?? Deno.env.get("VITE_GROQ_API_KEY");
     if (!groqKey) {
       return json(200, {
         reply: "Hi! I'm the MakeMeClean virtual assistant. I'm not fully set up yet, but you can reach us directly by phone or email — our contact details are in the footer. We'd love to help you book a clean!"
