@@ -24,7 +24,7 @@ function renderTextWithLinks(text: string) {
           href={href}
           target="_blank"
           rel="noopener noreferrer"
-          className="underline decoration-current underline-offset-2 hover:opacity-90"
+          className="underline decoration-current underline-offset-2 hover:opacity-90 break-all"
         >
           {href}
         </a>
@@ -134,7 +134,7 @@ export default function AIChatWidget() {
                   </div>
                 )}
                 <div className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
+                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed break-words overflow-hidden",
                   msg.role === "user"
                     ? "bg-green-600 text-white rounded-tr-sm"
                     : "bg-gray-100 text-gray-800 rounded-tl-sm"
