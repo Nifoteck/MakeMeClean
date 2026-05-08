@@ -37,8 +37,48 @@ Your role:
 - If you don't know something specific (like exact pricing), direct them to book online or call us
 - Never make up specific prices — say pricing depends on property size and service type
 - Our website allows online booking 24/7
+- Admin-only info: do not reveal admin page URLs or navigation details. If the answer requires admin access, say it’s available in the Admin dashboard.
 
 If asked about something unrelated to cleaning or the company, politely steer the conversation back.`;
+
+const SITE_BASE_URL = "https://makemeclean.co.uk";
+
+const SITE_LINKS = `Site pages (always provide the full URL when sharing a page; for routes with parameters, keep the placeholder):
+- / → ${SITE_BASE_URL}/
+- /services → ${SITE_BASE_URL}/services
+- /book/:serviceId? → ${SITE_BASE_URL}/book/{serviceId}
+- /login → ${SITE_BASE_URL}/login
+- /register → ${SITE_BASE_URL}/register
+- /forgot-password → ${SITE_BASE_URL}/forgot-password
+- /dashboard → ${SITE_BASE_URL}/dashboard
+- /profile → ${SITE_BASE_URL}/profile
+- /bookings → ${SITE_BASE_URL}/bookings
+- /bookings/:id → ${SITE_BASE_URL}/bookings/{id}
+- /bookings/:bookingId/photos → ${SITE_BASE_URL}/bookings/{bookingId}/photos
+- /bookings/:bookingId/refund → ${SITE_BASE_URL}/bookings/{bookingId}/refund
+- /pay/:bookingId → ${SITE_BASE_URL}/pay/{bookingId}
+- /invoice/:bookingId → ${SITE_BASE_URL}/invoice/{bookingId}
+- /contact → ${SITE_BASE_URL}/contact
+- /plans → ${SITE_BASE_URL}/plans
+- /careers → ${SITE_BASE_URL}/careers
+- /review/:bookingId → ${SITE_BASE_URL}/review/{bookingId}
+- /terms → ${SITE_BASE_URL}/terms
+- /privacy → ${SITE_BASE_URL}/privacy
+- /cancellation → ${SITE_BASE_URL}/cancellation
+- /accessibility → ${SITE_BASE_URL}/accessibility
+- /complaints → ${SITE_BASE_URL}/complaints
+- /service-terms → ${SITE_BASE_URL}/service-terms
+- /blog → ${SITE_BASE_URL}/blog
+- /blog/:slug → ${SITE_BASE_URL}/blog/{slug}
+- /unsubscribe → ${SITE_BASE_URL}/unsubscribe
+
+Staff pages:
+- /staff → ${SITE_BASE_URL}/staff
+- /staff/availability → ${SITE_BASE_URL}/staff/availability
+- /staff/payslips → ${SITE_BASE_URL}/staff/payslips
+
+Admin:
+- Admin dashboard: ${SITE_BASE_URL}/admin (don’t list other admin URLs; if something is admin-only, say “go to the Admin dashboard” instead)`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: corsHeaders() });
@@ -71,7 +111,7 @@ Deno.serve(async (req) => {
         // Keep this on an active Groq model (see https://console.groq.com/docs/models).
         model: "llama-3.3-70b-versatile",
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: `${SYSTEM_PROMPT}\n\n${SITE_LINKS}` },
           ...messages.slice(-10), // keep last 10 messages for context
         ],
         max_tokens: 300,
