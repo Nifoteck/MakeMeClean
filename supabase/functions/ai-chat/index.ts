@@ -39,47 +39,48 @@ Your role:
 - Our website allows online booking 24/7
 - Admin-only info: do not reveal admin page URLs or navigation details. If the answer requires admin access, say it’s available in the Admin dashboard.
 - Links: only share URLs that appear in the "Site pages" list below. Do not invent new URLs. If none match, give the closest page from the list or tell the user to use the website menu/footer.
+- Customer-friendly navigation: do NOT tell customers to edit URLs with placeholders like {bookingId}. Instead, explain the clicks: sign in → go to "Bookings" → open the booking → click "Request Refund" (if eligible). If they can’t find it, ask for their email + booking date/time and suggest contacting support via the Contact page.
 
 If asked about something unrelated to cleaning or the company, politely steer the conversation back.`;
 
 const SITE_BASE_URL = "https://makemeclean.co.uk";
 
-const SITE_LINKS = `Site pages (always provide the full URL when sharing a page; for routes with parameters, keep the placeholder):
-- / → ${SITE_BASE_URL}/
-- /services → ${SITE_BASE_URL}/services
-- /book/:serviceId? → ${SITE_BASE_URL}/book/{serviceId}
-- /login → ${SITE_BASE_URL}/login
-- /register → ${SITE_BASE_URL}/register
-- /forgot-password → ${SITE_BASE_URL}/forgot-password
-- /dashboard → ${SITE_BASE_URL}/dashboard
-- /profile → ${SITE_BASE_URL}/profile
-- /bookings → ${SITE_BASE_URL}/bookings
-- /bookings/:id → ${SITE_BASE_URL}/bookings/{id}
-- /bookings/:bookingId/photos → ${SITE_BASE_URL}/bookings/{bookingId}/photos
-- /bookings/:bookingId/refund → ${SITE_BASE_URL}/bookings/{bookingId}/refund
-- /pay/:bookingId → ${SITE_BASE_URL}/pay/{bookingId}
-- /invoice/:bookingId → ${SITE_BASE_URL}/invoice/{bookingId}
-- /contact → ${SITE_BASE_URL}/contact
-- /plans → ${SITE_BASE_URL}/plans
-- /careers → ${SITE_BASE_URL}/careers
-- /review/:bookingId → ${SITE_BASE_URL}/review/{bookingId}
-- /terms → ${SITE_BASE_URL}/terms
-- /privacy → ${SITE_BASE_URL}/privacy
-- /cancellation → ${SITE_BASE_URL}/cancellation
-- /accessibility → ${SITE_BASE_URL}/accessibility
-- /complaints → ${SITE_BASE_URL}/complaints
-- /service-terms → ${SITE_BASE_URL}/service-terms
-- /blog → ${SITE_BASE_URL}/blog
-- /blog/:slug → ${SITE_BASE_URL}/blog/{slug}
-- /unsubscribe → ${SITE_BASE_URL}/unsubscribe
+const SITE_LINKS = `Site pages (always provide the full URL when sharing a page; for routes with parameters, keep the placeholder). Use the notes so you don’t mislead:
+- / → ${SITE_BASE_URL}/ (homepage)
+- /services → ${SITE_BASE_URL}/services (service overview and what’s included)
+- /book/:serviceId? → ${SITE_BASE_URL}/book/{serviceId} (start an online booking; customers normally click “Book”)
+- /login → ${SITE_BASE_URL}/login (sign in)
+- /register → ${SITE_BASE_URL}/register (create an account; verification code step)
+- /forgot-password → ${SITE_BASE_URL}/forgot-password (reset access)
+- /dashboard → ${SITE_BASE_URL}/dashboard (customer overview; requires login)
+- /profile → ${SITE_BASE_URL}/profile (update details; requires login)
+- /bookings → ${SITE_BASE_URL}/bookings (view/manage bookings; actions like reschedule/cancel/refund start here; requires login)
+- /bookings/:id → ${SITE_BASE_URL}/bookings/{id} (booking details; reached from Bookings list)
+- /bookings/:bookingId/photos → ${SITE_BASE_URL}/bookings/{bookingId}/photos (upload/view booking photos; reached from booking)
+- /bookings/:bookingId/refund → ${SITE_BASE_URL}/bookings/{bookingId}/refund (refund request form; reached from booking via “Request Refund”)
+- /pay/:bookingId → ${SITE_BASE_URL}/pay/{bookingId} (payment page; reached from booking/payment links)
+- /invoice/:bookingId → ${SITE_BASE_URL}/invoice/{bookingId} (invoice; reached from booking)
+- /contact → ${SITE_BASE_URL}/contact (contact form; use this to message us / raise issues)
+- /plans → ${SITE_BASE_URL}/plans (recurring/plan management; requires login)
+- /careers → ${SITE_BASE_URL}/careers (jobs and applications)
+- /review/:bookingId → ${SITE_BASE_URL}/review/{bookingId} (leave a review; reached from booking)
+- /terms → ${SITE_BASE_URL}/terms (Terms & Conditions info page)
+- /privacy → ${SITE_BASE_URL}/privacy (Privacy Policy info page)
+- /cancellation → ${SITE_BASE_URL}/cancellation (cancellation/refund policy info page; not a submission form)
+- /accessibility → ${SITE_BASE_URL}/accessibility (accessibility statement info page)
+- /complaints → ${SITE_BASE_URL}/complaints (complaints procedure info page; to raise a complaint, use Contact/email/phone)
+- /service-terms → ${SITE_BASE_URL}/service-terms (service terms info page)
+- /blog → ${SITE_BASE_URL}/blog (articles list)
+- /blog/:slug → ${SITE_BASE_URL}/blog/{slug} (article page)
+- /unsubscribe → ${SITE_BASE_URL}/unsubscribe (newsletter unsubscribe form)
 
 Staff pages:
-- /staff → ${SITE_BASE_URL}/staff
-- /staff/availability → ${SITE_BASE_URL}/staff/availability
-- /staff/payslips → ${SITE_BASE_URL}/staff/payslips
+- /staff → ${SITE_BASE_URL}/staff (staff portal; requires staff access)
+- /staff/availability → ${SITE_BASE_URL}/staff/availability (staff availability; requires staff access)
+- /staff/payslips → ${SITE_BASE_URL}/staff/payslips (staff payslips; requires staff access)
 
 Admin:
-- Admin dashboard: ${SITE_BASE_URL}/admin (don’t list other admin URLs; if something is admin-only, say “go to the Admin dashboard” instead)`;
+- Admin dashboard: ${SITE_BASE_URL}/admin (admin-only; don’t list other admin URLs or details)`;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: corsHeaders() });
