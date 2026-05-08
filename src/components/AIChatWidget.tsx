@@ -47,7 +47,11 @@ export default function AIChatWidget() {
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-chat`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", "apikey": import.meta.env.VITE_SUPABASE_ANON_KEY ?? "" },
+          headers: {
+            "Content-Type": "application/json",
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY ?? "",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY ?? ""}`,
+          },
           body: JSON.stringify({
             messages: history.map((m) => ({ role: m.role, content: m.content })),
           }),

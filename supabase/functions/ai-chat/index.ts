@@ -68,7 +68,8 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "mixtral-8x7b-32768",
+        // Keep this on an active Groq model (see https://console.groq.com/docs/models).
+        model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
           ...messages.slice(-10), // keep last 10 messages for context
@@ -80,7 +81,7 @@ Deno.serve(async (req) => {
 
     if (!res.ok) {
       const err = await res.text();
-      console.error("Groq error:", err);
+      console.error("Groq error:", { status: res.status, body: String(err).slice(0, 2000) });
       return json(200, {
         reply: "I'm having a little trouble right now. Please try again in a moment, or contact us directly — our details are in the footer."
       });
