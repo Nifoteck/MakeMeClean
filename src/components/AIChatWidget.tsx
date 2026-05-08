@@ -10,6 +10,30 @@ interface Message {
 
 const WELCOME = "Hi! I'm MakeMeClean's virtual assistant. How can I help you today? I can answer questions about our cleaning services, bookings, or anything else you'd like to know. 😊";
 
+function renderTextWithLinks(text: string) {
+  // Basic URL linkifier (http/https). Keeps everything else as plain text (safe: no HTML injection).
+  const urlRegex = /(https?:\/\/[^\s<>()]+[^\s<>().,!?;:'\")\]])/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, idx) => {
+    if (idx % 2 === 1) {
+      const href = part;
+      return (
+        <a
+          key={idx}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline decoration-current underline-offset-2 hover:opacity-90"
+        >
+          {href}
+        </a>
+      );
+    }
+    return <span key={idx}>{part}</span>;
+  });
+}
+
 export default function AIChatWidget() {
   const [open, setOpen]           = useState(false);
   const [messages, setMessages]   = useState<Message[]>([
@@ -115,7 +139,7 @@ export default function AIChatWidget() {
                     ? "bg-green-600 text-white rounded-tr-sm"
                     : "bg-gray-100 text-gray-800 rounded-tl-sm"
                 )}>
-                  {msg.content}
+                  {renderTextWithLinks(msg.content)}
                 </div>
               </div>
             ))}
