@@ -98,8 +98,9 @@ pnpm preview
 
 ### Database & Auth
 1. Create a Supabase project
-2. Run SQL schema from `supabase-schema.sql` in the SQL editor
+2. Apply the database migration from `supabase/migrations/20260811000000_init.sql`
 3. Configure authentication providers (Email, Google, etc.)
+4. Optionally load sample data from `supabase/seed.sql`
 
 ### Edge Functions
 Deploy the following Edge Functions:
@@ -125,7 +126,7 @@ In the Stripe dashboard, add a webhook endpoint for `checkout.session.completed`
 https://your-project.supabase.co/functions/v1/stripe-webhook
 ```
 
-Run the updated `supabase-schema.sql` too, so the Stripe and refund columns exist before you test refunds or disputes.
+If you are using the Supabase CLI, run `supabase db push` to apply the migrations in `supabase/migrations/`.
 
 ### Hosting
 Deploy to Vercel, Netlify, or any static host:

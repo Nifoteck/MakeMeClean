@@ -1,7 +1,7 @@
 -- ══════════════════════════════════════════════════════════════
 -- MakeMeClean — Seed Data Only
--- Run AFTER: supabase-schema.sql (structure)
--- Run in: Supabase Dashboard → SQL Editor → New Query
+-- Run AFTER: supabase/migrations/20260811000000_init.sql (structure)
+-- Run in: Supabase Dashboard → SQL Editor → New Query, or via `supabase db reset`
 -- Safe to re-run: uses ON CONFLICT / IF NOT EXISTS
 -- ══════════════════════════════════════════════════════════════
 
