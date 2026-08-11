@@ -24,6 +24,7 @@ export default function ForgotPassword() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const normalizedEmail = email.trim().toLowerCase();
 
   const startCooldown = () => {
     setResendCooldown(60);
@@ -40,7 +41,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const result = await sendOtp(email, "registration");
+    const result = await sendOtp(normalizedEmail, "registration");
     if (!result.ok) { setError(result.error ?? "Failed to send code"); setLoading(false); return; }
     setStage("verify");
     startCooldown();
@@ -76,7 +77,7 @@ export default function ForgotPassword() {
   const verifyCode = async (code: string) => {
     setVerifying(true);
     setError("");
-    const result = await verifyOtp(email, code, "registration");
+    const result = await verifyOtp(normalizedEmail, code, "registration");
     if (!result.ok || !result.verified) {
       const msg =
         result.reason === "expired_or_not_found"
@@ -97,7 +98,7 @@ export default function ForgotPassword() {
     setResending(true);
     setError("");
     setOtp(["", "", "", "", "", ""]);
-    const result = await sendOtp(email, "registration");
+    const result = await sendOtp(normalizedEmail, "registration");
     if (!result.ok) setError(result.error ?? "Failed to resend code");
     else startCooldown();
     setResending(false);
@@ -114,8 +115,13 @@ export default function ForgotPassword() {
 
     try {
       const res = await supabase.functions.invoke("reset-password", {
-        body: { email, password },
+        body: { email: normalizedEmail, password },
       });
+      if (res.error) {
+        setError(res.error.message || "Failed to reset password");
+        setLoading(false);
+        return;
+      }
       if (!res.data?.ok) {
         setError(res.data?.error || "Failed to reset password");
         setLoading(false);

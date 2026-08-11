@@ -14,8 +14,9 @@ Deno.serve(async (req) => {
 
   try {
     const { email, password } = await req.json();
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return json(400, { ok: false, error: "Email and password required" });
     }
 
@@ -28,15 +29,26 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
     );
 
-    const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers();
+    let authUser = null as null | { id: string; email?: string | null };
+    let page = 1;
+    const perPage = 1000;
 
-    if (listError || !users) {
-      return json(500, { ok: false, error: "Failed to retrieve users" });
+    while (!authUser) {
+      const { data, error } = await adminClient.auth.admin.listUsers({ page, perPage });
+      if (error) {
+        return json(500, { ok: false, error: "Failed to retrieve users" });
+      }
+
+      const users = data?.users ?? [];
+      if (!users.length) break;
+
+      authUser = users.find((u) => u.email?.trim().toLowerCase() === normalizedEmail) ?? null;
+      if (users.length < perPage) break;
+      page += 1;
     }
 
-    const authUser = users.find((u) => u.email === email);
     if (!authUser) {
-      return json(404, { ok: false, error: "User not found" });
+      return json(404, { ok: false, error: "User not found for that email address" });
     }
 
     const { error: updateError } = await adminClient.auth.admin.updateUserById(authUser.id, { password });
