@@ -23,7 +23,10 @@ async function readFunctionError(error: unknown): Promise<string> {
   return "Request failed";
 }
 
-export async function sendOtp(email: string, purpose: "registration" | "careers"): Promise<{ ok: boolean; error?: string }> {
+export async function sendOtp(
+  email: string,
+  purpose: "registration" | "careers" | "password_reset"
+): Promise<{ ok: boolean; error?: string }> {
   const { data, error } = await supabase.functions.invoke("send-otp", {
     body: { email, purpose },
   });
@@ -35,7 +38,7 @@ export async function sendOtp(email: string, purpose: "registration" | "careers"
 export async function verifyOtp(
   email: string,
   otp: string,
-  purpose: "registration" | "careers"
+  purpose: "registration" | "careers" | "password_reset"
 ): Promise<{ ok: boolean; verified: boolean; error?: string; reason?: string }> {
   const { data, error } = await supabase.functions.invoke("verify-otp", {
     body: { email, otp, purpose },

@@ -109,10 +109,32 @@ Deno.serve(async (req) => {
     const { email, purpose } = (await req.json()) as { email?: string; purpose?: string };
     if (!email || !email.includes("@")) return json(400, { ok: false, error: "Valid email required" });
 
-    const validPurposes = ["registration", "careers"];
+    const validPurposes = ["registration", "careers", "password_reset"];
     const resolvedPurpose = validPurposes.includes(purpose ?? "") ? purpose! : "registration";
 
     const db = createClient(supabaseUrl, serviceKey);
+
+    if (resolvedPurpose === "password_reset") {
+      let authUser = null;
+      let page = 1;
+      const perPage = 1000;
+
+      while (!authUser) {
+        const { data, error } = await db.auth.admin.listUsers({ page, perPage });
+        if (error) return json(500, { ok: false, error: "Failed to check account" });
+
+        const users = data?.users ?? [];
+        if (!users.length) break;
+
+        authUser = users.find((u) => u.email?.trim().toLowerCase() === email.toLowerCase()) ?? null;
+        if (users.length < perPage) break;
+        page += 1;
+      }
+
+      if (!authUser) {
+        return json(404, { ok: false, error: "No account found for that email address" });
+      }
+    }
 
     // Rate-limit: max 3 OTPs per email per purpose per 10 minutes
     const tenMinsAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();

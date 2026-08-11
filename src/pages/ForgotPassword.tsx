@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Sparkles, Eye, EyeOff, Mail, CheckCircle, RefreshCw } from "lucide-react";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { sendOtp, verifyOtp } from "@/lib/otp";
 
@@ -26,6 +27,24 @@ export default function ForgotPassword() {
   const cooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const normalizedEmail = email.trim().toLowerCase();
 
+  const readFunctionError = async (error: unknown) => {
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const body = await error.context.json();
+        if (typeof body?.error === "string") return body.error;
+        if (typeof body?.message === "string") return body.message;
+      } catch {
+        try {
+          const text = await error.context.text();
+          if (text) return text;
+        } catch {
+          // ignore and fall through
+        }
+      }
+    }
+    return error instanceof Error ? error.message : "Failed to reset password";
+  };
+
   const startCooldown = () => {
     setResendCooldown(60);
     if (cooldownRef.current) clearInterval(cooldownRef.current);
@@ -41,7 +60,7 @@ export default function ForgotPassword() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const result = await sendOtp(normalizedEmail, "registration");
+    const result = await sendOtp(normalizedEmail, "password_reset");
     if (!result.ok) { setError(result.error ?? "Failed to send code"); setLoading(false); return; }
     setStage("verify");
     startCooldown();
@@ -77,7 +96,7 @@ export default function ForgotPassword() {
   const verifyCode = async (code: string) => {
     setVerifying(true);
     setError("");
-    const result = await verifyOtp(normalizedEmail, code, "registration");
+    const result = await verifyOtp(normalizedEmail, code, "password_reset");
     if (!result.ok || !result.verified) {
       const msg =
         result.reason === "expired_or_not_found"
@@ -98,7 +117,7 @@ export default function ForgotPassword() {
     setResending(true);
     setError("");
     setOtp(["", "", "", "", "", ""]);
-    const result = await sendOtp(normalizedEmail, "registration");
+    const result = await sendOtp(normalizedEmail, "password_reset");
     if (!result.ok) setError(result.error ?? "Failed to resend code");
     else startCooldown();
     setResending(false);
@@ -118,7 +137,7 @@ export default function ForgotPassword() {
         body: { email: normalizedEmail, password },
       });
       if (res.error) {
-        setError(res.error.message || "Failed to reset password");
+        setError(await readFunctionError(res.error));
         setLoading(false);
         return;
       }

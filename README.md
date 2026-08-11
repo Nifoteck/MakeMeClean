@@ -102,6 +102,9 @@ pnpm preview
 Deploy the following Edge Functions:
 
 ```bash
+supabase functions deploy send-otp
+supabase functions deploy verify-otp
+supabase functions deploy reset-password
 supabase functions deploy notifications
 supabase functions deploy send-recruitment-email
 supabase functions deploy assign-staff
