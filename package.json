@@ -1,7 +1,7 @@
 {
   "name": "makemeclean",
   "private": true,
-  "version": "0.0.1",
+  "version": "2.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port 5000 --host 0.0.0.0",
