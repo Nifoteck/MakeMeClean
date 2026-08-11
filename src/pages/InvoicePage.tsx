@@ -41,10 +41,11 @@ export default function InvoicePage() {
     return booking.created_at.slice(0, 10);
   }, [booking?.created_at]);
 
+  const paymentStatus = booking?.payment_status ?? "pending";
   const paymentLabel =
-    booking.payment_status === "paid" ? "Paid" :
-    booking.payment_status === "refunded" ? "Refunded" :
-    booking.payment_status === "disputed" ? "Disputed" :
+    paymentStatus === "paid" ? "Paid" :
+    paymentStatus === "refunded" ? "Refunded" :
+    paymentStatus === "disputed" ? "Disputed" :
     "Pending";
 
   if (loading || fetching) {
@@ -70,18 +71,7 @@ export default function InvoicePage() {
     if (!invoiceRef.current || downloading) return;
     setDownloading(true);
     try {
-      const html2pdf = (await import("html2pdf.js")).default;
-      const filename = `invoice-${booking.invoice_number ?? booking.id}.pdf`;
-      await html2pdf()
-        .set({
-          margin: 10,
-          filename,
-          image: { type: "jpeg", quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        })
-        .from(invoiceRef.current)
-        .save();
+      window.print();
     } finally {
       setDownloading(false);
     }
