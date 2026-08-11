@@ -14,6 +14,10 @@ export interface Booking {
   price: number;
   notes?: string | null;
   invoice_number?: string | null;
+  refunded_amount?: number | null;
+  stripe_checkout_session_id?: string | null;
+  stripe_payment_intent_id?: string | null;
+  stripe_charge_id?: string | null;
   created_at: string;
   user_id?: string;
   recurring_freq?: string | null;

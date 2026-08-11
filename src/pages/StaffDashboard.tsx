@@ -210,13 +210,30 @@ export default function StaffDashboard() {
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-lg font-black text-gray-900">{formatCurrency(b.price)}</p>
-                      <div className={cn(
-                        "text-xs font-semibold mt-0.5 flex items-center justify-end gap-1",
-                        (b.payment_status ?? "pending") === "paid" ? "text-emerald-600" : "text-gray-400"
-                      )}>
-                        <Banknote className="w-3.5 h-3.5" />
-                        {(b.payment_status ?? "pending") === "paid" ? "Paid" : "Unpaid"}
-                      </div>
+                      {(() => {
+                        const paymentLabel =
+                          (b.payment_status ?? "pending") === "paid" ? "Paid" :
+                          (b.payment_status ?? "pending") === "refunded" ? "Refunded" :
+                          (b.payment_status ?? "pending") === "disputed" ? "Disputed" :
+                          "Unpaid";
+                        const paymentClass =
+                          (b.payment_status ?? "pending") === "paid"
+                            ? "text-emerald-600"
+                            : (b.payment_status ?? "pending") === "refunded"
+                              ? "text-slate-500"
+                              : (b.payment_status ?? "pending") === "disputed"
+                                ? "text-red-600"
+                                : "text-gray-400";
+                        return (
+                          <div className={cn(
+                            "text-xs font-semibold mt-0.5 flex items-center justify-end gap-1",
+                            paymentClass
+                          )}>
+                            <Banknote className="w-3.5 h-3.5" />
+                            {paymentLabel}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
 

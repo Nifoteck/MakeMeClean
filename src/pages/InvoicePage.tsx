@@ -41,6 +41,12 @@ export default function InvoicePage() {
     return booking.created_at.slice(0, 10);
   }, [booking?.created_at]);
 
+  const paymentLabel =
+    booking.payment_status === "paid" ? "Paid" :
+    booking.payment_status === "refunded" ? "Refunded" :
+    booking.payment_status === "disputed" ? "Disputed" :
+    "Pending";
+
   if (loading || fetching) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -141,7 +147,7 @@ export default function InvoicePage() {
                   <div className="flex justify-between gap-4">
                     <span>Status</span>
                     <span className="font-semibold text-gray-900">
-                      {booking.payment_status === "paid" ? "Paid" : "Pending"}
+                      {paymentLabel}
                     </span>
                   </div>
                 </div>

@@ -6,7 +6,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 type NotificationEvent =
   | { type: "booking_confirmation"; bookingId: string }
-  | { type: "paymdoent_receipt"; bookingId: string }
+  | { type: "payment_receipt"; bookingId: string }
   | { type: "booking_reminder"; bookingId: string };
 
 function json(status: number, body: unknown) {

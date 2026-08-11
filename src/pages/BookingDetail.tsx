@@ -139,6 +139,19 @@ export default function BookingDetail() {
   }
 
   const isPaid      = booking.payment_status === "paid";
+  const paymentLabel =
+    booking.payment_status === "paid" ? "Paid" :
+    booking.payment_status === "refunded" ? "Refunded" :
+    booking.payment_status === "disputed" ? "Disputed" :
+    "Payment pending";
+  const paymentClass =
+    booking.payment_status === "paid"
+      ? "bg-emerald-100 text-emerald-700"
+      : booking.payment_status === "refunded"
+        ? "bg-slate-100 text-slate-600"
+        : booking.payment_status === "disputed"
+          ? "bg-red-100 text-red-700"
+          : "bg-amber-100 text-amber-700";
   const cancelCheck = canCancelBooking(booking);
 
   return (
@@ -173,9 +186,9 @@ export default function BookingDetail() {
                     </span>
                     <span className={cn(
                       "text-xs font-semibold px-2.5 py-1 rounded-full",
-                      isPaid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"
+                      paymentClass
                     )}>
-                      {isPaid ? "Paid" : "Payment pending"}
+                      {paymentLabel}
                     </span>
                   </div>
                 </div>
@@ -210,7 +223,7 @@ export default function BookingDetail() {
         </div>
 
         {/* Payment pending alert */}
-        {!isPaid && booking.status === "upcoming" && (
+        {booking.status === "upcoming" && !isPaid && booking.payment_status !== "refunded" && booking.payment_status !== "disputed" && (
           <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-4 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, AlertCircle, DollarSign, Calendar, User, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertCircle, ChevronDown, ChevronUp, DollarSign } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -13,10 +13,12 @@ interface RefundRequest {
   reason: string;
   requested_at: string;
   status: "pending" | "approved" | "rejected";
+  source?: "user" | "stripe_dispute";
   admin_notes: string | null;
   refund_amount: number | null;
   processed_at: string | null;
-  booking?: { service_name: string; amount: number; date: string };
+  stripe_refund_id?: string | null;
+  booking?: { service_name: string; price: number; date: string };
   profile?: { full_name: string; email: string };
 }
 
@@ -42,12 +44,11 @@ export default function AdminRefunds() {
       .select("*")
       .order("requested_at", { ascending: false });
 
-    // Fetch bookings and profiles separately to avoid RLS issues
     const bookingIds = (data ?? []).map((r: any) => r.booking_id);
     const userIds = (data ?? []).map((r: any) => r.user_id);
-    
+
     const [{ data: bookings }, { data: profiles }] = await Promise.all([
-      supabase.from("bookings").select("id, service_name, amount, date").in("id", bookingIds),
+      supabase.from("bookings").select("id, service_name, price, date").in("id", bookingIds),
       supabase.from("profiles").select("id, full_name").in("id", userIds),
     ]);
 
@@ -70,23 +71,22 @@ export default function AdminRefunds() {
     if (!loading && !roleLoading && isAdmin) fetchRefunds();
   }, [loading, roleLoading, isAdmin]);
 
-  const approve = async (refundId: string, refundAmount: number, notes: string) => {
+  const approve = async (refundId: string) => {
     setApproving(refundId);
-    const { error } = await supabase
-      .from("refund_requests")
-      .update({
-        status: "approved",
-        refund_amount: refundAmount,
-        admin_notes: notes,
-        processed_at: new Date().toISOString(),
-      })
-      .eq("id", refundId);
-
-    if (!error) {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { data, error: fnErr } = await supabase.functions.invoke("process-stripe-refund", {
+        body: { refundRequestId: refundId },
+        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+      });
+      if (fnErr || !data?.ok) throw new Error(data?.error ?? fnErr?.message ?? "Failed to process refund");
       await fetchRefunds();
       setExpandedId(null);
+    } catch (e) {
+      alert((e as Error).message ?? "Failed to process refund");
+    } finally {
+      setApproving(null);
     }
-    setApproving(null);
   };
 
   const reject = async (refundId: string, notes: string) => {
@@ -118,11 +118,7 @@ export default function AdminRefunds() {
   };
 
   return (
-    <AdminLayout
-      title="Refund Requests"
-      subtitle="Review and process customer refund requests"
-    >
-      {/* Stats */}
+    <AdminLayout title="Refund Requests" subtitle="Review and process customer refund requests">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: "Total", value: counts.all },
@@ -137,7 +133,6 @@ export default function AdminRefunds() {
         ))}
       </div>
 
-      {/* Refund List */}
       {fetching ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
@@ -171,8 +166,15 @@ export default function AdminRefunds() {
                       <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full border", STATUS_STYLES[refund.status])}>
                         {refund.status}
                       </span>
+                      {refund.source === "stripe_dispute" && (
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-amber-100 text-amber-700">
+                          Stripe dispute
+                        </span>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-400 truncate">{refund.booking?.service_name} • {formatCurrency(refund.booking?.amount ?? 0)}</p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {refund.booking?.service_name} • {formatCurrency(refund.booking?.price ?? 0)}
+                    </p>
                     <p className="text-sm text-gray-600 font-semibold mt-1">{refund.reason}</p>
                   </div>
                   <div className="shrink-0 flex flex-col items-end gap-2">
@@ -188,7 +190,7 @@ export default function AdminRefunds() {
                       <div className="space-y-2">
                         <p className="text-sm text-gray-700"><strong>Reason:</strong> {refund.reason}</p>
                         <p className="text-sm text-gray-700"><strong>Booking Date:</strong> {refund.booking?.date}</p>
-                        <p className="text-sm text-gray-700"><strong>Amount:</strong> {formatCurrency(refund.booking?.amount ?? 0)}</p>
+                        <p className="text-sm text-gray-700"><strong>Amount:</strong> {formatCurrency(refund.booking?.price ?? 0)}</p>
                         {refund.admin_notes && <p className="text-sm text-gray-700"><strong>Admin Notes:</strong> {refund.admin_notes}</p>}
                       </div>
                     </div>
@@ -196,7 +198,6 @@ export default function AdminRefunds() {
                     {refund.status === "pending" && (
                       <RefundDecisionForm
                         refundId={refund.id}
-                        maxAmount={refund.booking?.amount ?? 0}
                         onApprove={approve}
                         onReject={reject}
                         isProcessing={approving === refund.id}
@@ -215,33 +216,19 @@ export default function AdminRefunds() {
 
 function RefundDecisionForm({
   refundId,
-  maxAmount,
   onApprove,
   onReject,
   isProcessing,
 }: {
   refundId: string;
-  maxAmount: number;
-  onApprove: (id: string, amount: number, notes: string) => Promise<void>;
+  onApprove: (id: string) => Promise<void>;
   onReject: (id: string, notes: string) => Promise<void>;
   isProcessing: boolean;
 }) {
-  const [refundAmount, setRefundAmount] = useState(String(maxAmount));
   const [notes, setNotes] = useState("");
 
   return (
     <div className="space-y-4 p-5 bg-green-50 border border-green-200 rounded-xl">
-      <div>
-        <label className="block text-xs font-bold text-gray-700 mb-2">Refund Amount (£)</label>
-        <input
-          type="number"
-          value={refundAmount}
-          onChange={(e) => setRefundAmount(e.target.value)}
-          max={maxAmount}
-          disabled={isProcessing}
-          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-        />
-      </div>
       <div>
         <label className="block text-xs font-bold text-gray-700 mb-2">Admin Notes</label>
         <textarea
@@ -255,7 +242,7 @@ function RefundDecisionForm({
       </div>
       <div className="flex gap-3">
         <button
-          onClick={() => onApprove(refundId, parseFloat(refundAmount) || 0, notes)}
+          onClick={() => onApprove(refundId)}
           disabled={isProcessing}
           className="flex-1 px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-sm font-bold rounded-xl transition-colors"
         >

@@ -144,7 +144,10 @@ export default function AdminPanel() {
 
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const totalRevenue = bookings.filter((b) => b.payment_status === "paid").reduce((s, b) => s + b.price, 0);
+  const totalRevenue = bookings.reduce((sum, b) => {
+    if (b.payment_status !== "paid" && b.payment_status !== "refunded") return sum;
+    return sum + Number(b.price) - Number(b.refunded_amount ?? 0);
+  }, 0);
   const stats = [
     { label: "Total bookings", value: bookings.length },
     { label: "Upcoming",       value: bookings.filter((b) => b.status === "upcoming").length },
@@ -292,7 +295,19 @@ export default function AdminPanel() {
           {paginated.map((b) => {
             const assignedId = assignments[b.id];
             const assignedStaff = assignedId ? staff.find((s) => s.id === assignedId) : null;
-            const isPaid = b.payment_status === "paid";
+            const paymentLabel =
+              b.payment_status === "paid" ? "Paid" :
+              b.payment_status === "refunded" ? "Refunded" :
+              b.payment_status === "disputed" ? "Disputed" :
+              "Pending";
+            const paymentClass =
+              b.payment_status === "paid"
+                ? "bg-emerald-100 text-emerald-700"
+                : b.payment_status === "refunded"
+                  ? "bg-slate-100 text-slate-600"
+                  : b.payment_status === "disputed"
+                    ? "bg-red-100 text-red-700"
+                    : "bg-amber-100 text-amber-700";
             return (
               <div key={b.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:border-green-100 hover:shadow-md transition-all">
                 <div className="flex flex-col lg:flex-row lg:items-center gap-4">
@@ -340,8 +355,8 @@ export default function AdminPanel() {
                   {/* Price */}
                   <div className="lg:w-24 shrink-0">
                     <p className="text-base font-black text-gray-900">{formatCurrency(b.price)}</p>
-                    <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", isPaid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
-                      {isPaid ? "Paid" : "Pending"}
+                    <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", paymentClass)}>
+                      {paymentLabel}
                     </span>
                   </div>
 

@@ -78,6 +78,21 @@ export default function BookingRefundRequest() {
     );
   }
 
+  if ((booking.payment_status ?? "pending") !== "paid") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-sm p-8 text-center">
+          <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Refunds are only available for paid bookings</h1>
+          <p className="text-gray-600 mb-6">This booking has not been paid yet, or it has already been refunded or disputed.</p>
+          <Link href={`/bookings/${booking.id}`} className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl transition-colors">
+            Back to Booking
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">

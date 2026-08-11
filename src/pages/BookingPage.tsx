@@ -177,8 +177,8 @@ export default function BookingPage() {
         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
           <CheckCircle className="w-10 h-10 text-green-600" />
         </div>
-        <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Booking Confirmed!</h1>
-        <p className="text-gray-500 mb-1">Your {selectedService.name} has been booked.</p>
+        <h1 className="text-3xl font-extrabold text-gray-900 mb-2">Booking Created</h1>
+        <p className="text-gray-500 mb-1">Your {selectedService.name} is ready for payment.</p>
         <p className="text-gray-400 text-sm mb-8">{date} · {timeSlot} · {address}, {city}, {postcode}</p>
 
         <div className="card mb-4 text-left space-y-2.5">

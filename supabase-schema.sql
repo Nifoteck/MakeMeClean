@@ -105,10 +105,14 @@ CREATE TABLE IF NOT EXISTS public.bookings (
   city           TEXT NOT NULL,
   postcode       TEXT NOT NULL,
   status         TEXT DEFAULT 'upcoming' CHECK (status IN ('upcoming', 'completed', 'cancelled')),
-  payment_status TEXT DEFAULT 'pending'  CHECK (payment_status IN ('pending', 'paid')),
+  payment_status TEXT DEFAULT 'pending'  CHECK (payment_status IN ('pending', 'paid', 'refunded', 'disputed')),
   price          NUMERIC(10,2) NOT NULL,
   notes          TEXT,
   invoice_number TEXT,
+  refunded_amount NUMERIC(10,2) DEFAULT 0,
+  stripe_checkout_session_id TEXT,
+  stripe_payment_intent_id TEXT,
+  stripe_charge_id TEXT,
   reminder_sent  BOOLEAN DEFAULT FALSE,
   created_at     TIMESTAMPTZ DEFAULT NOW()
 );
@@ -795,9 +799,14 @@ CREATE TABLE IF NOT EXISTS public.refund_requests (
   user_id       UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   reason        TEXT NOT NULL,
   requested_at  TIMESTAMPTZ DEFAULT NOW(),
-  status        TEXT DEFAULT 'pending',
+  status        TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  source        TEXT DEFAULT 'user' CHECK (source IN ('user', 'stripe_dispute')),
   admin_notes   TEXT,
   refund_amount NUMERIC(10,2),
+  stripe_refund_id TEXT,
+  stripe_payment_intent_id TEXT,
+  stripe_charge_id TEXT,
+  stripe_dispute_id TEXT,
   processed_at  TIMESTAMPTZ,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );

@@ -74,6 +74,9 @@ Set server-side secrets for Supabase Edge Functions (NOT Vercel env vars):
 ```bash
 supabase secrets set GROQ_API_KEY=your_groq_api_key
 supabase secrets set BREVO_API_KEY=your_brevo_api_key
+supabase secrets set STRIPE_SECRET_KEY=your_stripe_secret_key
+supabase secrets set STRIPE_WEBHOOK_SECRET=your_stripe_webhook_secret
+supabase secrets set SITE_URL=https://your-domain.com
 ```
 
 ### Development
@@ -102,6 +105,9 @@ pnpm preview
 Deploy the following Edge Functions:
 
 ```bash
+supabase functions deploy create-stripe-checkout
+supabase functions deploy stripe-webhook
+supabase functions deploy process-stripe-refund
 supabase functions deploy send-otp
 supabase functions deploy verify-otp
 supabase functions deploy reset-password
@@ -112,6 +118,14 @@ supabase functions deploy send-booking-reminders
 supabase functions deploy ai-chat
 supabase functions deploy send-newsletter
 ```
+
+In the Stripe dashboard, add a webhook endpoint for `checkout.session.completed` (and `checkout.session.async_payment_succeeded` if you want it) that points to:
+
+```text
+https://your-project.supabase.co/functions/v1/stripe-webhook
+```
+
+Run the updated `supabase-schema.sql` too, so the Stripe and refund columns exist before you test refunds or disputes.
 
 ### Hosting
 Deploy to Vercel, Netlify, or any static host:

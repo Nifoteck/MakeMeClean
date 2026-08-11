@@ -1,18 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { Lock, CreditCard, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
+import { Lock, CheckCircle, AlertCircle, ArrowLeft, Sparkles } from "lucide-react";
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { sendNotification } from "@/lib/notifications";
 import { Booking } from "@/types";
-
-function formatCardNumber(value: string) {
-  return value.replace(/\D/g, "").slice(0, 16).replace(/(.{4})/g, "$1 ").trim();
-}
-function formatExpiry(value: string) {
-  return value.replace(/\D/g, "").slice(0, 4).replace(/^(\d{2})(\d)/, "$1/$2");
-}
 
 export default function PaymentPage() {
   const { user, loading } = useAuth();
@@ -22,12 +15,8 @@ export default function PaymentPage() {
   const [booking, setBooking] = useState<Booking | null>(null);
   const [fetching, setFetching] = useState(true);
   const [step, setStep] = useState<"form" | "processing" | "success" | "error">("form");
-
-  const [cardName, setCardName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiry, setExpiry] = useState("");
-  const [cvv, setCvv] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [message, setMessage] = useState("");
+  const sessionId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("session_id") : null;
 
   useEffect(() => {
     if (!loading && !user) setLocation("/login");
@@ -47,46 +36,82 @@ export default function PaymentPage() {
       });
   }, [user, params.bookingId]);
 
-  const validate = () => {
-    const e: Record<string, string> = {};
-    if (!cardName.trim()) e.cardName = "Name is required";
-    if (cardNumber.replace(/\s/g, "").length < 16) e.cardNumber = "Enter a valid 16-digit card number";
-    if (expiry.length < 5) e.expiry = "Enter a valid expiry (MM/YY)";
-    if (cvv.length < 3) e.cvv = "Enter a valid CVV";
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  useEffect(() => {
+    if (!booking || booking.payment_status === "paid") {
+      return;
+    }
+
+    if (!sessionId) return;
+
+    let cancelled = false;
+    setStep("processing");
+    setMessage("We\'re confirming your Stripe payment...");
+
+    const refresh = async () => {
+      const { data } = await supabase
+        .from("bookings")
+        .select("id, service_name, date, time_slot, city, price, invoice_number, status, payment_status")
+        .eq("id", params.bookingId)
+        .eq("user_id", user?.id ?? "")
+        .single();
+
+      if (cancelled || !data) return;
+      setBooking(data as Booking);
+      if ((data as Booking).payment_status === "paid") {
+        setStep("success");
+      }
+    };
+
+    refresh();
+    const timer = setInterval(refresh, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [booking?.id, booking?.payment_status, sessionId, params.bookingId, user?.id]);
+
+  const readFunctionError = async (error: unknown) => {
+    if (error instanceof FunctionsHttpError) {
+      try {
+        const body = await error.context.json();
+        if (typeof body?.error === "string") return body.error;
+        if (typeof body?.message === "string") return body.message;
+      } catch {
+        try {
+          const text = await error.context.text();
+          if (text) return text;
+        } catch {
+          // ignore
+        }
+      }
+    }
+    return error instanceof Error ? error.message : "Failed to start payment";
   };
 
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate() || !booking) return;
+    if (!booking) return;
 
     setStep("processing");
-    // Simulate payment processing delay
-    await new Promise((r) => setTimeout(r, 2000));
+    setMessage("Redirecting to Stripe Checkout...");
 
-    const { error } = await supabase
-      .from("bookings")
-      .update({ payment_status: "paid" })
-      .eq("id", booking.id);
+    const { data, error } = await supabase.functions.invoke("create-stripe-checkout", {
+      body: { bookingId: booking.id, origin: window.location.origin },
+    });
 
-    if (error) { setStep("error"); return; }
-
-    // Booking is only confirmed after payment succeeds
-    try {
-      await sendNotification(supabase, { type: "booking_confirmation", bookingId: booking.id });
-    } catch (e) {
-      console.error("[MakeMeClean] booking confirmation email failed:", e);
+    if (error) {
+      setMessage(await readFunctionError(error));
+      setStep("error");
+      return;
     }
 
-    // Send payment receipt email (Brevo via Supabase Edge Function)
-    try {
-      await sendNotification(supabase, { type: "payment_receipt", bookingId: booking.id });
-    } catch (e) {
-      console.error("[MakeMeClean] payment receipt email failed:", e);
+    if (!data?.ok || !data?.url) {
+      setMessage(data?.error ?? "Failed to start payment");
+      setStep("error");
+      return;
     }
 
-    setStep("success");
+    window.location.href = data.url;
   };
 
   if (loading || fetching) return (
@@ -103,6 +128,25 @@ export default function PaymentPage() {
       </div>
     </div>
   );
+
+  if (booking.payment_status === "refunded" || booking.payment_status === "disputed") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-extrabold text-gray-900 mb-2">
+            {booking.payment_status === "refunded" ? "This booking was refunded" : "This booking is under dispute"}
+          </h1>
+          <p className="text-gray-500 mb-6">
+            {booking.payment_status === "refunded"
+              ? "You do not need to pay for this booking again."
+              : "Payment is on hold while the dispute is being resolved."}
+          </p>
+          <button onClick={() => setLocation(`/bookings/${booking.id}`)} className="btn-primary">Back to booking</button>
+        </div>
+      </div>
+    );
+  }
 
   if (booking.payment_status === "paid" || step === "success") return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -135,7 +179,7 @@ export default function PaymentPage() {
           <AlertCircle className="w-10 h-10 text-red-500" />
         </div>
         <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Payment Failed</h1>
-        <p className="text-gray-500 mb-6">Something went wrong. Please try again.</p>
+        <p className="text-gray-500 mb-6">{message || "Something went wrong. Please try again."}</p>
         <button onClick={() => setStep("form")} className="btn-primary">Try Again</button>
       </div>
     </div>
@@ -153,7 +197,7 @@ export default function PaymentPage() {
 
         <div className="mb-6">
           <h1 className="text-3xl font-extrabold text-gray-900">Secure Payment</h1>
-          <p className="text-gray-500 mt-1">Complete your payment to confirm your booking.</p>
+          <p className="text-gray-500 mt-1">Complete your payment securely with Stripe Checkout.</p>
         </div>
 
         {/* Booking Summary */}
@@ -176,94 +220,34 @@ export default function PaymentPage() {
         <div className="card">
           <div className="flex items-center gap-2 mb-5">
             <Lock className="w-4 h-4 text-green-600" />
-            <span className="text-sm font-semibold text-gray-700">Secure Card Payment</span>
-            <div className="ml-auto flex gap-1.5">
-              {["VISA", "MC", "AMEX"].map((card) => (
-                <span key={card} className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">{card}</span>
-              ))}
+            <span className="text-sm font-semibold text-gray-700">Stripe Checkout</span>
+            <div className="ml-auto">
+              <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">CARD</span>
             </div>
           </div>
 
           {step === "processing" ? (
             <div className="py-12 text-center">
               <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="font-semibold text-gray-700">Processing payment...</p>
+              <p className="font-semibold text-gray-700">{message || "Processing payment..."}</p>
               <p className="text-sm text-gray-400 mt-1">Please do not close this page.</p>
             </div>
           ) : (
             <form onSubmit={handlePay} className="space-y-4">
-              <div>
-                <label className="label">Cardholder Name</label>
-                <input
-                  type="text"
-                  placeholder="Jane Smith"
-                  value={cardName}
-                  onChange={(e) => setCardName(e.target.value)}
-                  className="input-field"
-                  data-testid="input-card-name"
-                />
-                {errors.cardName && <p className="text-red-500 text-xs mt-1">{errors.cardName}</p>}
-              </div>
-
-              <div>
-                <label className="label flex items-center gap-1.5">
-                  <CreditCard className="w-3.5 h-3.5" /> Card Number
-                </label>
-                <input
-                  type="text"
-                  placeholder="1234 5678 9012 3456"
-                  value={cardNumber}
-                  onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                  className="input-field font-mono tracking-widest"
-                  maxLength={19}
-                  data-testid="input-card-number"
-                />
-                {errors.cardNumber && <p className="text-red-500 text-xs mt-1">{errors.cardNumber}</p>}
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="label">Expiry Date</label>
-                  <input
-                    type="text"
-                    placeholder="MM/YY"
-                    value={expiry}
-                    onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                    className="input-field font-mono"
-                    maxLength={5}
-                    data-testid="input-expiry"
-                  />
-                  {errors.expiry && <p className="text-red-500 text-xs mt-1">{errors.expiry}</p>}
-                </div>
-                <div>
-                  <label className="label">CVV</label>
-                  <input
-                    type="text"
-                    placeholder="•••"
-                    value={cvv}
-                    onChange={(e) => setCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                    className="input-field font-mono"
-                    maxLength={4}
-                    data-testid="input-cvv"
-                  />
-                  {errors.cvv && <p className="text-red-500 text-xs mt-1">{errors.cvv}</p>}
-                </div>
-              </div>
-
               <div className="pt-2">
                 <button
                   type="submit"
                   className="btn-primary w-full flex items-center justify-center gap-2 text-base py-3.5"
                   data-testid="button-pay"
                 >
-                  <Lock className="w-4 h-4" />
-                  Pay {formatCurrency(booking.price)}
+                  <Sparkles className="w-4 h-4" />
+                  Pay with Stripe - {formatCurrency(booking.price)}
                 </button>
               </div>
 
               <p className="text-center text-xs text-gray-400 flex items-center justify-center gap-1.5 pt-1">
                 <Lock className="w-3 h-3" />
-                Your payment information is encrypted and secure
+                Your payment is handled by Stripe on a secure hosted page
               </p>
             </form>
           )}

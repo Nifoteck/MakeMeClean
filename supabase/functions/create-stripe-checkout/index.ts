@@ -1,0 +1,102 @@
+import Stripe from "npm:stripe@16.12.0";
+import { createClient } from "jsr:@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-client-info, apikey",
+};
+
+const json = (status: number, data: unknown) =>
+  new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+
+    if (!supabaseUrl || !serviceKey || !stripeKey) {
+      return json(500, { ok: false, error: "Server misconfiguration" });
+    }
+
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) return json(401, { ok: false, error: "Unauthorised" });
+
+    const { bookingId, origin } = (await req.json()) as { bookingId?: string; origin?: string };
+    if (!bookingId) return json(400, { ok: false, error: "bookingId is required" });
+
+    const appOrigin = (origin ?? Deno.env.get("SITE_URL") ?? "").trim().replace(/\/$/, "");
+    if (!appOrigin) return json(400, { ok: false, error: "Missing site origin" });
+
+    const supabase = createClient(supabaseUrl, serviceKey);
+    const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
+
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userData?.user) return json(401, { ok: false, error: "Unauthorised" });
+
+    const { data: booking, error: bookingErr } = await supabase
+      .from("bookings")
+      .select("id, user_id, service_name, date, time_slot, price, invoice_number, payment_status")
+      .eq("id", bookingId)
+      .single();
+
+    if (bookingErr || !booking) return json(404, { ok: false, error: "Booking not found" });
+    if (booking.user_id !== userData.user.id) return json(403, { ok: false, error: "Forbidden" });
+    if (booking.payment_status === "paid") {
+      return json(409, { ok: false, error: "This booking is already paid" });
+    }
+
+    const amount = Math.round(Number(booking.price) * 100);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return json(400, { ok: false, error: "Invalid booking amount" });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      client_reference_id: booking.id,
+      customer_email: userData.user.email ?? undefined,
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "gbp",
+            unit_amount: amount,
+            product_data: {
+              name: `MakeMeClean - ${booking.service_name}`,
+              description: `${booking.date} - ${booking.time_slot}`,
+            },
+          },
+        },
+      ],
+      payment_intent_data: {
+        metadata: {
+          booking_id: booking.id,
+          user_id: userData.user.id,
+          invoice_number: booking.invoice_number ?? booking.id,
+        },
+      },
+      metadata: {
+        booking_id: booking.id,
+        user_id: userData.user.id,
+        invoice_number: booking.invoice_number ?? booking.id,
+      },
+      success_url: `${appOrigin}/pay/${booking.id}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${appOrigin}/bookings/${booking.id}`,
+    });
+
+    if (!session.url) {
+      return json(500, { ok: false, error: "Stripe did not return a checkout URL" });
+    }
+
+    return json(200, { ok: true, url: session.url, sessionId: session.id });
+  } catch (e) {
+    console.error("[create-stripe-checkout]", e);
+    return json(500, { ok: false, error: String((e as Error)?.message ?? e) });
+  }
+});
