@@ -10,6 +10,10 @@ const corsHeaders = {
 const json = (status: number, data: unknown) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
+function normalizeOrigin(value: string | null | undefined) {
+  return (value ?? "").trim().replace(/\/$/, "");
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
@@ -30,7 +34,17 @@ Deno.serve(async (req) => {
     const { bookingId, origin } = (await req.json()) as { bookingId?: string; origin?: string };
     if (!bookingId) return json(400, { ok: false, error: "bookingId is required" });
 
-    const appOrigin = (origin ?? Deno.env.get("SITE_URL") ?? "").trim().replace(/\/$/, "");
+    const configuredOrigin = normalizeOrigin(Deno.env.get("SITE_URL"));
+    const requestOrigin = normalizeOrigin(req.headers.get("Origin"));
+    const clientOrigin = normalizeOrigin(origin);
+
+    if (configuredOrigin) {
+      if ((requestOrigin && requestOrigin !== configuredOrigin) || (clientOrigin && clientOrigin !== configuredOrigin)) {
+        return json(403, { ok: false, error: "Invalid origin" });
+      }
+    }
+
+    const appOrigin = configuredOrigin || requestOrigin || clientOrigin;
     if (!appOrigin) return json(400, { ok: false, error: "Missing site origin" });
 
     const supabase = createClient(supabaseUrl, serviceKey);

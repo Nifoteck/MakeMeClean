@@ -31,6 +31,16 @@ function mustGetEnv(name: string) {
   return value;
 }
 
+function requireInternalRequest(req: Request) {
+  const expected = Deno.env.get("NOTIFICATIONS_INTERNAL_TOKEN");
+  if (!expected) throw new Error("Missing env var: NOTIFICATIONS_INTERNAL_TOKEN");
+  const provided = req.headers.get("x-internal-token") ?? "";
+  if (provided !== expected) {
+    return false;
+  }
+  return true;
+}
+
 function escapeHtml(value: string) {
   return value
     .replaceAll("&", "&amp;")
@@ -276,6 +286,10 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
   try {
+    if (!requireInternalRequest(req)) {
+      return json(403, { error: "Forbidden" });
+    }
+
     const payload = (await req.json()) as NotificationEvent;
     if (!payload?.type || !payload?.bookingId) return json(400, { error: "Invalid payload" });
 

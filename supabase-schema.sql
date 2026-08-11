@@ -814,6 +814,21 @@ CREATE TABLE IF NOT EXISTS public.refund_requests (
 CREATE INDEX IF NOT EXISTS refund_requests_booking_idx ON public.refund_requests (booking_id);
 CREATE INDEX IF NOT EXISTS refund_requests_user_idx ON public.refund_requests (user_id);
 CREATE INDEX IF NOT EXISTS refund_requests_status_idx ON public.refund_requests (status);
+CREATE UNIQUE INDEX IF NOT EXISTS refund_requests_one_pending_user_per_booking_idx
+  ON public.refund_requests (booking_id, user_id, source)
+  WHERE status = 'pending' AND source = 'user';
+
+CREATE UNIQUE INDEX IF NOT EXISTS bookings_stripe_checkout_session_uidx
+  ON public.bookings (stripe_checkout_session_id)
+  WHERE stripe_checkout_session_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS bookings_stripe_payment_intent_uidx
+  ON public.bookings (stripe_payment_intent_id)
+  WHERE stripe_payment_intent_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS bookings_stripe_charge_uidx
+  ON public.bookings (stripe_charge_id)
+  WHERE stripe_charge_id IS NOT NULL;
 
 ALTER TABLE public.refund_requests ENABLE ROW LEVEL SECURITY;
 

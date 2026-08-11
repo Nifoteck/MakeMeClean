@@ -10,6 +10,11 @@ const corsHeaders = {
 const json = (status: number, data: unknown) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
+function internalHeaders() {
+  const token = Deno.env.get("NOTIFICATIONS_INTERNAL_TOKEN");
+  return token ? { "x-internal-token": token } : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
@@ -53,7 +58,7 @@ Deno.serve(async (req) => {
 
       const { data: booking, error: bookingErr } = await supabase
         .from("bookings")
-        .select("id, payment_status")
+        .select("id, user_id, payment_status")
         .eq("id", bookingId)
         .single();
 
@@ -61,33 +66,53 @@ Deno.serve(async (req) => {
         return json(404, { ok: false, error: "Booking not found" });
       }
 
+      if (session.metadata?.user_id && booking.user_id !== session.metadata.user_id) {
+        return json(403, { ok: false, error: "Booking ownership mismatch" });
+      }
+
+      const updatePayload: Record<string, unknown> = {
+        stripe_checkout_session_id: session.id,
+        stripe_payment_intent_id: paymentIntentId,
+        stripe_charge_id: chargeId,
+      };
       if (booking.payment_status !== "paid") {
-        const { error: updateErr } = await supabase
-          .from("bookings")
-          .update({
-            payment_status: "paid",
-            stripe_checkout_session_id: session.id,
-            stripe_payment_intent_id: paymentIntentId,
-            stripe_charge_id: chargeId,
-          })
-          .eq("id", bookingId);
+        updatePayload.payment_status = "paid";
+      }
 
-        if (updateErr) {
-          return json(500, { ok: false, error: updateErr.message });
-        }
+      const { error: updateErr } = await supabase
+        .from("bookings")
+        .update(updatePayload)
+        .eq("id", bookingId);
 
+      if (updateErr) {
+        return json(500, { ok: false, error: updateErr.message });
+      }
+
+      const notificationHeaders = internalHeaders();
+
+      if (booking.payment_status !== "paid") {
         try {
-          await supabase.functions.invoke("notifications", {
-            body: { type: "booking_confirmation", bookingId },
-          });
+          if (notificationHeaders) {
+            await supabase.functions.invoke("notifications", {
+              body: { type: "booking_confirmation", bookingId },
+              headers: notificationHeaders,
+            });
+          } else {
+            console.warn("[stripe-webhook] NOTIFICATIONS_INTERNAL_TOKEN missing; skipping confirmation email");
+          }
         } catch (e) {
           console.error("[stripe-webhook] booking_confirmation failed:", e);
         }
 
         try {
-          await supabase.functions.invoke("notifications", {
-            body: { type: "payment_receipt", bookingId },
-          });
+          if (notificationHeaders) {
+            await supabase.functions.invoke("notifications", {
+              body: { type: "payment_receipt", bookingId },
+              headers: notificationHeaders,
+            });
+          } else {
+            console.warn("[stripe-webhook] NOTIFICATIONS_INTERNAL_TOKEN missing; skipping receipt email");
+          }
         } catch (e) {
           console.error("[stripe-webhook] payment_receipt failed:", e);
         }

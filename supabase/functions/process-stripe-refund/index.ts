@@ -66,11 +66,17 @@ Deno.serve(async (req) => {
 
     const { data: booking, error: bookingErr } = await supabase
       .from("bookings")
-      .select("id, price, payment_status, stripe_payment_intent_id, stripe_charge_id, refunded_amount")
+      .select("id, user_id, price, payment_status, stripe_payment_intent_id, stripe_charge_id, refunded_amount")
       .eq("id", refundRequest.booking_id)
       .single();
 
     if (bookingErr || !booking) return json(404, { ok: false, error: "Booking not found" });
+    if (booking.user_id !== refundRequest.user_id) {
+      return json(409, { ok: false, error: "Refund request does not match booking owner" });
+    }
+    if (refundRequest.source === "user" && booking.payment_status !== "paid") {
+      return json(409, { ok: false, error: "Only paid bookings can be refunded" });
+    }
 
     const paymentIntentId = booking.stripe_payment_intent_id ?? refundRequest.stripe_payment_intent_id ?? null;
     if (!paymentIntentId) {
