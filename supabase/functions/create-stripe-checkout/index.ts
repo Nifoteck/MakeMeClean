@@ -14,6 +14,31 @@ function normalizeOrigin(value: string | null | undefined) {
   return (value ?? "").trim().replace(/\/$/, "");
 }
 
+function getSlotStart(timeSlot: string | null | undefined) {
+  return timeSlot?.match(/\b(\d{2}:\d{2})\b/)?.[1] ?? null;
+}
+
+function isFutureBooking(date: string, timeSlot: string) {
+  const startTime = getSlotStart(timeSlot);
+  if (!startTime) return false;
+
+  const nowParts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+
+  const part = (type: string) => nowParts.find((p) => p.type === type)?.value ?? "";
+  const today = `${part("year")}-${part("month")}-${part("day")}`;
+  const nowTime = `${part("hour")}:${part("minute")}`;
+
+  return date > today || (date === today && startTime > nowTime);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
@@ -63,6 +88,9 @@ Deno.serve(async (req) => {
     if (booking.user_id !== userData.user.id) return json(403, { ok: false, error: "Forbidden" });
     if (booking.payment_status === "paid") {
       return json(409, { ok: false, error: "This booking is already paid" });
+    }
+    if (!isFutureBooking(String(booking.date), String(booking.time_slot))) {
+      return json(409, { ok: false, error: "This booking date and time has already passed" });
     }
 
     const amount = Math.round(Number(booking.price) * 100);

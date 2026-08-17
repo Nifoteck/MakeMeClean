@@ -18,6 +18,16 @@ export default function PaymentPage() {
   const [message, setMessage] = useState("");
   const sessionId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("session_id") : null;
 
+  const getSlotStart = (timeSlot: string | null | undefined) =>
+    timeSlot?.match(/\b(\d{2}:\d{2})\b/)?.[1] ?? null;
+
+  const isFutureBooking = (candidate: Booking | null) => {
+    if (!candidate) return false;
+    const startTime = getSlotStart(candidate.time_slot);
+    if (!startTime) return false;
+    return new Date(`${candidate.date}T${startTime}:00`).getTime() > Date.now();
+  };
+
   useEffect(() => {
     if (!loading && !user) setLocation("/login");
   }, [user, loading]);
@@ -91,6 +101,12 @@ export default function PaymentPage() {
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!booking) return;
+
+    if (!isFutureBooking(booking)) {
+      setMessage("This booking date and time has already passed.");
+      setStep("error");
+      return;
+    }
 
     setStep("processing");
     setMessage("Redirecting to Stripe Checkout...");

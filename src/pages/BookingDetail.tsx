@@ -343,8 +343,8 @@ export default function BookingDetail() {
           </div>
         )}
 
-        {/* Refund request (not completed/cancelled) */}
-        {(booking.status === "upcoming" || booking.status === "completed") && (
+        {/* Refund request */}
+        {isPaid && (booking.status === "upcoming" || booking.status === "completed") && (
           <div className="bg-blue-50 border border-blue-200 rounded-2xl p-5 mb-4 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
