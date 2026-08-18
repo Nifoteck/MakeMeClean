@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Booking } from "@/types";
+import { flushPaymentConfirmations, queuePaymentConfirmation } from "@/lib/paymentConfirmations";
 
 export default function PaymentPage() {
   const { user, loading } = useAuth();
@@ -56,6 +57,8 @@ export default function PaymentPage() {
     let cancelled = false;
     setStep("processing");
     setMessage("We\'re confirming your Stripe payment...");
+    queuePaymentConfirmation(params.bookingId, sessionId);
+    void flushPaymentConfirmations();
 
     const refresh = async () => {
       const { data } = await supabase
@@ -79,6 +82,7 @@ export default function PaymentPage() {
         if (confirmData?.paid) {
           setBooking({ ...(data as Booking), payment_status: "paid" });
           setStep("success");
+          void flushPaymentConfirmations();
         }
       }
     };

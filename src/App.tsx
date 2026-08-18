@@ -7,6 +7,7 @@ import ConsentBanner from "@/components/ConsentBanner";
 import AIChatWidget from "@/components/AIChatWidget";
 import { updatePageMeta, seoDefaults } from "@/lib/seo";
 import { initializeAnalytics, trackPageView } from "@/lib/analytics";
+import { startPaymentConfirmationRetries } from "@/lib/paymentConfirmations";
 const Home = lazy(() => import("@/pages/Home"));
 const Services = lazy(() => import("@/pages/Services"));
 const BookingPage = lazy(() => import("@/pages/BookingPage"));
@@ -74,6 +75,7 @@ function App() {
     initializeAnalytics();
     // Update SEO meta tags based on current page
     updatePageMeta(seoDefaults.home);
+    return startPaymentConfirmationRetries();
   }, []);
 
   useEffect(() => {
