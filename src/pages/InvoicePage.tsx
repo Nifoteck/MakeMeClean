@@ -11,7 +11,9 @@ function parseHoursFromTimeSlot(timeSlot: string | null | undefined) {
   const matches = timeSlot?.match(/\b(\d{2}):(\d{2})\b/g) ?? [];
   if (matches.length < 2) return 1;
 
-  const [start, end] = matches;
+  const start = matches[0];
+  const end = matches[1];
+  if (!start || !end) return 1;
   const [startHour, startMinute] = start.split(":").map(Number);
   const [endHour, endMinute] = end.split(":").map(Number);
   const minutes = endHour * 60 + endMinute - (startHour * 60 + startMinute);
