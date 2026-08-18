@@ -7,6 +7,21 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { useSettings } from "@/hooks/useSettings";
 import { Booking } from "@/types";
 
+function parseHoursFromTimeSlot(timeSlot: string | null | undefined) {
+  const matches = timeSlot?.match(/\b(\d{2}):(\d{2})\b/g) ?? [];
+  if (matches.length < 2) return 1;
+
+  const [start, end] = matches;
+  const [startHour, startMinute] = start.split(":").map(Number);
+  const [endHour, endMinute] = end.split(":").map(Number);
+  const minutes = endHour * 60 + endMinute - (startHour * 60 + startMinute);
+  return minutes > 0 ? minutes / 60 : 1;
+}
+
+function formatQty(hours: number) {
+  return Number.isInteger(hours) ? String(hours) : hours.toFixed(1);
+}
+
 export default function InvoicePage() {
   const settings = useSettings();
   const { user, loading } = useAuth();
@@ -47,6 +62,7 @@ export default function InvoicePage() {
     paymentStatus === "refunded" ? "Refunded" :
     paymentStatus === "disputed" ? "Disputed" :
     "Pending";
+  const quantity = parseHoursFromTimeSlot(booking?.time_slot);
 
   if (loading || fetching) {
     return (
@@ -155,7 +171,7 @@ export default function InvoicePage() {
                   <p className="font-semibold text-gray-900">{booking.service_name}</p>
                   <p className="text-xs text-gray-400 mt-1">{formatDate(booking.date)} · {booking.time_slot}</p>
                 </div>
-                <div className="col-span-2 text-right text-gray-700">1</div>
+                <div className="col-span-2 text-right text-gray-700">{formatQty(quantity)}</div>
                 <div className="col-span-3 text-right font-semibold text-gray-900">{formatCurrency(booking.price)}</div>
               </div>
               <div className="border-t border-gray-100 px-5 py-4">
