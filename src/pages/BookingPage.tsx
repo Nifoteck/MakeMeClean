@@ -87,7 +87,6 @@ export default function BookingPage() {
   }, [user]);
 
   const minDate = new Date();
-  minDate.setDate(minDate.getDate() + 1);
   const minDateStr = minDate.toISOString().split("T")[0];
 
   const baseHourlyPrice = selectedService?.price ?? 0;
@@ -97,10 +96,23 @@ export default function BookingPage() {
   const recurringPct    = liveDiscounts[recurringFreq] ?? 0;
   const finalPrice      = recurringPct > 0 ? totalPrice * (1 - recurringPct / 100) : totalPrice;
   const timeSlot        = calcTimeSlot(startHour, durationHours);
+  const availableStartHours = date === minDateStr
+    ? START_HOURS.filter((h) => new Date(`${date}T${h}:00`).getTime() > Date.now())
+    : START_HOURS;
+
+  useEffect(() => {
+    if (date && availableStartHours.length > 0 && !availableStartHours.includes(startHour)) {
+      setStartHour(availableStartHours[0]);
+    }
+  }, [date, availableStartHours, startHour]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !selectedService) return;
+    if (availableStartHours.length === 0) {
+      setError("No future start times are available today. Please choose another date.");
+      return;
+    }
     setSubmitting(true);
     setError("");
 
@@ -406,8 +418,13 @@ export default function BookingPage() {
                       <Clock className="w-3.5 h-3.5" /> Start Time
                     </label>
                     <select required value={startHour} onChange={(e) => setStartHour(e.target.value)} className="input-field">
-                      {START_HOURS.map((h) => <option key={h} value={h}>{h}</option>)}
+                      {availableStartHours.map((h) => <option key={h} value={h}>{h}</option>)}
                     </select>
+                    {date === minDateStr && availableStartHours.length === 0 && (
+                      <p className="text-xs text-red-500 font-semibold mt-1.5">
+                        No more start times are available today.
+                      </p>
+                    )}
                   </div>
                 </div>
 
