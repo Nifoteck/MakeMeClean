@@ -6,10 +6,24 @@ import { supabase } from "@/lib/supabase";
 import { cn, formatDate, formatCurrency } from "@/lib/utils";
 import Pagination from "@/components/Pagination";
 import { Booking } from "@/types";
-import { BOOKING_STATUS_STYLES, PAGE_SIZE } from "@/lib/constants";
+import { BOOKING_STATUS_STYLES, PAGE_SIZE, PAYMENT_STATUS_STYLES } from "@/lib/constants";
 import Spinner from "@/components/Spinner";
 
 type FilterStatus = "all" | "upcoming" | "completed" | "cancelled";
+
+function paymentStatusLabel(status: string | null | undefined) {
+  if (status === "paid") return "Paid";
+  if (status === "refunded") return "Refunded";
+  if (status === "disputed") return "Disputed";
+  return "Unpaid";
+}
+
+function paymentStatusClass(status: string | null | undefined) {
+  if (status === "paid") return PAYMENT_STATUS_STYLES.paid;
+  if (status === "refunded") return "bg-slate-100 text-slate-600";
+  if (status === "disputed") return "bg-red-100 text-red-700";
+  return PAYMENT_STATUS_STYLES.pending;
+}
 
 export default function Bookings() {
   const { user, loading } = useAuth();
@@ -179,6 +193,9 @@ export default function Bookings() {
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", BOOKING_STATUS_STYLES[b.status] ?? "bg-gray-100 text-gray-600")}>
                         {b.status}
+                      </span>
+                      <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", paymentStatusClass(b.payment_status))}>
+                        {paymentStatusLabel(b.payment_status)}
                       </span>
                       {b.status === "completed" && (
                         reviewedIds.has(b.id) ? (
