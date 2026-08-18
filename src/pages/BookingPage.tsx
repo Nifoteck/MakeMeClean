@@ -20,6 +20,13 @@ const FREQ_LABELS: Record<string, string> = {
   weekly: "Every week", fortnightly: "Every 2 weeks", monthly: "Every month",
 };
 
+function formatDuration(hours: number) {
+  if (hours === 0.5) return "30 minutes";
+  if (hours % 1 === 0) return `${hours} ${hours === 1 ? "hour" : "hours"}`;
+  const wholeHours = Math.floor(hours);
+  return `${wholeHours} ${wholeHours === 1 ? "hour" : "hours"} 30 minutes`;
+}
+
 export default function BookingPage() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
@@ -208,7 +215,7 @@ export default function BookingPage() {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Duration</span>
-            <span className="font-semibold">{durationHours} {durationHours === 1 ? "hour" : "hours"}</span>
+            <span className="font-semibold">{formatDuration(durationHours)}</span>
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-gray-500">Location</span>
@@ -222,7 +229,7 @@ export default function BookingPage() {
           )}
           <hr className="border-gray-100" />
           <div className="flex justify-between text-sm text-gray-500">
-            <span>{formatCurrency(hourlyPrice)} × {durationHours} hrs{recurringPct > 0 ? ` − ${recurringPct}% recurring` : ""}</span>
+            <span>{formatCurrency(hourlyPrice)} × {formatDuration(durationHours)}{recurringPct > 0 ? ` − ${recurringPct}% recurring` : ""}</span>
           </div>
           <div className="flex justify-between">
             <span className="font-bold text-gray-900">Total</span>
@@ -380,26 +387,26 @@ export default function BookingPage() {
                     <Clock className="w-3.5 h-3.5" /> Number of Hours
                   </label>
                   <div className="flex items-center gap-4 mt-1">
-                    <button type="button" onClick={() => setDurationHours((h) => Math.max(1, h - 1))}
+                    <button type="button" onClick={() => setDurationHours((h) => Math.max(0.5, h - 0.5))}
                       className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40"
-                      disabled={durationHours <= 1}>
+                      disabled={durationHours <= 0.5}>
                       <Minus className="w-4 h-4 text-gray-600" />
                     </button>
-                    <input type="text" inputMode="numeric" pattern="[0-9]*" value={String(durationHours)}
+                    <input type="number" inputMode="decimal" min="0.5" max="12" step="0.5" value={String(durationHours)}
                       onChange={(e) => {
-                        const d = e.target.value.replace(/\D/g, "");
-                        if (d === "") return;
-                        const n = parseInt(d, 10);
-                        if (Number.isFinite(n)) setDurationHours(Math.max(1, Math.min(12, n)));
+                        const n = Number(e.target.value);
+                        if (Number.isFinite(n)) {
+                          setDurationHours(Math.max(0.5, Math.min(12, Math.round(n * 2) / 2)));
+                        }
                       }}
                       className="input-field w-24 text-center" />
-                    <button type="button" onClick={() => setDurationHours((h) => Math.min(12, h + 1))}
+                    <button type="button" onClick={() => setDurationHours((h) => Math.min(12, h + 0.5))}
                       className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40"
                       disabled={durationHours >= 12}>
                       <Plus className="w-4 h-4 text-gray-600" />
                     </button>
                     <div className="flex-1 text-right">
-                      <p className="text-xs text-gray-400">{formatCurrency(hourlyPrice)} × {durationHours} {durationHours === 1 ? "hr" : "hrs"}</p>
+                      <p className="text-xs text-gray-400">{formatCurrency(hourlyPrice)} × {formatDuration(durationHours)}</p>
                       <p className="text-lg font-extrabold text-green-600">{formatCurrency(finalPrice)}</p>
                     </div>
                   </div>

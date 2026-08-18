@@ -735,7 +735,7 @@ CREATE TABLE IF NOT EXISTS public.recurring_plans (
   service_name     TEXT NOT NULL,
   frequency        TEXT NOT NULL CHECK (frequency IN ('weekly', 'fortnightly', 'monthly')),
   start_time       TEXT NOT NULL,
-  duration_hours   INT NOT NULL DEFAULT 2,
+  duration_hours   NUMERIC(5,2) NOT NULL DEFAULT 2.00,
   address          TEXT NOT NULL,
   city             TEXT NOT NULL,
   postcode         TEXT NOT NULL,
