@@ -69,14 +69,31 @@ export default function PaymentPage() {
       setBooking(data as Booking);
       if ((data as Booking).payment_status === "paid") {
         setStep("success");
+        return;
+      }
+
+      if (sessionId) {
+        const { data: confirmData } = await supabase.functions.invoke("confirm-stripe-checkout", {
+          body: { bookingId: params.bookingId, sessionId },
+        });
+        if (confirmData?.paid) {
+          setBooking({ ...(data as Booking), payment_status: "paid" });
+          setStep("success");
+        }
       }
     };
 
     refresh();
     const timer = setInterval(refresh, 2500);
+    const timeout = setTimeout(() => {
+      if (cancelled) return;
+      setMessage("Payment may have succeeded, but we could not confirm it automatically. Please check My Bookings or contact support.");
+      setStep("error");
+    }, 60000);
     return () => {
       cancelled = true;
       clearInterval(timer);
+      clearTimeout(timeout);
     };
   }, [booking?.id, booking?.payment_status, sessionId, params.bookingId, user?.id]);
 
