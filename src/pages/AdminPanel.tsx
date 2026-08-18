@@ -310,10 +310,10 @@ export default function AdminPanel() {
                     : "bg-amber-100 text-amber-700";
             return (
               <div key={b.id} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:border-green-100 hover:shadow-md transition-all">
-                <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(190px,1.15fr)_minmax(170px,1fr)_minmax(230px,1.15fr)_96px_minmax(170px,0.95fr)_minmax(190px,auto)] xl:items-center">
 
                   {/* Customer */}
-                  <div className="flex items-center gap-3 lg:w-52 shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                       <span className="text-sm font-bold text-green-700">
                         {(b.profiles?.full_name ?? "?").charAt(0).toUpperCase()}
@@ -327,7 +327,7 @@ export default function AdminPanel() {
                   </div>
 
                   {/* Service */}
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-xl overflow-hidden bg-green-50 border border-green-100 shrink-0">
                       {serviceImages[b.service_type]
                         ? <img src={serviceImages[b.service_type]} alt={b.service_name} className="w-full h-full object-cover" />
@@ -340,12 +340,12 @@ export default function AdminPanel() {
                   </div>
 
                   {/* Date / Time */}
-                  <div className="text-sm text-gray-500 lg:w-44 shrink-0 space-y-1">
-                    <div className="flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5 text-gray-300" />{formatDate(b.date)}</div>
-                    <div className="flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-gray-300" />{b.time_slot}</div>
+                  <div className="text-sm text-gray-500 min-w-0 space-y-1">
+                    <div className="flex items-start gap-1.5 min-w-0"><Calendar className="w-3.5 h-3.5 text-gray-300 shrink-0 mt-0.5" /><span className="leading-snug">{formatDate(b.date)}</span></div>
+                    <div className="flex items-center gap-1.5 min-w-0"><Clock className="w-3.5 h-3.5 text-gray-300 shrink-0" /><span className="truncate">{b.time_slot}</span></div>
                     <div className="flex items-center gap-1.5 pt-0.5 border-t border-gray-100 mt-1">
-                      <Clock className="w-3 h-3 text-gray-200" />
-                      <span className="text-xs text-gray-300">
+                      <Clock className="w-3 h-3 text-gray-200 shrink-0" />
+                      <span className="text-xs text-gray-300 leading-snug">
                         Booked {new Date(b.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}{" "}
                         at {new Date(b.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
                       </span>
@@ -353,7 +353,7 @@ export default function AdminPanel() {
                   </div>
 
                   {/* Price */}
-                  <div className="lg:w-24 shrink-0">
+                  <div className="min-w-0">
                     <p className="text-base font-black text-gray-900">{formatCurrency(b.price)}</p>
                     <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", paymentClass)}>
                       {paymentLabel}
@@ -361,7 +361,7 @@ export default function AdminPanel() {
                   </div>
 
                   {/* Assigned */}
-                  <div className="lg:w-40 shrink-0">
+                  <div className="min-w-0">
                     <button onClick={() => openAssign(b)}
                       className={cn(
                         "flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl border transition-all w-full",
@@ -375,7 +375,7 @@ export default function AdminPanel() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 min-w-0 md:justify-end">
                     <span className={cn("text-xs font-bold px-3 py-1.5 rounded-full", STATUS_PILL[b.status] ?? "bg-gray-100 text-gray-500")}>
                       {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
                     </span>
