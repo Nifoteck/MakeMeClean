@@ -52,6 +52,7 @@ export async function flushPaymentConfirmations() {
     try {
       const { data, error } = await supabase.functions.invoke("confirm-stripe-checkout", {
         body: { bookingId: item.bookingId, sessionId: item.sessionId },
+        headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
       });
 
       if (!error && data?.paid) continue;

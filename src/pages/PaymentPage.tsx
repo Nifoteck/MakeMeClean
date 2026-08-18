@@ -132,8 +132,17 @@ export default function PaymentPage() {
     setStep("processing");
     setMessage("Redirecting to Stripe Checkout...");
 
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setMessage("Please sign in again before paying.");
+      setStep("error");
+      return;
+    }
+
     const { data, error } = await supabase.functions.invoke("create-stripe-checkout", {
       body: { bookingId: booking.id, origin: window.location.origin },
+      headers: { Authorization: `Bearer ${accessToken}` },
     });
 
     if (error) {
