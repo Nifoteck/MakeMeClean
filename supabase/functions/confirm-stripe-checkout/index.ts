@@ -10,6 +10,11 @@ const corsHeaders = {
 const json = (status: number, data: unknown) =>
   new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json", ...corsHeaders } });
 
+function internalHeaders() {
+  const token = Deno.env.get("NOTIFICATIONS_INTERNAL_TOKEN");
+  return token ? { "x-internal-token": token } : null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { ok: false, error: "Method not allowed" });
@@ -75,6 +80,29 @@ Deno.serve(async (req) => {
       .eq("id", booking.id);
 
     if (updateErr) return json(500, { ok: false, error: updateErr.message });
+
+    const notificationHeaders = internalHeaders();
+    if (notificationHeaders) {
+      try {
+        await supabase.functions.invoke("notifications", {
+          body: { type: "booking_confirmation", bookingId: booking.id },
+          headers: notificationHeaders,
+        });
+      } catch (e) {
+        console.error("[confirm-stripe-checkout] booking_confirmation failed:", e);
+      }
+
+      try {
+        await supabase.functions.invoke("notifications", {
+          body: { type: "payment_receipt", bookingId: booking.id },
+          headers: notificationHeaders,
+        });
+      } catch (e) {
+        console.error("[confirm-stripe-checkout] payment_receipt failed:", e);
+      }
+    } else {
+      console.warn("[confirm-stripe-checkout] NOTIFICATIONS_INTERNAL_TOKEN missing; skipping emails");
+    }
 
     return json(200, { ok: true, paid: true });
   } catch (e) {
