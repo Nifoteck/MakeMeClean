@@ -6,6 +6,35 @@ import { sendOtp, verifyOtp } from "@/lib/otp";
 
 type Stage = "form" | "verify" | "done";
 
+function validateFullName(value: string) {
+  const name = value.trim().replace(/\s+/g, " ");
+  if (name.length < 2) return "Please enter your full name.";
+  if (!/^[A-Za-z][A-Za-z' -]*[A-Za-z]$/.test(name)) return "Full name can only include letters, spaces, hyphens and apostrophes.";
+  if (name.split(" ").filter(Boolean).length < 2) return "Please enter your first and last name.";
+  return "";
+}
+
+function validateEmail(value: string) {
+  const email = value.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return "Please enter a valid email address.";
+  return "";
+}
+
+function validatePhone(value: string) {
+  const phone = value.trim();
+  if (!phone) return "Please enter your phone number.";
+  if (!/^\+?[0-9 ]{10,16}$/.test(phone)) return "Please enter a valid phone number.";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length < 10 || digits.length > 15) return "Phone number must be 10 to 15 digits.";
+  return "";
+}
+
+function validatePassword(value: string) {
+  if (value.length < 8) return "Password must be at least 8 characters.";
+  if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) return "Password must include at least one letter and one number.";
+  return "";
+}
+
 export default function Register() {
   const [, setLocation] = useLocation();
   const [stage, setStage] = useState<Stage>("form");
@@ -41,12 +70,20 @@ export default function Register() {
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
+    const nameError = validateFullName(fullName);
+    if (nameError) { setError(nameError); return; }
+    const emailError = validateEmail(email);
+    if (emailError) { setError(emailError); return; }
+    const phoneError = validatePhone(phone);
+    if (phoneError) { setError(phoneError); return; }
+    const passwordError = validatePassword(password);
+    if (passwordError) { setError(passwordError); return; }
     if (password !== confirmPassword) { setError("Passwords do not match."); return; }
     if (!agreedToTerms) { setError("Please accept the Terms & Conditions to continue."); return; }
     setLoading(true);
     setError("");
-    const result = await sendOtp(email, "registration");
+    const cleanEmail = email.trim().toLowerCase();
+    const result = await sendOtp(cleanEmail, "registration");
     if (!result.ok) { setError(result.error ?? "Failed to send code"); setLoading(false); return; }
     setStage("verify");
     startCooldown();
@@ -82,7 +119,10 @@ export default function Register() {
   const verifyCode = async (code: string) => {
     setVerifying(true);
     setError("");
-    const result = await verifyOtp(email, code, "registration");
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = fullName.trim().replace(/\s+/g, " ");
+    const cleanPhone = phone.trim().replace(/\s+/g, " ");
+    const result = await verifyOtp(cleanEmail, code, "registration");
     if (!result.ok || !result.verified) {
       const msg =
         result.reason === "expired_or_not_found"
@@ -95,13 +135,13 @@ export default function Register() {
       return;
     }
     const { data, error: signUpError } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password,
-      options: { data: { full_name: fullName, phone }, emailRedirectTo: undefined },
+      options: { data: { full_name: cleanName, phone: cleanPhone }, emailRedirectTo: undefined },
     });
     if (signUpError) { setError(signUpError.message); setVerifying(false); return; }
     if (data.user) {
-      await supabase.from("profiles").upsert({ id: data.user.id, full_name: fullName, phone });
+      await supabase.from("profiles").upsert({ id: data.user.id, full_name: cleanName, phone: cleanPhone });
     }
     setStage("done");
     setVerifying(false);
@@ -113,7 +153,7 @@ export default function Register() {
     setResending(true);
     setError("");
     setOtp(["", "", "", "", "", ""]);
-    const result = await sendOtp(email, "registration");
+    const result = await sendOtp(email.trim().toLowerCase(), "registration");
     if (!result.ok) setError(result.error ?? "Failed to resend code");
     else startCooldown();
     setResending(false);
@@ -168,6 +208,8 @@ export default function Register() {
                 <input
                   type="text"
                   required
+                  minLength={2}
+                  autoComplete="name"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Jane Smith"
@@ -179,8 +221,9 @@ export default function Register() {
                 <input
                   type="email"
                   required
+                  autoComplete="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail(e.target.value.trimStart())}
                   placeholder="you@example.com"
                   className="input-field"
                 />
@@ -189,6 +232,9 @@ export default function Register() {
                 <label className="label">Phone Number</label>
                 <input
                   type="tel"
+                  required
+                  autoComplete="tel"
+                  pattern="^\+?[0-9 ]{10,16}$"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+44 7700 000000"
@@ -201,9 +247,11 @@ export default function Register() {
                   <input
                     type={showPw ? "text" : "password"}
                     required
+                    minLength={8}
+                    autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min. 6 characters"
+                    placeholder="Min. 8 characters"
                     className="input-field pr-11"
                   />
                   <button
@@ -221,6 +269,8 @@ export default function Register() {
                   <input
                     type={showConfirmPw ? "text" : "password"}
                     required
+                    minLength={8}
+                    autoComplete="new-password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirm password"
