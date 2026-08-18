@@ -20,6 +20,10 @@ const FREQ_LABELS: Record<string, string> = {
   weekly: "Every week", fortnightly: "Every 2 weeks", monthly: "Every month",
 };
 
+const MIN_DURATION_HOURS = 1.5;
+const MAX_DURATION_HOURS = 12;
+const DURATION_STEP_HOURS = 0.5;
+
 function formatDuration(hours: number) {
   if (hours === 0.5) return "30 minutes";
   if (hours % 1 === 0) return `${hours} ${hours === 1 ? "hour" : "hours"}`;
@@ -118,6 +122,10 @@ export default function BookingPage() {
     if (!user || !selectedService) return;
     if (availableStartHours.length === 0) {
       setError("No future start times are available today. Please choose another date.");
+      return;
+    }
+    if (durationHours < MIN_DURATION_HOURS) {
+      setError(`Minimum booking duration is ${formatDuration(MIN_DURATION_HOURS)}.`);
       return;
     }
     setSubmitting(true);
@@ -387,22 +395,22 @@ export default function BookingPage() {
                     <Clock className="w-3.5 h-3.5" /> Number of Hours
                   </label>
                   <div className="flex items-center gap-4 mt-1">
-                    <button type="button" onClick={() => setDurationHours((h) => Math.max(0.5, h - 0.5))}
+                    <button type="button" onClick={() => setDurationHours((h) => Math.max(MIN_DURATION_HOURS, h - DURATION_STEP_HOURS))}
                       className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40"
-                      disabled={durationHours <= 0.5}>
+                      disabled={durationHours <= MIN_DURATION_HOURS}>
                       <Minus className="w-4 h-4 text-gray-600" />
                     </button>
-                    <input type="number" inputMode="decimal" min="0.5" max="12" step="0.5" value={String(durationHours)}
+                    <input type="number" inputMode="decimal" min={MIN_DURATION_HOURS} max={MAX_DURATION_HOURS} step={DURATION_STEP_HOURS} value={String(durationHours)}
                       onChange={(e) => {
                         const n = Number(e.target.value);
                         if (Number.isFinite(n)) {
-                          setDurationHours(Math.max(0.5, Math.min(12, Math.round(n * 2) / 2)));
+                          setDurationHours(Math.max(MIN_DURATION_HOURS, Math.min(MAX_DURATION_HOURS, Math.round(n * 2) / 2)));
                         }
                       }}
                       className="input-field w-24 text-center" />
-                    <button type="button" onClick={() => setDurationHours((h) => Math.min(12, h + 0.5))}
+                    <button type="button" onClick={() => setDurationHours((h) => Math.min(MAX_DURATION_HOURS, h + DURATION_STEP_HOURS))}
                       className="w-9 h-9 rounded-xl border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-40"
-                      disabled={durationHours >= 12}>
+                      disabled={durationHours >= MAX_DURATION_HOURS}>
                       <Plus className="w-4 h-4 text-gray-600" />
                     </button>
                     <div className="flex-1 text-right">
