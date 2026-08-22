@@ -1,3 +1,4 @@
+# Node & Web Build
 node_modules/
 dist/
 .vite/
@@ -5,7 +6,37 @@ dist/
 # Local env (may contain secrets)
 .env.local
 .env.*.local
-
-# Keep .env out of git if you add secrets to it
 .env
 supabase/.temp/
+
+# Flutter & Dart Build Artifacts
+.dart_tool/
+**/.dart_tool/
+.flutter-plugins
+**/.flutter-plugins
+.flutter-plugins-dependencies
+**/.flutter-plugins-dependencies
+.pub-cache/
+**/.pub-cache/
+.pub/
+**/.pub/
+build/
+**/build/
+
+# Mobile Ephemeral & Build Outputs
+**/ios/Flutter/.last_build_id
+**/ios/Flutter/ephemeral/
+**/macos/Flutter/ephemeral/
+**/windows/flutter/ephemeral/
+**/linux/flutter/ephemeral/
+**/android/app/debug/
+**/android/app/profile/
+**/android/app/release/
+**/android/.gradle/
+**/.gradle/
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+*.swp
+*.log
