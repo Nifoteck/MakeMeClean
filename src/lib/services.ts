@@ -58,21 +58,34 @@ export const walesCities = [
   "Cardiff",
   "Swansea",
   "Newport",
-  "Wrexham",
-  "Barry",
-  "Neath",
   "Bridgend",
-  "Llanelli",
-  "Merthyr Tydfil",
+  "Barry",
+  "Penarth",
   "Caerphilly",
+  "Cwmbran",
+  "Pontypridd",
+  "Llanelli",
+  "Neath",
+  "Merthyr Tydfil",
   "Rhondda",
   "Port Talbot",
-  "Cwmbran",
   "Pontypool",
   "Aberdare",
-  "Pontypridd",
-  "Penarth",
-  "Colwyn Bay",
   "Abergavenny",
-  "Brecon",
 ];
+
+export async function fetchActiveCities(): Promise<string[]> {
+  try {
+    const { supabase } = await import("./supabase");
+    const { data, error } = await supabase
+      .from("service_cities")
+      .select("name")
+      .eq("is_active", true)
+      .order("name", { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      return data.map((d: any) => d.name);
+    }
+  } catch (_) {}
+  return walesCities;
+}

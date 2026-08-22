@@ -14,6 +14,8 @@ class BookingModel {
   final String? invoiceNumber;
   final String createdAt;
   final String? userId;
+  final String? customerName;
+  final String? assignedStaffId;
   final String? recurringFreq;
 
   BookingModel({
@@ -32,8 +34,14 @@ class BookingModel {
     this.invoiceNumber,
     required this.createdAt,
     this.userId,
+    this.customerName,
+    this.assignedStaffId,
     this.recurringFreq,
   });
+
+  // Getter aliases for convenience
+  double get totalPrice => price;
+  String get serviceTitle => serviceName;
 
   factory BookingModel.fromJson(Map<String, dynamic> json) {
     return BookingModel(
@@ -52,6 +60,8 @@ class BookingModel {
       invoiceNumber: json['invoice_number']?.toString(),
       createdAt: json['created_at']?.toString() ?? '',
       userId: json['user_id']?.toString(),
+      customerName: json['customer_name']?.toString() ?? json['customer']?['full_name']?.toString(),
+      assignedStaffId: json['assigned_staff_id']?.toString(),
       recurringFreq: json['recurring_freq']?.toString(),
     );
   }

@@ -10,8 +10,11 @@ class AppColors {
   // Neutrals
   static const Color background = Color(0xFFF9FAFB); // gray-50
   static const Color surface = Color(0xFFFFFFFF);
+  static const Color cardBackground = Color(0xFFFFFFFF);
   static const Color border = Color(0xFFE5E7EB); // gray-200
   static const Color borderLight = Color(0xFFF3F4F6); // gray-100
+  static const Color cardBorder = Color(0xFFE5E7EB); // gray-200
+  static const Color accent = Color(0xFFF59E0B); // amber-500
 
   // Text
   static const Color textPrimary = Color(0xFF111827); // gray-900

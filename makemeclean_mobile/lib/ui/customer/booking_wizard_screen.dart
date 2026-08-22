@@ -35,6 +35,7 @@ class _BookingWizardScreenState extends State<BookingWizardScreen> {
   final _postcodeController = TextEditingController();
   final _notesController = TextEditingController();
   String _selectedCity = 'Cardiff';
+  List<String> _cities = AppConfig.serviceCities;
 
   @override
   void initState() {
@@ -53,13 +54,14 @@ class _BookingWizardScreenState extends State<BookingWizardScreen> {
   Future<void> _loadServicesAndProfile() async {
     final user = SupabaseService.instance.currentUser;
     final svcs = await SupabaseService.instance.getServices();
+    final activeCities = await SupabaseService.instance.getActiveCities();
 
     if (user != null) {
       final profile = await SupabaseService.instance.getUserProfile(user.id);
       if (profile != null) {
         if (profile.address != null) _addressController.text = profile.address!;
         if (profile.postcode != null) _postcodeController.text = profile.postcode!;
-        if (profile.city != null && AppConfig.serviceCities.contains(profile.city)) {
+        if (profile.city != null && activeCities.contains(profile.city)) {
           _selectedCity = profile.city!;
         }
       }
@@ -68,6 +70,10 @@ class _BookingWizardScreenState extends State<BookingWizardScreen> {
     if (mounted) {
       setState(() {
         _services = svcs;
+        _cities = activeCities;
+        if (!_cities.contains(_selectedCity) && _cities.isNotEmpty) {
+          _selectedCity = _cities.first;
+        }
         if (_services.isNotEmpty) {
           _selectedService = _services.first;
         }
@@ -610,7 +616,7 @@ class _BookingWizardScreenState extends State<BookingWizardScreen> {
               value: _selectedCity,
               isExpanded: true,
               icon: const Icon(LucideIcons.chevronDown, size: 18, color: AppColors.textMuted),
-              items: AppConfig.serviceCities.map((city) {
+              items: _cities.map((city) {
                 return DropdownMenuItem(
                   value: city,
                   child: Text(city, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
