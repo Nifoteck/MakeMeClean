@@ -1,9 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { handleCors, verifyAuth, sendSuccess, sendError } from './_lib/server.js';
+import { VercelRequest, VercelResponse, verifyAuth, sendSuccess, sendError } from '../_lib/server.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (handleCors(req, res)) return;
-
+export async function handleLoyalty(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return sendError(res, 'Method not allowed', 405);
   }

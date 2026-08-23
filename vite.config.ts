@@ -14,79 +14,8 @@ function apiDevServerPlugin(): Plugin {
         }
 
         const parsed = url.parse(reqUrl, true);
-        const pathname = (parsed.pathname || "").replace(/\/$/, "");
-
-        // Route mapping
-        let modulePath: string | null = null;
-        const queryParams: Record<string, string> = { ...(parsed.query as Record<string, string>) };
-
-        if (pathname === "/api/config") {
-          modulePath = path.resolve(__dirname, "./api/config.ts");
-        } else if (pathname === "/api/services") {
-          modulePath = path.resolve(__dirname, "./api/services.ts");
-        } else if (pathname === "/api/settings") {
-          modulePath = path.resolve(__dirname, "./api/settings.ts");
-        } else if (pathname === "/api/service-cities") {
-          modulePath = path.resolve(__dirname, "./api/service-cities.ts");
-        } else if (pathname === "/api/booking-options") {
-          modulePath = path.resolve(__dirname, "./api/booking-options.ts");
-        } else if (pathname === "/api/dashboard") {
-          modulePath = path.resolve(__dirname, "./api/dashboard.ts");
-        } else if (pathname === "/api/bookings") {
-          modulePath = path.resolve(__dirname, "./api/bookings/index.ts");
-        } else if (pathname === "/api/plans") {
-          modulePath = path.resolve(__dirname, "./api/plans/index.ts");
-        } else if (pathname === "/api/contact") {
-          modulePath = path.resolve(__dirname, "./api/contact.ts");
-        } else if (pathname === "/api/loyalty") {
-          modulePath = path.resolve(__dirname, "./api/loyalty.ts");
-        } else if (pathname === "/api/notifications") {
-          modulePath = path.resolve(__dirname, "./api/notifications.ts");
-        } else {
-          // Dynamic sub-routes
-          // /api/bookings/:id
-          const cancelMatch = pathname.match(/^\/api\/bookings\/([^\/]+)\/cancel$/);
-          const rescheduleMatch = pathname.match(/^\/api\/bookings\/([^\/]+)\/reschedule$/);
-          const checkoutMatch = pathname.match(/^\/api\/bookings\/([^\/]+)\/checkout$/);
-          const invoiceMatch = pathname.match(/^\/api\/bookings\/([^\/]+)\/invoice$/);
-          const photosMatch = pathname.match(/^\/api\/bookings\/([^\/]+)\/photos$/);
-          const refundMatch = pathname.match(/^\/api\/bookings\/([^\/]+)\/refund$/);
-          const singleBookingMatch = pathname.match(/^\/api\/bookings\/([^\/]+)$/);
-          const singlePlanMatch = pathname.match(/^\/api\/plans\/([^\/]+)$/);
-
-          if (cancelMatch) {
-            queryParams.id = cancelMatch[1];
-            modulePath = path.resolve(__dirname, "./api/bookings/[id]/cancel.ts");
-          } else if (rescheduleMatch) {
-            queryParams.id = rescheduleMatch[1];
-            modulePath = path.resolve(__dirname, "./api/bookings/[id]/reschedule.ts");
-          } else if (checkoutMatch) {
-            queryParams.id = checkoutMatch[1];
-            modulePath = path.resolve(__dirname, "./api/bookings/[id]/checkout.ts");
-          } else if (invoiceMatch) {
-            queryParams.id = invoiceMatch[1];
-            modulePath = path.resolve(__dirname, "./api/bookings/[id]/invoice.ts");
-          } else if (photosMatch) {
-            queryParams.id = photosMatch[1];
-            modulePath = path.resolve(__dirname, "./api/bookings/[id]/photos.ts");
-          } else if (refundMatch) {
-            queryParams.id = refundMatch[1];
-            modulePath = path.resolve(__dirname, "./api/bookings/[id]/refund.ts");
-          } else if (singleBookingMatch) {
-            queryParams.id = singleBookingMatch[1];
-            modulePath = path.resolve(__dirname, "./api/bookings/[id]/index.ts");
-          } else if (singlePlanMatch) {
-            queryParams.id = singlePlanMatch[1];
-            modulePath = path.resolve(__dirname, "./api/plans/[id].ts");
-          }
-        }
-
-        if (!modulePath) {
-          res.statusCode = 404;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify({ ok: false, error: `API route not found: ${pathname}` }));
-          return;
-        }
+        const queryParams: Record<string, any> = { ...(parsed.query as Record<string, any>) };
+        const modulePath = path.resolve(__dirname, "./api/index.ts");
 
         try {
           // Read request body if present

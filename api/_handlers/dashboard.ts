@@ -1,15 +1,13 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
-  handleCors,
+  VercelRequest,
+  VercelResponse,
   verifyAuth,
   sendSuccess,
   sendError,
   resolveServiceImageUrl,
-} from './_lib/server.js';
+} from '../_lib/server.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (handleCors(req, res)) return;
-
+export async function handleDashboard(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return sendError(res, 'Method not allowed', 405);
   }

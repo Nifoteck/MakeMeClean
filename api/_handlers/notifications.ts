@@ -1,9 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { handleCors, verifyAuth, sendSuccess, sendError } from './_lib/server.js';
+import { VercelRequest, VercelResponse, verifyAuth, sendSuccess, sendError } from '../_lib/server.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (handleCors(req, res)) return;
-
+export async function handleNotifications(req: VercelRequest, res: VercelResponse) {
   const { user, supabase, error: authError } = await verifyAuth(req);
   if (authError || !user) {
     return sendError(res, authError || 'Unauthorized', 401);

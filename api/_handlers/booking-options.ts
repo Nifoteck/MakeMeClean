@@ -1,6 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
-  handleCors,
+  VercelRequest,
+  VercelResponse,
   getServerSupabase,
   sendSuccess,
   sendError,
@@ -9,11 +9,9 @@ import {
   MIN_DURATION_HOURS,
   MAX_DURATION_HOURS,
   DURATION_STEP_HOURS,
-} from './_lib/server.js';
+} from '../_lib/server.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (handleCors(req, res)) return;
-
+export async function handleBookingOptions(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return sendError(res, 'Method not allowed', 405);
   }

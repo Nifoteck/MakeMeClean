@@ -1,9 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { handleCors, getServerSupabase, sendSuccess, sendError, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } from './_lib/server.js';
+import { VercelRequest, VercelResponse, getServerSupabase, sendSuccess, sendError, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } from '../_lib/server.js';
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (handleCors(req, res)) return;
-
+export async function handleContact(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return sendError(res, 'Method not allowed', 405);
   }

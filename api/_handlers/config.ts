@@ -1,9 +1,6 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { handleCors, sendSuccess, sendError, SUPABASE_URL, SUPABASE_ANON_KEY, SITE_URL } from './_lib/server.js';
+import { VercelRequest, VercelResponse, sendSuccess, sendError, SUPABASE_URL, SUPABASE_ANON_KEY, SITE_URL } from '../_lib/server.js';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
-  if (handleCors(req, res)) return;
-
+export async function handleConfig(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return sendError(res, 'Method not allowed', 405);
   }
@@ -19,3 +16,4 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     supabaseAnonKey: SUPABASE_ANON_KEY,
   });
 }
+
