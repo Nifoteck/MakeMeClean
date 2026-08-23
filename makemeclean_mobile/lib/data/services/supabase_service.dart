@@ -125,7 +125,6 @@ class SupabaseService {
     return await _client.auth.updateUser(UserAttributes(password: newPassword));
   }
 
-  // ─── Role Verification ──────────────────────────────────────────────────────
   Future<bool> checkIsAdmin(String? userId) async {
     if (userId == null) return false;
     try {

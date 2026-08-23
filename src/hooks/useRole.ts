@@ -8,14 +8,31 @@ export function useIsAdmin(userId?: string) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!userId) { setIsAdmin(false); setLoading(false); return; }
+      if (!userId) {
+        setIsAdmin(false);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
-      const { data, error } = await supabase.from("admins").select("user_id").eq("user_id", userId).maybeSingle();
-      if (cancelled) return;
-      setIsAdmin(!error && !!data);
-      setLoading(false);
+
+      try {
+        const { data, error } = await supabase
+          .from("admins")
+          .select("user_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+
+        if (cancelled) return;
+        setIsAdmin(!error && !!data);
+      } catch {
+        if (!cancelled) setIsAdmin(false);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [userId]);
 
   return { isAdmin, loading };
