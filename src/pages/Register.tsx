@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Sparkles, Eye, EyeOff, Mail, ShieldCheck, RefreshCw, Check } from "lucide-react";
+import { Eye, EyeOff, Mail, ShieldCheck, RefreshCw, Check } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { sendOtp, verifyOtp } from "@/lib/otp";
 
@@ -9,29 +9,35 @@ type Stage = "form" | "verify" | "done";
 function validateFullName(value: string) {
   const name = value.trim().replace(/\s+/g, " ");
   if (name.length < 2) return "Please enter your full name.";
-  if (!/^[A-Za-z][A-Za-z' -]*[A-Za-z]$/.test(name)) return "Full name can only include letters, spaces, hyphens and apostrophes.";
-  if (name.split(" ").filter(Boolean).length < 2) return "Please enter your first and last name.";
+  if (!/^[A-Za-z][A-Za-z' -]*[A-Za-z]$/.test(name))
+    return "Full name can only include letters, spaces, hyphens and apostrophes.";
+  if (name.split(" ").filter(Boolean).length < 2)
+    return "Please enter your first and last name.";
   return "";
 }
 
 function validateEmail(value: string) {
   const email = value.trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return "Please enter a valid email address.";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))
+    return "Please enter a valid email address.";
   return "";
 }
 
 function validatePhone(value: string) {
   const phone = value.trim();
   if (!phone) return "Please enter your phone number.";
-  if (!/^\+?[0-9 ]{10,16}$/.test(phone)) return "Please enter a valid phone number.";
+  if (!/^\+?[0-9 ]{10,16}$/.test(phone))
+    return "Please enter a valid phone number.";
   const digits = phone.replace(/\D/g, "");
-  if (digits.length < 10 || digits.length > 15) return "Phone number must be 10 to 15 digits.";
+  if (digits.length < 10 || digits.length > 15)
+    return "Phone number must be 10 to 15 digits.";
   return "";
 }
 
 function validatePassword(value: string) {
   if (value.length < 8) return "Password must be at least 8 characters.";
-  if (!/[A-Za-z]/.test(value) || !/\d/.test(value)) return "Password must include at least one letter and one number.";
+  if (!/[A-Za-z]/.test(value) || !/\d/.test(value))
+    return "Password must include at least one letter and one number.";
   return "";
 }
 
@@ -62,7 +68,10 @@ export default function Register() {
     if (cooldownRef.current) clearInterval(cooldownRef.current);
     cooldownRef.current = setInterval(() => {
       setResendCooldown((c) => {
-        if (c <= 1) { clearInterval(cooldownRef.current!); return 0; }
+        if (c <= 1) {
+          clearInterval(cooldownRef.current!);
+          return 0;
+        }
         return c - 1;
       });
     }, 1000);
@@ -71,20 +80,42 @@ export default function Register() {
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const nameError = validateFullName(fullName);
-    if (nameError) { setError(nameError); return; }
+    if (nameError) {
+      setError(nameError);
+      return;
+    }
     const emailError = validateEmail(email);
-    if (emailError) { setError(emailError); return; }
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
     const phoneError = validatePhone(phone);
-    if (phoneError) { setError(phoneError); return; }
+    if (phoneError) {
+      setError(phoneError);
+      return;
+    }
     const passwordError = validatePassword(password);
-    if (passwordError) { setError(passwordError); return; }
-    if (password !== confirmPassword) { setError("Passwords do not match."); return; }
-    if (!agreedToTerms) { setError("Please accept the Terms & Conditions to continue."); return; }
+    if (passwordError) {
+      setError(passwordError);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (!agreedToTerms) {
+      setError("Please accept the Terms & Conditions to continue.");
+      return;
+    }
     setLoading(true);
     setError("");
     const cleanEmail = email.trim().toLowerCase();
     const result = await sendOtp(cleanEmail, "registration");
-    if (!result.ok) { setError(result.error ?? "Failed to send code"); setLoading(false); return; }
+    if (!result.ok) {
+      setError(result.error ?? "Failed to send code");
+      setLoading(false);
+      return;
+    }
     setStage("verify");
     startCooldown();
     setLoading(false);
@@ -109,7 +140,10 @@ export default function Register() {
   };
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
-    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    const digits = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
     if (digits.length === 6) {
       setOtp(digits.split(""));
       verifyCode(digits);
@@ -137,11 +171,20 @@ export default function Register() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
-      options: { data: { full_name: cleanName, phone: cleanPhone }, emailRedirectTo: undefined },
+      options: {
+        data: { full_name: cleanName, phone: cleanPhone },
+        emailRedirectTo: undefined,
+      },
     });
-    if (signUpError) { setError(signUpError.message); setVerifying(false); return; }
+    if (signUpError) {
+      setError(signUpError.message);
+      setVerifying(false);
+      return;
+    }
     if (data.user) {
-      await supabase.from("profiles").upsert({ id: data.user.id, full_name: cleanName, phone: cleanPhone });
+      await supabase
+        .from("profiles")
+        .upsert({ id: data.user.id, full_name: cleanName, phone: cleanPhone });
     }
     setStage("done");
     setVerifying(false);
@@ -167,8 +210,12 @@ export default function Register() {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <ShieldCheck className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Created!</h2>
-          <p className="text-gray-500 text-sm">Redirecting you to your dashboard...</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Account Created!
+          </h2>
+          <p className="text-gray-500 text-sm">
+            Redirecting you to your dashboard...
+          </p>
         </div>
       </div>
     );
@@ -178,11 +225,21 @@ export default function Register() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-5">
-            <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center shadow">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">Make<span className="text-green-600">Me</span>Clean</span>
+          <Link href="/" className="inline-flex items-center gap-2.5 mb-5">
+            <img
+              src="/logo.png"
+              alt="MakeMeClean"
+              className="w-10 h-10 rounded-xl object-cover shadow"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = "none";
+              }}
+            />
+            <span
+              className="text-2xl font-black text-gray-900 tracking-tight"
+              style={{ fontFamily: "Outfit, sans-serif" }}
+            >
+              Make<span className="text-green-600">Me</span>Clean
+            </span>
           </Link>
           <h1 className="text-2xl font-extrabold text-gray-900">
             {stage === "form" ? "Create your account" : "Check your email"}
@@ -259,7 +316,11 @@ export default function Register() {
                     onClick={() => setShowPw(!showPw)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPw ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -281,7 +342,11 @@ export default function Register() {
                     onClick={() => setShowConfirmPw(!showConfirmPw)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showConfirmPw ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -296,17 +361,28 @@ export default function Register() {
                       : "border-gray-300 bg-white group-hover:border-green-400"
                   }`}
                 >
-                  {agreedToTerms && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                  {agreedToTerms && (
+                    <Check className="w-3 h-3 text-white stroke-[3]" />
+                  )}
                 </button>
                 <span className="text-sm text-gray-600 leading-snug">
                   I have read and agree to MakeMeClean's{" "}
-                  <Link href="/terms" target="_blank" className="text-green-600 font-semibold hover:underline">
+                  <Link
+                    href="/terms"
+                    target="_blank"
+                    className="text-green-600 font-semibold hover:underline"
+                  >
                     Terms &amp; Conditions
-                  </Link>
-                  {" "}and{" "}
-                  <Link href="/privacy" target="_blank" className="text-green-600 font-semibold hover:underline">
+                  </Link>{" "}
+                  and{" "}
+                  <Link
+                    href="/privacy"
+                    target="_blank"
+                    className="text-green-600 font-semibold hover:underline"
+                  >
                     Privacy Policy
-                  </Link>.
+                  </Link>
+                  .
                 </span>
               </label>
 
@@ -329,12 +405,19 @@ export default function Register() {
               </div>
 
               <div>
-                <p className="text-xs font-semibold text-gray-500 text-center mb-4 uppercase tracking-wide">Enter verification code</p>
-                <div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
+                <p className="text-xs font-semibold text-gray-500 text-center mb-4 uppercase tracking-wide">
+                  Enter verification code
+                </p>
+                <div
+                  className="flex gap-2 justify-center"
+                  onPaste={handleOtpPaste}
+                >
                   {otp.map((digit, i) => (
                     <input
                       key={i}
-                      ref={(el) => { otpRefs.current[i] = el; }}
+                      ref={(el) => {
+                        otpRefs.current[i] = el;
+                      }}
                       type="text"
                       inputMode="numeric"
                       maxLength={1}
@@ -347,7 +430,9 @@ export default function Register() {
                   ))}
                 </div>
                 {verifying && (
-                  <p className="text-center text-xs text-gray-400 mt-3">Verifying...</p>
+                  <p className="text-center text-xs text-gray-400 mt-3">
+                    Verifying...
+                  </p>
                 )}
               </div>
 
@@ -358,11 +443,19 @@ export default function Register() {
                   className="inline-flex items-center gap-1.5 text-sm text-green-600 font-semibold hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  {resending ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
+                  {resending
+                    ? "Sending..."
+                    : resendCooldown > 0
+                    ? `Resend in ${resendCooldown}s`
+                    : "Resend code"}
                 </button>
                 <br />
                 <button
-                  onClick={() => { setStage("form"); setError(""); setOtp(["", "", "", "", "", ""]); }}
+                  onClick={() => {
+                    setStage("form");
+                    setError("");
+                    setOtp(["", "", "", "", "", ""]);
+                  }}
                   className="text-sm text-gray-400 hover:text-gray-600"
                 >
                   Use a different email
@@ -373,7 +466,12 @@ export default function Register() {
 
           <p className="text-center text-sm text-gray-500 mt-5">
             Already have an account?{" "}
-            <Link href="/login" className="text-green-600 font-semibold hover:underline">Sign in</Link>
+            <Link
+              href="/login"
+              className="text-green-600 font-semibold hover:underline"
+            >
+              Sign in
+            </Link>
           </p>
         </div>
       </div>

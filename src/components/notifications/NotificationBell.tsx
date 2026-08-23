@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Bell, CheckCircle2, Sparkles, X, Info } from "lucide-react";
+import { Bell, CheckCircle2, X, Info } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -131,7 +131,7 @@ export default function NotificationBell() {
                     {n.type === "shift_approved" ? (
                       <CheckCircle2 className="w-4 h-4" />
                     ) : (
-                      <Sparkles className="w-4 h-4" />
+                      <Info className="w-4 h-4" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

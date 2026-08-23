@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { Lock, CheckCircle, AlertCircle, ArrowLeft, Sparkles } from "lucide-react";
+import { Lock, CheckCircle, AlertCircle, ArrowLeft } from "lucide-react";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -271,8 +271,7 @@ export default function PaymentPage() {
               <span className="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-0.5 rounded">CARD</span>
             </div>
           </div>
-
-          {step === "processing" ? (
+          {step === "processing" ? (
             <div className="py-12 text-center">
               <div className="w-12 h-12 border-4 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
               <p className="font-semibold text-gray-700">{message || "Processing payment..."}</p>
@@ -286,7 +285,7 @@ export default function PaymentPage() {
                   className="btn-primary w-full flex items-center justify-center gap-2 text-base py-3.5"
                   data-testid="button-pay"
                 >
-                  <Sparkles className="w-4 h-4" />
+                  <Lock className="w-4 h-4" />
                   Pay with Stripe - {formatCurrency(booking.price)}
                 </button>
               </div>

@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_config.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/booking_model.dart';
+import '../../data/models/reschedule_request_model.dart';
 import '../../data/services/supabase_service.dart';
+import 'booking_photos_screen.dart';
+import 'refund_request_screen.dart';
 import '../shared/custom_button.dart';
 import '../shared/loading_indicator.dart';
 import '../shared/status_badge.dart';
@@ -20,7 +27,9 @@ class BookingDetailScreen extends StatefulWidget {
 class _BookingDetailScreenState extends State<BookingDetailScreen> {
   bool _isLoading = true;
   BookingModel? _booking;
+  RescheduleRequestModel? _rescheduleRequest;
   bool _isCancelling = false;
+  bool _isPaying = false;
 
   @override
   void initState() {
@@ -32,15 +41,179 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final b = await SupabaseService.instance.getBookingById(widget.bookingId);
+      final rr = await SupabaseService.instance.getLatestRescheduleRequest(
+        widget.bookingId,
+      );
       if (mounted) {
         setState(() {
           _booking = b;
+          _rescheduleRequest = rr;
           _isLoading = false;
         });
       }
     } catch (_) {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  bool _canCancel(BookingModel booking) {
+    if (booking.status.toLowerCase() != 'upcoming') return false;
+    final match = RegExp(r'\b\d{2}:\d{2}\b').firstMatch(booking.timeSlot);
+    if (match == null) return true;
+    final start = DateTime.tryParse('${booking.date}T${match.group(0)}:00');
+    if (start == null) return true;
+    return start.difference(DateTime.now()).inMinutes > 180;
+  }
+
+  Future<void> _handlePay() async {
+    setState(() => _isPaying = true);
+    try {
+      final url = await SupabaseService.instance.createStripeCheckoutUrl(
+        widget.bookingId,
+      );
+      final launched = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched) throw Exception('Could not open Stripe Checkout.');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: AppColors.statusCancelledText,
+            content: Text('Payment failed to start: $e'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPaying = false);
+    }
+  }
+
+  Future<void> _showRescheduleSheet() async {
+    final booking = _booking;
+    if (booking == null) return;
+    final reasonController = TextEditingController();
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+    String selectedTime = '09:00';
+    bool submitting = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            Future<void> submit() async {
+              setSheetState(() => submitting = true);
+              try {
+                final request = await SupabaseService.instance
+                    .requestReschedule(
+                      bookingId: booking.id,
+                      requestedDate: DateFormat('yyyy-MM-dd')
+                          .format(selectedDate),
+                      requestedTime: selectedTime,
+                      reason: reasonController.text,
+                    );
+                if (mounted) {
+                  setState(() => _rescheduleRequest = request);
+                }
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                if (ctx.mounted) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    SnackBar(
+                      backgroundColor: AppColors.statusCancelledText,
+                      content: Text('Could not request reschedule: $e'),
+                    ),
+                  );
+                }
+              } finally {
+                setSheetState(() => submitting = false);
+              }
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Request a new time',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+                  ),
+                  const SizedBox(height: 16),
+                  InkWell(
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime.now().add(const Duration(days: 1)),
+                        lastDate: DateTime.now().add(const Duration(days: 90)),
+                      );
+                      if (picked != null) {
+                        setSheetState(() => selectedDate = picked);
+                      }
+                    },
+                    child: _sheetField(
+                      LucideIcons.calendar,
+                      Formatters.date(selectedDate),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedTime,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(LucideIcons.clock),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    items: AppConfig.timeSlots
+                        .map(
+                          (time) =>
+                              DropdownMenuItem(value: time, child: Text(time)),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setSheetState(() => selectedTime = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: reasonController,
+                    decoration: InputDecoration(
+                      hintText: 'Reason (optional)',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  CustomButton(
+                    text: 'Submit Request',
+                    isLoading: submitting,
+                    onPressed: submit,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+    reasonController.dispose();
   }
 
   Future<void> _handleCancel() async {
@@ -58,7 +231,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             child: const Text('Keep Booking'),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.statusCancelledText),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.statusCancelledText,
+            ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Cancel Clean'),
           ),
@@ -108,6 +283,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
 
     final b = _booking!;
     final isUpcoming = b.status.toLowerCase() == 'upcoming';
+    final isPaid = b.paymentStatus == 'paid';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -228,15 +404,104 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             const SizedBox(height: 24),
 
             // Action Buttons
-            if (isUpcoming) ...[
+            if (isUpcoming &&
+                !isPaid &&
+                b.paymentStatus != 'refunded' &&
+                b.paymentStatus != 'disputed') ...[
               CustomButton(
-                text: 'Cancel Booking',
-                isOutlined: true,
-                backgroundColor: AppColors.statusCancelledText,
-                textColor: AppColors.statusCancelledText,
-                isLoading: _isCancelling,
-                onPressed: _handleCancel,
+                text: 'Pay ${Formatters.currency(b.price)}',
+                icon: const Icon(LucideIcons.creditCard, size: 18),
+                isLoading: _isPaying,
+                onPressed: _handlePay,
               ),
+              const SizedBox(height: 12),
+            ],
+
+            if (b.invoiceNumber != null && b.invoiceNumber!.isNotEmpty) ...[
+              CustomButton(
+                text: 'Open Invoice',
+                isOutlined: true,
+                icon: const Icon(LucideIcons.receipt, size: 18),
+                onPressed: () => launchUrl(
+                  Uri.parse('${AppConfig.siteUrl}/invoice/${b.id}'),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            if (_rescheduleRequest != null) ...[
+              _buildNotice(
+                icon: LucideIcons.refreshCw,
+                title: 'Reschedule ${_rescheduleRequest!.status}',
+                text:
+                    '${Formatters.date(_rescheduleRequest!.requestedDate)} at ${_rescheduleRequest!.requestedTime}',
+                color: const Color(0xFF2563EB),
+              ),
+              const SizedBox(height: 12),
+            ] else if (isUpcoming) ...[
+              CustomButton(
+                text: 'Request to Reschedule',
+                isOutlined: true,
+                icon: const Icon(LucideIcons.refreshCw, size: 18),
+                onPressed: _showRescheduleSheet,
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            if (b.status.toLowerCase() == 'completed') ...[
+              CustomButton(
+                text: 'Upload Booking Photos',
+                isOutlined: true,
+                icon: const Icon(LucideIcons.imagePlus, size: 18),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BookingPhotosScreen(bookingId: b.id),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            if (isPaid &&
+                (b.status.toLowerCase() == 'upcoming' ||
+                    b.status.toLowerCase() == 'completed')) ...[
+              CustomButton(
+                text: 'Request Refund',
+                isOutlined: true,
+                icon: const Icon(LucideIcons.circleDollarSign, size: 18),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => RefundRequestScreen(bookingId: b.id),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            if (isUpcoming) ...[
+              if (_canCancel(b))
+                CustomButton(
+                  text: 'Cancel Booking',
+                  isOutlined: true,
+                  backgroundColor: AppColors.statusCancelledText,
+                  textColor: AppColors.statusCancelledText,
+                  isLoading: _isCancelling,
+                  onPressed: _handleCancel,
+                )
+              else
+                _buildNotice(
+                  icon: LucideIcons.circleAlert,
+                  title: 'Cancellation window closed',
+                  text: 'Cancellations must be made at least 3 hours before.',
+                  color: AppColors.textMuted,
+                ),
               const SizedBox(height: 12),
             ],
 
@@ -248,7 +513,9 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                 showModalBottomSheet(
                   context: context,
                   shape: const RoundedRectangleBorder(
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(20),
+                    ),
                   ),
                   builder: (ctx) => Padding(
                     padding: const EdgeInsets.all(24),
@@ -258,16 +525,25 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                       children: [
                         const Text(
                           'Contact MakeMeClean Support',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         const Text(
                           'Our team is available 7 days a week from 7am to 7pm to help with your bookings.',
-                          style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                          style: TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                          ),
                         ),
                         const SizedBox(height: 20),
                         ListTile(
-                          leading: const Icon(LucideIcons.mail, color: AppColors.primary),
+                          leading: const Icon(
+                            LucideIcons.mail,
+                            color: AppColors.primary,
+                          ),
                           title: const Text('Email Support'),
                           subtitle: const Text('contact@makemeclean.co.uk'),
                           contentPadding: EdgeInsets.zero,
@@ -281,6 +557,70 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _sheetField(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.border),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppColors.textSecondary),
+          const SizedBox(width: 10),
+          Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
+          const Spacer(),
+          const Icon(LucideIcons.chevronDown, size: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotice({
+    required IconData icon,
+    required String title,
+    required String text,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  text,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -320,4 +660,3 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
     );
   }
 }
-

@@ -1,25 +1,47 @@
 import { PropsWithChildren, ReactNode, useState } from "react";
 import { useLocation } from "wouter";
-import { LayoutDashboard, UsersRound, BriefcaseBusiness, Sparkles, LogOut, Menu, X, ChevronRight, Banknote, CalendarClock, MessageSquare, ExternalLink, Repeat, Settings, DollarSign, Image as ImageIcon, Trophy } from "lucide-react";
+import {
+  LayoutDashboard,
+  UsersRound,
+  BriefcaseBusiness,
+  SprayCan,
+  LogOut,
+  Menu,
+  X,
+  ChevronRight,
+  Banknote,
+  CalendarClock,
+  MessageSquare,
+  ExternalLink,
+  Repeat,
+  Settings,
+  DollarSign,
+  Image as ImageIcon,
+  Trophy,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 import { useScrollLock } from "@/hooks/useScrollLock";
 
-type NavItem = { href: string; label: string; icon: React.ComponentType<{ className?: string }> };
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
 
 const nav: NavItem[] = [
-  { href: "/admin",            label: "Bookings",    icon: LayoutDashboard  },
-  { href: "/admin/applicants", label: "Applicants",  icon: UsersRound       },
-  { href: "/admin/staff",      label: "Staff",       icon: BriefcaseBusiness },
-  { href: "/admin/services",   label: "Services",    icon: Sparkles         },
-  { href: "/admin/payroll",      label: "Payroll",      icon: Banknote        },
-  { href: "/admin/reschedules",  label: "Reschedules",  icon: CalendarClock   },
-  { href: "/admin/plans",        label: "Plans",        icon: Repeat          },
-  { href: "/admin/messages",     label: "Messages",     icon: MessageSquare   },
-  { href: "/admin/refunds",      label: "Refunds",      icon: DollarSign      },
-  { href: "/admin/photos",       label: "Photos",       icon: ImageIcon       },
-  { href: "/admin/loyalty",      label: "Loyalty",      icon: Trophy          },
-  { href: "/admin/settings",    label: "Settings",     icon: Settings        },
+  { href: "/admin", label: "Bookings", icon: LayoutDashboard },
+  { href: "/admin/applicants", label: "Applicants", icon: UsersRound },
+  { href: "/admin/staff", label: "Staff", icon: BriefcaseBusiness },
+  { href: "/admin/services", label: "Services", icon: SprayCan },
+  { href: "/admin/payroll", label: "Payroll", icon: Banknote },
+  { href: "/admin/reschedules", label: "Reschedules", icon: CalendarClock },
+  { href: "/admin/plans", label: "Plans", icon: Repeat },
+  { href: "/admin/messages", label: "Messages", icon: MessageSquare },
+  { href: "/admin/refunds", label: "Refunds", icon: DollarSign },
+  { href: "/admin/photos", label: "Photos", icon: ImageIcon },
+  { href: "/admin/loyalty", label: "Loyalty", icon: Trophy },
+  { href: "/admin/settings", label: "Settings", icon: Settings },
 ];
 
 function isActive(current: string, href: string) {
@@ -27,13 +49,24 @@ function isActive(current: string, href: string) {
   return current === href || current.startsWith(`${href}/`);
 }
 
-function NavLink({ item, current, onClick }: { item: NavItem; current: string; onClick?: () => void }) {
+function NavLink({
+  item,
+  current,
+  onClick,
+}: {
+  item: NavItem;
+  current: string;
+  onClick?: () => void;
+}) {
   const [, setLocation] = useLocation();
   const active = isActive(current, item.href);
   const Icon = item.icon;
   return (
     <button
-      onClick={() => { setLocation(item.href); onClick?.(); }}
+      onClick={() => {
+        setLocation(item.href);
+        onClick?.();
+      }}
       className={cn(
         "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all",
         active
@@ -41,7 +74,12 @@ function NavLink({ item, current, onClick }: { item: NavItem; current: string; o
           : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
       )}
     >
-      <Icon className={cn("w-5 h-5 shrink-0", active ? "text-white" : "text-gray-400")} />
+      <Icon
+        className={cn(
+          "w-5 h-5 shrink-0",
+          active ? "text-white" : "text-gray-400"
+        )}
+      />
       <span className="flex-1 text-left">{item.label}</span>
       {active && <ChevronRight className="w-4 h-4 text-white/70" />}
     </button>
@@ -53,7 +91,11 @@ export default function AdminLayout({
   subtitle,
   actions,
   children,
-}: PropsWithChildren<{ title: string; subtitle?: string; actions?: ReactNode }>) {
+}: PropsWithChildren<{
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+}>) {
   const [location, setLocation] = useLocation();
   const { signOut } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -62,12 +104,19 @@ export default function AdminLayout({
   const sidebar = (
     <div className="flex flex-col h-full">
       <div className="px-4 pt-6 pb-5 border-b border-gray-100">
-        <p className="text-xl font-black text-gray-900 tracking-tight">MakeMeClean</p>
+        <p className="text-xl font-black text-gray-900 tracking-tight">
+          MakeMeClean
+        </p>
         <p className="text-xs text-gray-400 mt-0.5 font-medium">Back office</p>
       </div>
       <nav className="flex-1 px-3 py-4 space-y-1">
         {nav.map((item) => (
-          <NavLink key={item.href} item={item} current={location} onClick={() => setMobileOpen(false)} />
+          <NavLink
+            key={item.href}
+            item={item}
+            current={location}
+            onClick={() => setMobileOpen(false)}
+          />
         ))}
       </nav>
       <div className="px-3 pb-6 border-t border-gray-100 pt-4 space-y-1">
@@ -79,7 +128,10 @@ export default function AdminLayout({
           View site
         </button>
         <button
-          onClick={async () => { await signOut(); setLocation("/"); }}
+          onClick={async () => {
+            await signOut();
+            setLocation("/");
+          }}
           className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
         >
           <LogOut className="w-5 h-5 text-gray-400" />
@@ -99,7 +151,10 @@ export default function AdminLayout({
       {/* Mobile sidebar overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => setMobileOpen(false)}
+          />
           <aside className="relative z-50 w-72 h-full bg-white shadow-2xl overflow-y-auto">
             <button
               onClick={() => setMobileOpen(false)}
@@ -130,10 +185,16 @@ export default function AdminLayout({
           {/* Page header */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
             <div>
-              <h1 className="text-2xl font-black text-gray-900 tracking-tight">{title}</h1>
-              {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+              <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+              )}
             </div>
-            {actions && <div className="flex items-center gap-3 shrink-0">{actions}</div>}
+            {actions && (
+              <div className="flex items-center gap-3 shrink-0">{actions}</div>
+            )}
           </div>
           {children}
         </main>

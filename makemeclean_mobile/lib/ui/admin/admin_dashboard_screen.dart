@@ -5,12 +5,13 @@ import '../../core/utils/formatters.dart';
 import '../../data/services/supabase_service.dart';
 import '../shared/loading_indicator.dart';
 import '../shared/notification_modal.dart';
+import '../shared/service_image_widget.dart';
 
 enum AdminSection {
   bookings('Bookings', LucideIcons.layoutDashboard, 'Manage customer cleans & assignments'),
   applicants('Applicants', LucideIcons.usersRound, 'Cleaner job applications & hiring'),
   staff('Staff', LucideIcons.briefcaseBusiness, 'Active cleaners & team management'),
-  services('Services', LucideIcons.sparkles, 'Service catalog & pricing rates'),
+  services('Services', LucideIcons.sprayCan, 'Service catalog & pricing rates'),
   payroll('Payroll', LucideIcons.banknote, 'Friday cleaner payouts & hours'),
   reschedules('Reschedules', LucideIcons.calendarClock, 'Customer reschedule requests'),
   plans('Plans', LucideIcons.repeat, 'Recurring cleaning subscriptions'),
@@ -183,7 +184,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(LucideIcons.sparkles, color: Colors.white, size: 22),
+                    child: const Icon(LucideIcons.sprayCan, color: Colors.white, size: 22),
                   ),
                   const SizedBox(width: 12),
                   const Column(
@@ -609,13 +610,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final s = _services[index];
+        final id = s['id']?.toString() ?? '';
         final name = s['name'] ?? 'Service';
         final price = (s['price'] as num?)?.toDouble() ?? 0.0;
         final discount = (s['discount_percent'] as num?)?.toInt() ?? 0;
+        final imageUrl = s['image_url']?.toString();
         final active = s['active'] == true;
 
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -623,13 +626,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
           child: Row(
             children: [
+              ServiceImageWidget(
+                serviceId: id,
+                imageUrl: imageUrl,
+                width: 52,
+                height: 52,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    Text('${Formatters.currency(price)} / hour • $discount% off', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${Formatters.currency(price)}/hr${discount > 0 ? ' • $discount% off' : ''}',
+                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                    ),
                   ],
                 ),
               ),

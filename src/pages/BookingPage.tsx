@@ -23,6 +23,7 @@ import {
 import { cn, formatCurrency, generateInvoiceNumber } from "@/lib/utils";
 import { sendTelegramBookingNotification } from "@/lib/telegram";
 import { useServices } from "@/hooks/useServices";
+import { api } from "@/lib/apiClient";
 
 type Step = 1 | 2 | 3;
 type RecurringFreq = "none" | "weekly" | "fortnightly" | "monthly";
@@ -184,69 +185,28 @@ export default function BookingPage() {
     setSubmitting(true);
     setError("");
 
-    const invoice = generateInvoiceNumber();
-    const { data, error: err } = await supabase
-      .from("bookings")
-      .insert({
-        user_id: user.id,
-        service_type: selectedService.id,
-        service_name: selectedService.name,
+    try {
+      const result = await api.createBooking({
+        serviceId: selectedService.id,
         date,
-        time_slot: timeSlot,
+        startHour,
+        durationHours,
+        timeSlot,
         address,
         city,
         postcode,
-        price: finalPrice,
-        notes: notes || null,
-        status: "upcoming",
-        payment_status: "pending",
-        invoice_number: invoice,
-      })
-      .select()
-      .single();
-
-    if (err) {
-      setError(err.message);
-      setSubmitting(false);
-      return;
-    }
-
-    // Create recurring plan if selected
-    if (recurringFreq !== "none") {
-      await supabase.from("recurring_plans").insert({
-        user_id: user.id,
-        service_type: selectedService.id,
-        service_name: selectedService.name,
-        frequency: recurringFreq,
-        start_time: startHour,
-        duration_hours: durationHours,
-        address,
-        city,
-        postcode,
-        price_per_visit: finalPrice,
-        discount_percent: recurringPct,
-        notes: notes || null,
-        status: "active",
+        notes: notes || undefined,
+        recurringFreq,
       });
+
+      const newBooking = result.booking || result;
+      setBookingId(newBooking.id);
+      setStep(3);
+    } catch (err: any) {
+      setError(err?.message || "Failed to submit booking. Please try again.");
+    } finally {
+      setSubmitting(false);
     }
-
-    await sendTelegramBookingNotification({
-      id: data.id,
-      service_name: selectedService.name,
-      date,
-      time_slot: timeSlot,
-      address,
-      city,
-      postcode,
-      price: finalPrice,
-      notes: notes || null,
-      invoice_number: invoice,
-      customer_email: user.email ?? undefined,
-    });
-
-    setBookingId(data.id);
-    setStep(3);
-    setSubmitting(false);
   };
 
   if (loading)

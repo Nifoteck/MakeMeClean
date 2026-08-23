@@ -1,14 +1,21 @@
 import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../core/constants/app_config.dart';
 import '../models/booking_model.dart';
+import '../models/booking_photo_model.dart';
 import '../models/service_model.dart';
 import '../models/profile_model.dart';
 import '../models/loyalty_model.dart';
 import '../models/shift_model.dart';
 import '../models/notification_model.dart';
+import '../models/recurring_plan_model.dart';
+import '../models/reschedule_request_model.dart';
+import 'api_client.dart';
 
 class SupabaseService {
   static final SupabaseService instance = SupabaseService._internal();
@@ -64,10 +71,7 @@ class SupabaseService {
     }
 
     // 2. Initialize Supabase in memory dynamically
-    await Supabase.initialize(
-      url: url,
-      anonKey: key,
-    );
+    await Supabase.initialize(url: url, publishableKey: key);
 
     _isInitialized = true;
   }
@@ -92,10 +96,7 @@ class SupabaseService {
     final response = await _client.auth.signUp(
       email: email.trim(),
       password: password,
-      data: {
-        'full_name': fullName.trim(),
-        'phone': phone?.trim(),
-      },
+      data: {'full_name': fullName.trim(), 'phone': phone?.trim()},
     );
 
     if (response.user != null) {
@@ -121,9 +122,7 @@ class SupabaseService {
   }
 
   Future<UserResponse> updatePassword(String newPassword) async {
-    return await _client.auth.updateUser(
-      UserAttributes(password: newPassword),
-    );
+    return await _client.auth.updateUser(UserAttributes(password: newPassword));
   }
 
   // ─── Role Verification ──────────────────────────────────────────────────────
@@ -177,6 +176,13 @@ class SupabaseService {
   // ─── Active Service Cities ────────────────────────────────────────────────
   Future<List<String>> getActiveCities() async {
     try {
+      final res = await ApiClient.instance.get('/service-cities');
+      if (res is List && res.isNotEmpty) {
+        return res.map((e) => e.toString()).toList();
+      }
+    } catch (_) {}
+
+    try {
       final res = await _client
           .from('service_cities')
           .select('name')
@@ -188,79 +194,72 @@ class SupabaseService {
       }
     } catch (_) {}
 
-    return [
-      'Cardiff',
-      'Newport',
-      'Swansea',
-      'Bridgend',
-      'Barry',
-      'Penarth',
-      'Caerphilly',
-      'Cwmbran',
-      'Pontypridd',
-      'Llanelli',
-      'Neath',
-      'Merthyr Tydfil',
-      'Rhondda',
-      'Port Talbot',
-      'Pontypool',
-      'Aberdare',
-      'Abergavenny',
-    ];
+    return AppConfig.serviceCities;
+  }
+
+  Future<Map<String, String>> getSettings({List<String>? keys}) async {
+    try {
+      final res = await ApiClient.instance.get('/settings');
+      if (res is Map<String, dynamic>) {
+        final map = <String, String>{};
+        res.forEach((k, v) {
+          if (keys == null || keys.isEmpty || keys.contains(k)) {
+            map[k] = v.toString();
+          }
+        });
+        if (map.isNotEmpty) return map;
+      }
+    } catch (_) {}
+
+    final query = _client.from('settings').select('key, value');
+    final res = keys == null || keys.isEmpty
+        ? await query
+        : await query.inFilter('key', keys);
+
+    final settings = <String, String>{};
+    for (final row in (res as List)) {
+      final key = row['key']?.toString();
+      if (key == null || key.isEmpty) continue;
+      settings[key] = row['value']?.toString() ?? '';
+    }
+    return settings;
   }
 
   // ─── Services ──────────────────────────────────────────────────────────────
   Future<List<ServiceModel>> getServices() async {
     try {
-      final res = await _client
-          .from('services')
-          .select()
-          .eq('active', true)
-          .order('sort_order', ascending: true);
+      final res = await ApiClient.instance.get('/services');
+      if (res is List) {
+        return res
+            .map((item) => ServiceModel.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (_) {}
 
-      return (res as List)
-          .map((item) => ServiceModel.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } catch (_) {
-      // Fallback standard services if table not populated
-      return [
-        ServiceModel(
-          id: 'domestic',
-          name: 'Standard Domestic Cleaning',
-          description: 'Regular cleaning for bedrooms, bathrooms, kitchen, and living areas.',
-          price: 35.0,
-          popular: true,
-        ),
-        ServiceModel(
-          id: 'deep-clean',
-          name: 'Deep Spring Cleaning',
-          description: 'Intensive top-to-bottom clean tackling grime, appliances, and hard-to-reach spots.',
-          price: 75.0,
-        ),
-        ServiceModel(
-          id: 'end-of-tenancy',
-          name: 'End of Tenancy Cleaning',
-          description: 'Deposit-back guarantee clean for moving out of rental properties.',
-          price: 120.0,
-        ),
-        ServiceModel(
-          id: 'carpet-clean',
-          name: 'Carpet & Upholstery Clean',
-          description: 'Hot water extraction deep cleaning for carpets, rugs, and sofas.',
-          price: 50.0,
-        ),
-        ServiceModel(
-          id: 'commercial',
-          name: 'Commercial & Office Cleaning',
-          description: 'Professional workspace hygiene, desks, sanitization, and communal areas.',
-          price: 90.0,
-        ),
-      ];
-    }
+    final res = await _client
+        .from('services')
+        .select(
+          'id, name, description, price, image_url, discount_percent, popular, active',
+        )
+        .eq('active', true)
+        .order('name', ascending: true);
+
+    return (res as List)
+        .map((item) => ServiceModel.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   // ─── Bookings ──────────────────────────────────────────────────────────────
   Future<List<BookingModel>> getUserBookings(String userId) async {
+    try {
+      final res = await ApiClient.instance.get('/bookings');
+      if (res is List) {
+        return res
+            .map((item) => BookingModel.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (_) {}
+
     final res = await _client
         .from('bookings')
         .select()
@@ -273,6 +272,13 @@ class SupabaseService {
   }
 
   Future<BookingModel?> getBookingById(String bookingId) async {
+    try {
+      final res = await ApiClient.instance.get('/bookings/$bookingId');
+      if (res is Map<String, dynamic>) {
+        return BookingModel.fromJson(res);
+      }
+    } catch (_) {}
+
     final res = await _client
         .from('bookings')
         .select()
@@ -293,8 +299,29 @@ class SupabaseService {
     required String postcode,
     required double price,
     String? notes,
+    String? invoiceNumber,
     String? recurringFreq,
   }) async {
+    try {
+      final res = await ApiClient.instance.post('/bookings', body: {
+        'serviceId': serviceType,
+        'date': date,
+        'timeSlot': timeSlot,
+        'address': address,
+        'city': city,
+        'postcode': postcode,
+        'notes': notes,
+        'recurringFreq': recurringFreq ?? 'none',
+      });
+
+      if (res is Map<String, dynamic>) {
+        final bookingData = res['booking'] ?? res;
+        return BookingModel.fromJson(bookingData as Map<String, dynamic>);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+    }
+
     final userId = currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
 
@@ -309,15 +336,270 @@ class SupabaseService {
       'postcode': postcode,
       'price': price,
       'status': 'upcoming',
+      'payment_status': 'pending',
       'notes': notes,
-      'recurring_freq': recurringFreq,
+      'invoice_number': invoiceNumber,
     };
 
-    final res = await _client.from('bookings').insert(insertData).select().single();
+    final res = await _client
+        .from('bookings')
+        .insert(insertData)
+        .select()
+        .single();
     return BookingModel.fromJson(res);
   }
 
+  Future<void> createRecurringPlan({
+    required String serviceName,
+    required String serviceType,
+    required String frequency,
+    required String startTime,
+    required double durationHours,
+    required String address,
+    required String city,
+    required String postcode,
+    required double pricePerVisit,
+    required double discountPercent,
+    String? notes,
+  }) async {
+    final userId = currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    await _client.from('recurring_plans').insert({
+      'user_id': userId,
+      'service_type': serviceType,
+      'service_name': serviceName,
+      'frequency': frequency,
+      'start_time': startTime,
+      'duration_hours': durationHours,
+      'address': address,
+      'city': city,
+      'postcode': postcode,
+      'price_per_visit': pricePerVisit,
+      'discount_percent': discountPercent,
+      'notes': notes,
+      'status': 'active',
+    });
+  }
+
+  Future<List<RecurringPlanModel>> getUserRecurringPlans(String userId) async {
+    try {
+      final res = await ApiClient.instance.get('/plans');
+      if (res is List) {
+        return res
+            .map((item) => RecurringPlanModel.fromJson(item as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (_) {}
+
+    final res = await _client
+        .from('recurring_plans')
+        .select()
+        .eq('user_id', userId)
+        .order('created_at', ascending: false);
+
+    return (res as List)
+        .map(
+          (item) => RecurringPlanModel.fromJson(item as Map<String, dynamic>),
+        )
+        .toList();
+  }
+
+  Future<void> updateRecurringPlanStatus(String planId, String status) async {
+    try {
+      await ApiClient.instance.patch('/plans/$planId', body: {'status': status});
+      return;
+    } catch (e) {
+      if (e is ApiException) rethrow;
+    }
+
+    await _client
+        .from('recurring_plans')
+        .update({'status': status})
+        .eq('id', planId);
+  }
+
+  Future<String> createStripeCheckoutUrl(String bookingId) async {
+    try {
+      final res = await ApiClient.instance.post('/bookings/$bookingId/checkout');
+      if (res is Map<String, dynamic> && res['checkoutUrl'] != null) {
+        return res['checkoutUrl'].toString();
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+    }
+
+    final session = _client.auth.currentSession;
+    if (session == null) throw Exception('Please sign in again before paying.');
+
+    final response = await _client.functions.invoke(
+      'create-stripe-checkout',
+      body: {'bookingId': bookingId, 'origin': AppConfig.siteUrl},
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+
+    final data = response.data;
+    if (data is Map && data['ok'] == true && data['url'] != null) {
+      return data['url'].toString();
+    }
+    if (data is Map && data['error'] != null) {
+      throw Exception(data['error'].toString());
+    }
+    throw Exception('Failed to start payment');
+  }
+
+  Future<void> requestRefund({
+    required String bookingId,
+    required String reason,
+    double? amount,
+  }) async {
+    try {
+      final refundBody = <String, dynamic>{'reason': reason};
+      if (amount != null) refundBody['amount'] = amount;
+      await ApiClient.instance.post(
+        '/bookings/$bookingId/refund',
+        body: refundBody,
+      );
+      return;
+    } catch (e) {
+      if (e is ApiException) rethrow;
+    }
+
+    final userId = currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    await _client.from('refund_requests').insert({
+      'booking_id': bookingId,
+      'user_id': userId,
+      'reason': reason.trim(),
+    });
+  }
+
+  Future<RescheduleRequestModel?> getLatestRescheduleRequest(
+    String bookingId,
+  ) async {
+    try {
+      final res = await ApiClient.instance.get('/bookings/$bookingId/reschedule');
+      if (res is Map<String, dynamic>) {
+        return RescheduleRequestModel.fromJson(res);
+      }
+    } catch (_) {}
+
+    final res = await _client
+        .from('reschedule_requests')
+        .select('id, requested_date, requested_time, reason, status')
+        .eq('booking_id', bookingId)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+
+    if (res == null) return null;
+    return RescheduleRequestModel.fromJson(res);
+  }
+
+  Future<RescheduleRequestModel> requestReschedule({
+    required String bookingId,
+    required String requestedDate,
+    required String requestedTime,
+    String? reason,
+  }) async {
+    try {
+      final res = await ApiClient.instance.post(
+        '/bookings/$bookingId/reschedule',
+        body: {
+          'requestedDate': requestedDate,
+          'requestedTime': requestedTime,
+          'reason': reason,
+        },
+      );
+      if (res is Map<String, dynamic>) {
+        return RescheduleRequestModel.fromJson(res);
+      }
+    } catch (e) {
+      if (e is ApiException) rethrow;
+    }
+
+    final userId = currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    final res = await _client
+        .from('reschedule_requests')
+        .insert({
+          'booking_id': bookingId,
+          'user_id': userId,
+          'requested_date': requestedDate,
+          'requested_time': requestedTime,
+          'reason': reason?.trim().isNotEmpty == true ? reason!.trim() : null,
+        })
+        .select('id, requested_date, requested_time, reason, status')
+        .single();
+
+    return RescheduleRequestModel.fromJson(res);
+  }
+
+  Future<List<BookingPhotoModel>> getBookingPhotos(String bookingId) async {
+    final userId = currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    final res = await _client
+        .from('booking_photos')
+        .select('id, storage_path, uploaded_at')
+        .eq('booking_id', bookingId)
+        .eq('user_id', userId)
+        .order('uploaded_at', ascending: false);
+
+    return (res as List)
+        .map((item) => BookingPhotoModel.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
+  String getBookingPhotoUrl(String storagePath) {
+    return _client.storage.from('booking-photos').getPublicUrl(storagePath);
+  }
+
+  Future<void> uploadBookingPhoto({
+    required String bookingId,
+    required Uint8List bytes,
+    required String fileExtension,
+    String? contentType,
+  }) async {
+    final userId = currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    final ext = fileExtension.replaceAll('.', '').isEmpty
+        ? 'jpg'
+        : fileExtension.replaceAll('.', '').toLowerCase();
+    final path =
+        'bookings/$bookingId/${DateTime.now().millisecondsSinceEpoch}.$ext';
+
+    await _client.storage
+        .from('booking-photos')
+        .uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(contentType: contentType),
+        );
+
+    await _client.from('booking_photos').insert({
+      'booking_id': bookingId,
+      'user_id': userId,
+      'storage_path': path,
+    });
+  }
+
+  Future<void> deleteBookingPhoto(String photoId, String storagePath) async {
+    await _client.storage.from('booking-photos').remove([storagePath]);
+    await _client.from('booking_photos').delete().eq('id', photoId);
+  }
+
   Future<void> cancelBooking(String bookingId) async {
+    try {
+      await ApiClient.instance.post('/bookings/$bookingId/cancel');
+      return;
+    } catch (e) {
+      if (e is ApiException) rethrow;
+    }
+
     await _client
         .from('bookings')
         .update({'status': 'cancelled'})
@@ -326,6 +608,13 @@ class SupabaseService {
 
   // ─── Loyalty ───────────────────────────────────────────────────────────────
   Future<UserLoyaltyInfo> getUserLoyalty(String userId) async {
+    try {
+      final res = await ApiClient.instance.get('/loyalty');
+      if (res is Map<String, dynamic> && res['points'] != null) {
+        return UserLoyaltyInfo.fromPoints((res['points'] as num).toInt());
+      }
+    } catch (_) {}
+
     try {
       final res = await _client
           .from('loyalty_points')
@@ -338,7 +627,7 @@ class SupabaseService {
       }
       return UserLoyaltyInfo.fromPoints(total);
     } catch (_) {
-      return UserLoyaltyInfo.fromPoints(150); // Default welcome points
+      return UserLoyaltyInfo.fromPoints(0);
     }
   }
 
@@ -351,10 +640,8 @@ class SupabaseService {
           .eq('status', 'available')
           .order('scheduled_date', ascending: true);
 
-      if ((res as List).isNotEmpty) {
-        return res
-            .map((item) => ShiftModel.fromJson(item as Map<String, dynamic>))
-            .toList();
+      if (res.isNotEmpty) {
+        return res.map((item) => ShiftModel.fromJson(item)).toList();
       }
     } catch (_) {}
 
@@ -390,60 +677,9 @@ class SupabaseService {
           customerNotes: bMap['notes'] as String?,
         );
       }).toList();
-    } catch (_) {
-      // Return realistic mock slots if database has no active bookings yet
-      final now = DateTime.now();
-      return [
-        ShiftModel(
-          id: 'shift_demo_1',
-          bookingId: 'book_101',
-          cleanerId: '',
-          serviceName: 'Deep Clean & Sanitization',
-          customerName: 'Sarah Jenkins',
-          address: '42 Newport Road',
-          city: 'Cardiff',
-          postcode: 'CF24 0AB',
-          scheduledDate: now.add(const Duration(days: 1)),
-          timeSlot: '09:00 AM - 12:30 PM',
-          payAmount: 52.50,
-          estimatedHours: 3.5,
-          status: 'available',
-          customerNotes: 'Key is in the lockbox by the front door. Code: 4921',
-        ),
-        ShiftModel(
-          id: 'shift_demo_2',
-          bookingId: 'book_102',
-          cleanerId: '',
-          serviceName: 'End of Tenancy Full Clean',
-          customerName: 'David Evans',
-          address: '15 Marina Mews',
-          city: 'Swansea',
-          postcode: 'SA1 1WG',
-          scheduledDate: now.add(const Duration(days: 2)),
-          timeSlot: '01:00 PM - 05:00 PM',
-          payAmount: 68.00,
-          estimatedHours: 4.0,
-          status: 'available',
-          customerNotes: 'Empty flat. Oven clean and interior windows included.',
-        ),
-        ShiftModel(
-          id: 'shift_demo_3',
-          bookingId: 'book_103',
-          cleanerId: '',
-          serviceName: 'Regular Domestic Maintenance',
-          customerName: 'Elinor Williams',
-          address: '88 Cathedral Road',
-          city: 'Cardiff',
-          postcode: 'CF11 9LN',
-          scheduledDate: now.add(const Duration(days: 3)),
-          timeSlot: '10:00 AM - 01:00 PM',
-          payAmount: 45.00,
-          estimatedHours: 3.0,
-          status: 'available',
-          customerNotes: 'Friendly Golden Retriever will be in the garden.',
-        ),
-      ];
-    }
+    } catch (_) {}
+
+    return [];
   }
 
   Future<void> claimShift(ShiftModel shift, {String? notes}) async {
@@ -468,49 +704,12 @@ class SupabaseService {
           .eq('cleaner_id', cleanerId)
           .order('created_at', ascending: false);
 
-      if ((res as List).isNotEmpty) {
-        return res
-            .map((item) => ShiftModel.fromJson(item as Map<String, dynamic>))
-            .toList();
+      if (res.isNotEmpty) {
+        return res.map((item) => ShiftModel.fromJson(item)).toList();
       }
     } catch (_) {}
 
-    // Return active demo roster
-    final now = DateTime.now();
-    return [
-      ShiftModel(
-        id: 'roster_1',
-        bookingId: 'book_001',
-        cleanerId: cleanerId,
-        serviceName: 'Domestic Weekly Clean',
-        customerName: 'James Davies',
-        address: '12 Conway Road, Pontcanna',
-        city: 'Cardiff',
-        postcode: 'CF11 9NT',
-        scheduledDate: now.add(const Duration(hours: 18)),
-        timeSlot: '09:00 AM - 12:00 PM',
-        payAmount: 48.00,
-        estimatedHours: 3.0,
-        status: 'confirmed',
-        customerNotes: 'Alarm code 1234. All cleaning supplies under sink.',
-      ),
-      ShiftModel(
-        id: 'roster_2',
-        bookingId: 'book_002',
-        cleanerId: cleanerId,
-        serviceName: 'Deep Kitchen & Bathroom Clean',
-        customerName: 'Megan Roberts',
-        address: '29 High Street',
-        city: 'Newport',
-        postcode: 'NP20 1FX',
-        scheduledDate: now.add(const Duration(days: 2)),
-        timeSlot: '02:00 PM - 05:00 PM',
-        payAmount: 50.00,
-        estimatedHours: 3.0,
-        status: 'pending',
-        customerNotes: 'Awaiting admin slot confirmation.',
-      ),
-    ];
+    return [];
   }
 
   Future<void> updateShiftStatus(String shiftId, String status) async {
@@ -523,7 +722,9 @@ class SupabaseService {
   }
 
   Future<void> updateShiftChecklist(
-      String shiftId, List<String> completed) async {
+    String shiftId,
+    List<String> completed,
+  ) async {
     try {
       await _client
           .from('shift_applications')
@@ -542,9 +743,13 @@ class SupabaseService {
           .order('created_at', ascending: false);
 
       return (res as List)
-          .map((item) => NotificationModel.fromJson(item as Map<String, dynamic>))
+          .map(
+            (item) => NotificationModel.fromJson(item as Map<String, dynamic>),
+          )
           .toList();
     } catch (_) {
+      return [];
+      /*
       final now = DateTime.now();
       return [
         NotificationModel(
@@ -569,12 +774,14 @@ class SupabaseService {
           id: 'notif_3',
           userId: userId,
           title: 'Welcome to MakeMeClean',
-          message: 'Your account is verified and ready for bookings and shifts.',
+          message:
+              'Your account is verified and ready for bookings and shifts.',
           type: 'system',
           isRead: true,
           createdAt: now.subtract(const Duration(days: 1)),
         ),
       ];
+      */
     }
   }
 
@@ -588,7 +795,7 @@ class SupabaseService {
   }
 
   // ─── Real Admin Supabase Operations (Zero Mock Data) ─────────────────────────
-  
+
   // 1. Bookings
   Future<List<Map<String, dynamic>>> adminGetBookings() async {
     try {
@@ -608,13 +815,19 @@ class SupabaseService {
     } catch (_) {}
   }
 
-  Future<void> adminAssignStaffToBooking(String bookingId, String staffId) async {
+  Future<void> adminAssignStaffToBooking(
+    String bookingId,
+    String staffId,
+  ) async {
     try {
       await _client.from('booking_assignments').upsert({
         'booking_id': bookingId,
         'staff_id': staffId,
       });
-      await _client.from('bookings').update({'assigned_staff_id': staffId}).eq('id', bookingId);
+      await _client
+          .from('bookings')
+          .update({'assigned_staff_id': staffId})
+          .eq('id', bookingId);
     } catch (_) {}
   }
 
@@ -633,7 +846,10 @@ class SupabaseService {
 
   Future<void> adminUpdateApplicantStatus(String id, String status) async {
     try {
-      await _client.from('job_applications').update({'status': status}).eq('id', id);
+      await _client
+          .from('job_applications')
+          .update({'status': status})
+          .eq('id', id);
     } catch (_) {}
   }
 
@@ -650,9 +866,15 @@ class SupabaseService {
     }
   }
 
-  Future<void> adminToggleStaffActive(String staffId, bool currentActive) async {
+  Future<void> adminToggleStaffActive(
+    String staffId,
+    bool currentActive,
+  ) async {
     try {
-      await _client.from('staff').update({'active': !currentActive}).eq('id', staffId);
+      await _client
+          .from('staff')
+          .update({'active': !currentActive})
+          .eq('id', staffId);
     } catch (_) {}
   }
 
@@ -677,7 +899,10 @@ class SupabaseService {
 
   Future<void> adminToggleServiceActive(String id, bool currentActive) async {
     try {
-      await _client.from('services').update({'active': !currentActive}).eq('id', id);
+      await _client
+          .from('services')
+          .update({'active': !currentActive})
+          .eq('id', id);
     } catch (_) {}
   }
 
@@ -709,7 +934,10 @@ class SupabaseService {
 
   Future<void> adminUpdateRescheduleStatus(String id, String status) async {
     try {
-      await _client.from('reschedule_requests').update({'status': status}).eq('id', id);
+      await _client
+          .from('reschedule_requests')
+          .update({'status': status})
+          .eq('id', id);
     } catch (_) {}
   }
 
@@ -741,7 +969,10 @@ class SupabaseService {
 
   Future<void> adminMarkMessageRead(String id, bool isRead) async {
     try {
-      await _client.from('contact_messages').update({'is_read': isRead}).eq('id', id);
+      await _client
+          .from('contact_messages')
+          .update({'is_read': isRead})
+          .eq('id', id);
     } catch (_) {}
   }
 
@@ -760,7 +991,10 @@ class SupabaseService {
 
   Future<void> adminUpdateRefundStatus(String id, String status) async {
     try {
-      await _client.from('refund_requests').update({'status': status}).eq('id', id);
+      await _client
+          .from('refund_requests')
+          .update({'status': status})
+          .eq('id', id);
     } catch (_) {}
   }
 
@@ -792,7 +1026,10 @@ class SupabaseService {
 
   Future<void> adminAdjustLoyaltyPoints(String userId, int points) async {
     try {
-      await _client.from('profiles').update({'loyalty_points': points}).eq('id', userId);
+      await _client
+          .from('profiles')
+          .update({'loyalty_points': points})
+          .eq('id', userId);
     } catch (_) {}
   }
 
@@ -839,10 +1076,11 @@ class SupabaseService {
 
   Future<void> adminAddCity(String name, String region) async {
     try {
-      await _client
-          .from('service_cities')
-          .insert({'name': name.trim(), 'region': region, 'is_active': true});
+      await _client.from('service_cities').insert({
+        'name': name.trim(),
+        'region': region,
+        'is_active': true,
+      });
     } catch (_) {}
   }
 }
-

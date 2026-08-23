@@ -1,0 +1,60 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { handleCors, verifyAuth, sendSuccess, sendError } from './_lib/server.js';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (handleCors(req, res)) return;
+
+  const { user, supabase, error: authError } = await verifyAuth(req);
+  if (authError || !user) {
+    return sendError(res, authError || 'Unauthorized', 401);
+  }
+
+  // ─── GET /api/notifications ───────────────────────────────────────────────
+  if (req.method === 'GET') {
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+
+      if (error) {
+        return sendError(res, error.message, 500);
+      }
+
+      return sendSuccess(res, data || []);
+    } catch (err: any) {
+      return sendError(res, err?.message || 'Failed to fetch notifications', 500);
+    }
+  }
+
+  // ─── PATCH /api/notifications ─────────────────────────────────────────────
+  if (req.method === 'PATCH' || req.method === 'POST') {
+    try {
+      const body = req.body || {};
+      const notifId = body.notificationId || body.id;
+
+      if (notifId) {
+        await supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('id', notifId)
+          .eq('user_id', user.id);
+      } else {
+        await supabase
+          .from('notifications')
+          .update({ read: true })
+          .eq('user_id', user.id)
+          .eq('read', false);
+      }
+
+      return sendSuccess(res, { success: true });
+    } catch (err: any) {
+      return sendError(res, err?.message || 'Failed to update notifications', 500);
+    }
+  }
+
+  return sendError(res, 'Method not allowed', 405);
+}
+

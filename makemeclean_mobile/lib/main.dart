@@ -101,7 +101,7 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: const Icon(
-                      LucideIcons.sparkles,
+                      LucideIcons.sprayCan,
                       color: Colors.white,
                       size: 32,
                     ),

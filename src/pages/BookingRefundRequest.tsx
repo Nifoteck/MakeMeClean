@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { Booking } from "@/types";
+import { api } from "@/lib/apiClient";
 
 export default function BookingRefundRequest() {
   const { user, loading } = useAuth();
@@ -43,19 +44,15 @@ export default function BookingRefundRequest() {
     setSubmitting(true);
     setError("");
 
-    const { error: err } = await supabase.from("refund_requests").insert({
-      booking_id: booking.id,
-      user_id: user.id,
-      reason: reason.trim(),
-    });
-
-    if (err) {
-      setError(err.message || "Failed to submit refund request");
-      setSubmitting(false);
-    } else {
+    try {
+      await api.requestRefund(booking.id, { reason: reason.trim() });
       setSuccess(true);
       setReason("");
       setTimeout(() => setLocation(`/bookings/${booking.id}`), 2000);
+    } catch (err: any) {
+      setError(err?.message || "Failed to submit refund request");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -72,7 +69,12 @@ export default function BookingRefundRequest() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <p className="text-gray-500 font-semibold mb-4">Booking not found</p>
-          <Link href="/bookings" className="text-green-600 hover:underline font-semibold">Back to Bookings</Link>
+          <Link
+            href="/bookings"
+            className="text-green-600 hover:underline font-semibold"
+          >
+            Back to Bookings
+          </Link>
         </div>
       </div>
     );
@@ -83,9 +85,17 @@ export default function BookingRefundRequest() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-sm p-8 text-center">
           <AlertCircle className="w-10 h-10 text-amber-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Refunds are only available for paid bookings</h1>
-          <p className="text-gray-600 mb-6">This booking has not been paid yet, or it has already been refunded or disputed.</p>
-          <Link href={`/bookings/${booking.id}`} className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl transition-colors">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Refunds are only available for paid bookings
+          </h1>
+          <p className="text-gray-600 mb-6">
+            This booking has not been paid yet, or it has already been refunded
+            or disputed.
+          </p>
+          <Link
+            href={`/bookings/${booking.id}`}
+            className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+          >
             Back to Booking
           </Link>
         </div>
@@ -96,7 +106,10 @@ export default function BookingRefundRequest() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <Link href={`/bookings/${booking.id}`} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-green-600 mb-6 transition-colors font-medium">
+        <Link
+          href={`/bookings/${booking.id}`}
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-green-600 mb-6 transition-colors font-medium"
+        >
           <ArrowLeft className="w-4 h-4" /> Back to Booking
         </Link>
 
@@ -106,41 +119,71 @@ export default function BookingRefundRequest() {
               <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="w-8 h-8 text-green-600" />
               </div>
-              <h2 className="text-2xl font-black text-gray-900 mb-2">Request Submitted</h2>
-              <p className="text-gray-600 mb-6">We've received your refund request. Our team will review it and contact you within 3-5 business days.</p>
-              <Link href="/bookings" className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl transition-colors">
+              <h2 className="text-2xl font-black text-gray-900 mb-2">
+                Request Submitted
+              </h2>
+              <p className="text-gray-600 mb-6">
+                We've received your refund request. Our team will review it and
+                contact you within 3-5 business days.
+              </p>
+              <Link
+                href="/bookings"
+                className="inline-block bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 rounded-xl transition-colors"
+              >
                 Back to Bookings
               </Link>
             </div>
           ) : (
             <>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Request a Refund</h1>
-              <p className="text-gray-600 mb-8">Tell us why you'd like a refund and we'll review your request.</p>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Request a Refund
+              </h1>
+              <p className="text-gray-600 mb-8">
+                Tell us why you'd like a refund and we'll review your request.
+              </p>
 
               <div className="bg-gray-50 border border-gray-200 rounded-2xl p-6 mb-8">
                 <div className="grid sm:grid-cols-2 gap-6">
                   <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Service</p>
-                    <p className="text-lg font-semibold text-gray-900">{booking.service_name}</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+                      Service
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {booking.service_name}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Date</p>
-                    <p className="text-lg font-semibold text-gray-900">{formatDate(booking.date)}</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+                      Date
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {formatDate(booking.date)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Amount</p>
-                    <p className="text-lg font-semibold text-gray-900">{formatCurrency(booking.price)}</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+                      Amount
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {formatCurrency(booking.price)}
+                    </p>
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-                    <p className="text-lg font-semibold text-gray-900 capitalize">{booking.status}</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-1">
+                      Status
+                    </p>
+                    <p className="text-lg font-semibold text-gray-900 capitalize">
+                      {booking.status}
+                    </p>
                   </div>
                 </div>
               </div>
 
               <form onSubmit={handleSubmit}>
                 <div className="mb-6">
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Reason for Refund</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">
+                    Reason for Refund
+                  </label>
                   <textarea
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
@@ -159,7 +202,10 @@ export default function BookingRefundRequest() {
                 )}
 
                 <div className="flex gap-3">
-                  <Link href={`/bookings/${booking.id}`} className="flex-1 px-6 py-3 border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors text-center">
+                  <Link
+                    href={`/bookings/${booking.id}`}
+                    className="flex-1 px-6 py-3 border border-gray-200 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition-colors text-center"
+                  >
                     Cancel
                   </Link>
                   <button

@@ -1,43 +1,21 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { handleCors, sendSuccess, sendError, SUPABASE_URL, SUPABASE_ANON_KEY, SITE_URL } from './_lib/server.js';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
-  // Enable CORS so the mobile app and any client can access
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,POST');
-  res.setHeader(
-    'Access-Control-Allow-Headers',
-    'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization'
-  );
+  if (handleCors(req, res)) return;
 
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
+  if (req.method !== 'GET') {
+    return sendError(res, 'Method not allowed', 405);
   }
 
-  // Retrieve environment variables configured in Vercel / Website
-  const supabaseUrl =
-    process.env.VITE_SUPABASE_URL ||
-    process.env.SUPABASE_URL ||
-    '';
-
-  const supabaseAnonKey =
-    process.env.VITE_SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    '';
-
-  if (!supabaseUrl || !supabaseAnonKey) {
-    return res.status(500).json({
-      error: 'Backend credentials not configured in website environment variables.',
-      status: 'error',
-    });
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return sendError(res, 'Backend credentials not configured in environment variables.', 500);
   }
 
-  return res.status(200).json({
-    status: 'ok',
-    apiVersion: '2.1.0',
-    siteUrl: 'https://makemeclean.co.uk',
-    supabaseUrl,
-    supabaseAnonKey,
+  return sendSuccess(res, {
+    apiVersion: '2.2.0',
+    siteUrl: SITE_URL,
+    supabaseUrl: SUPABASE_URL,
+    supabaseAnonKey: SUPABASE_ANON_KEY,
   });
 }

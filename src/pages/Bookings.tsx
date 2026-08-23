@@ -6,8 +6,13 @@ import { supabase } from "@/lib/supabase";
 import { cn, formatDate, formatCurrency } from "@/lib/utils";
 import Pagination from "@/components/Pagination";
 import { Booking } from "@/types";
-import { BOOKING_STATUS_STYLES, PAGE_SIZE, PAYMENT_STATUS_STYLES } from "@/lib/constants";
+import {
+  BOOKING_STATUS_STYLES,
+  PAGE_SIZE,
+  PAYMENT_STATUS_STYLES,
+} from "@/lib/constants";
 import Spinner from "@/components/Spinner";
+import { api } from "@/lib/apiClient";
 
 type FilterStatus = "all" | "upcoming" | "completed" | "cancelled";
 
@@ -28,13 +33,15 @@ function paymentStatusClass(status: string | null | undefined) {
 export default function Bookings() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
-  const [bookings, setBookings]       = useState<Booking[]>([]);
-  const [serviceImages, setServiceImages] = useState<Record<string, string>>({});
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [serviceImages, setServiceImages] = useState<Record<string, string>>(
+    {}
+  );
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
-  const [fetching, setFetching]       = useState(true);
-  const [filter, setFilter]           = useState<FilterStatus>("all");
-  const [search, setSearch]           = useState("");
-  const [page, setPage]               = useState(1);
+  const [fetching, setFetching] = useState(true);
+  const [filter, setFilter] = useState<FilterStatus>("all");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     if (!loading && !user) setLocation("/login");
@@ -43,24 +50,31 @@ export default function Bookings() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      supabase.from("bookings").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("services").select("id, image_url"),
+      api.getBookings(),
+      api.getServices(),
       supabase.from("reviews").select("booking_id").eq("user_id", user.id),
-    ]).then(([{ data: bData }, { data: svcData }, { data: rData }]) => {
-      setBookings(bData ?? []);
-      const imgMap: Record<string, string> = {};
-      for (const s of svcData ?? []) if (s.image_url) imgMap[s.id] = s.image_url;
-      setServiceImages(imgMap);
-      setReviewedIds(new Set((rData ?? []).map((r: any) => r.booking_id)));
-      setFetching(false);
-    });
+    ])
+      .then(([bData, svcData, { data: rData }]) => {
+        setBookings((bData as any) ?? []);
+        const imgMap: Record<string, string> = {};
+        for (const s of svcData ?? [])
+          if (s.image_url) imgMap[s.id] = s.image_url;
+        setServiceImages(imgMap);
+        setReviewedIds(new Set((rData ?? []).map((r: any) => r.booking_id)));
+        setFetching(false);
+      })
+      .catch(() => {
+        setFetching(false);
+      });
   }, [user]);
 
-  useEffect(() => { setPage(1); }, [filter, search]);
+  useEffect(() => {
+    setPage(1);
+  }, [filter, search]);
 
   const counts = {
-    all:       bookings.length,
-    upcoming:  bookings.filter((b) => b.status === "upcoming").length,
+    all: bookings.length,
+    upcoming: bookings.filter((b) => b.status === "upcoming").length,
     completed: bookings.filter((b) => b.status === "completed").length,
     cancelled: bookings.filter((b) => b.status === "cancelled").length,
   };
@@ -70,7 +84,10 @@ export default function Bookings() {
     .filter((b) => {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
-      return b.service_name.toLowerCase().includes(q) || b.city.toLowerCase().includes(q);
+      return (
+        b.service_name.toLowerCase().includes(q) ||
+        b.city.toLowerCase().includes(q)
+      );
     });
 
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -86,27 +103,37 @@ export default function Bookings() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-2xl font-black text-gray-900 tracking-tight">My Bookings</h1>
-            <p className="text-sm text-gray-500 mt-1">Your upcoming and past cleaning appointments</p>
+            <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+              My Bookings
+            </h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Your upcoming and past cleaning appointments
+            </p>
           </div>
-          <Link href="/book" className="btn-primary flex items-center gap-2 text-sm self-start sm:self-auto">
+          <Link
+            href="/book"
+            className="btn-primary flex items-center gap-2 text-sm self-start sm:self-auto"
+          >
             <Plus className="w-4 h-4" /> New Booking
           </Link>
         </div>
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          {(["all", "upcoming", "completed", "cancelled"] as FilterStatus[]).map((f) => (
+          {(
+            ["all", "upcoming", "completed", "cancelled"] as FilterStatus[]
+          ).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
                 "bg-white border rounded-2xl p-4 shadow-sm text-left transition-all hover:shadow-md",
-                filter === f ? "border-green-400 ring-2 ring-green-100" : "border-gray-100"
+                filter === f
+                  ? "border-green-400 ring-2 ring-green-100"
+                  : "border-gray-100"
               )}
             >
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
@@ -130,7 +157,9 @@ export default function Bookings() {
             />
           </div>
           <div className="flex gap-2 overflow-x-auto pb-0.5">
-            {(["all", "upcoming", "completed", "cancelled"] as FilterStatus[]).map((f) => (
+            {(
+              ["all", "upcoming", "completed", "cancelled"] as FilterStatus[]
+            ).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -162,10 +191,17 @@ export default function Bookings() {
           <div className="bg-white border border-gray-100 rounded-2xl py-20 text-center shadow-sm">
             <Calendar className="w-10 h-10 text-gray-200 mx-auto mb-3" />
             <p className="text-gray-400 font-semibold text-sm">
-              {search ? "No bookings match your search" : `No ${filter === "all" ? "" : filter + " "}bookings`}
+              {search
+                ? "No bookings match your search"
+                : `No ${filter === "all" ? "" : filter + " "}bookings`}
             </p>
             {filter === "all" && !search && (
-              <Link href="/book" className="btn-primary inline-block mt-5 text-sm">Book your first clean</Link>
+              <Link
+                href="/book"
+                className="btn-primary inline-block mt-5 text-sm"
+              >
+                Book your first clean
+              </Link>
             )}
           </div>
         ) : (
@@ -183,31 +219,50 @@ export default function Bookings() {
                 <div className="sm:col-span-5 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-green-50 border border-green-100 overflow-hidden shrink-0">
                     {serviceImages[b.service_type] ? (
-                      <img src={serviceImages[b.service_type]} alt={b.service_name} className="w-full h-full object-cover" />
+                      <img
+                        src={serviceImages[b.service_type]}
+                        alt={b.service_name}
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-lg">🧹</div>
+                      <div className="w-full h-full flex items-center justify-center text-lg">
+                        🧹
+                      </div>
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{b.service_name}</p>
+                    <p className="text-sm font-bold text-gray-900 truncate">
+                      {b.service_name}
+                    </p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", BOOKING_STATUS_STYLES[b.status] ?? "bg-gray-100 text-gray-600")}>
+                      <span
+                        className={cn(
+                          "text-xs font-semibold px-2 py-0.5 rounded-full",
+                          BOOKING_STATUS_STYLES[b.status] ??
+                            "bg-gray-100 text-gray-600"
+                        )}
+                      >
                         {b.status}
                       </span>
-                      <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", paymentStatusClass(b.payment_status))}>
+                      <span
+                        className={cn(
+                          "text-xs font-semibold px-2 py-0.5 rounded-full",
+                          paymentStatusClass(b.payment_status)
+                        )}
+                      >
                         {paymentStatusLabel(b.payment_status)}
                       </span>
-                      {b.status === "completed" && (
-                        reviewedIds.has(b.id) ? (
+                      {b.status === "completed" &&
+                        (reviewedIds.has(b.id) ? (
                           <span className="inline-flex items-center gap-1 text-xs text-amber-600 font-medium">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> Reviewed
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" />{" "}
+                            Reviewed
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs text-green-600 font-semibold">
                             <Star className="w-3 h-3" /> Leave a review
                           </span>
-                        )
-                      )}
+                        ))}
                     </div>
                   </div>
                 </div>
@@ -232,14 +287,21 @@ export default function Bookings() {
 
                 {/* Price */}
                 <div className="sm:col-span-2 sm:text-right">
-                  <p className="text-sm font-bold text-gray-900">{formatCurrency(b.price)}</p>
+                  <p className="text-sm font-bold text-gray-900">
+                    {formatCurrency(b.price)}
+                  </p>
                 </div>
               </Link>
             ))}
           </div>
         )}
 
-        <Pagination page={page} total={filtered.length} pageSize={PAGE_SIZE} onChange={setPage} />
+        <Pagination
+          page={page}
+          total={filtered.length}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+        />
       </div>
     </div>
   );

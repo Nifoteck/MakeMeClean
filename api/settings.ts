@@ -1,0 +1,43 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { handleCors, getServerSupabase, sendSuccess, sendError } from './_lib/server.js';
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (handleCors(req, res)) return;
+
+  if (req.method !== 'GET') {
+    return sendError(res, 'Method not allowed', 405);
+  }
+
+  try {
+    const supabase = getServerSupabase();
+    const { data, error } = await supabase.from('settings').select('key, value');
+
+    if (error) {
+      return sendError(res, error.message, 500);
+    }
+
+    const settingsMap: Record<string, string> = {
+      discount_weekly: '15',
+      discount_fortnightly: '10',
+      discount_monthly: '5',
+      business_phone: '+44 7362 068202',
+      contact_email: 'contact@makemeclean.co.uk',
+      business_hours: '7 days a week, 8am–8pm',
+      email_info: 'info@makemeclean.co.uk',
+      email_recruitment: 'recruitment@makemeclean.co.uk',
+      email_payment: 'payment@makemeclean.co.uk',
+      email_payroll: 'payroll@makemeclean.co.uk',
+    };
+
+    if (data) {
+      for (const row of data) {
+        settingsMap[row.key] = row.value;
+      }
+    }
+
+    return sendSuccess(res, settingsMap);
+  } catch (err: any) {
+    return sendError(res, err?.message || 'Failed to fetch settings', 500);
+  }
+}
+

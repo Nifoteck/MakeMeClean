@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/booking_model.dart';
 import '../../data/models/profile_model.dart';
+import '../../data/models/service_model.dart';
 import '../../data/services/supabase_service.dart';
 import '../shared/loading_indicator.dart';
 import '../shared/status_badge.dart';
 import '../shared/notification_modal.dart';
+import '../shared/service_image_widget.dart';
 import 'booking_detail_screen.dart';
 import 'booking_wizard_screen.dart';
 
@@ -24,6 +27,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _isLoading = true;
   ProfileModel? _profile;
   List<BookingModel> _bookings = [];
+  List<ServiceModel> _services = [];
 
   @override
   void initState() {
@@ -41,12 +45,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final results = await Future.wait([
         SupabaseService.instance.getUserProfile(user.id),
         SupabaseService.instance.getUserBookings(user.id),
+        SupabaseService.instance.getServices(),
       ]);
 
       if (mounted) {
         setState(() {
           _profile = results[0] as ProfileModel?;
           _bookings = results[1] as List<BookingModel>;
+          _services = results[2] as List<ServiceModel>;
           _isLoading = false;
         });
       }
@@ -71,12 +77,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     final user = SupabaseService.instance.currentUser;
-    final displayName = _profile?.fullName ?? user?.email?.split('@').first ?? 'there';
-    final initial = (displayName.isNotEmpty ? displayName[0] : 'U').toUpperCase();
+    final displayName =
+        _profile?.fullName ?? user?.email?.split('@').first ?? 'there';
+    final initial = (displayName.isNotEmpty ? displayName[0] : 'U')
+        .toUpperCase();
 
-    final upcoming = _bookings.where((b) => b.status.toLowerCase() == 'upcoming').length;
-    final completed = _bookings.where((b) => b.status.toLowerCase() == 'completed').length;
-    final cancelled = _bookings.where((b) => b.status.toLowerCase() == 'cancelled').length;
+    final upcoming = _bookings
+        .where((b) => b.status.toLowerCase() == 'upcoming')
+        .length;
+    final completed = _bookings
+        .where((b) => b.status.toLowerCase() == 'completed')
+        .length;
+    final cancelled = _bookings
+        .where((b) => b.status.toLowerCase() == 'cancelled')
+        .length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -171,7 +185,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
               border: Border.all(color: AppColors.border),
             ),
             child: IconButton(
-              icon: const Icon(LucideIcons.bell, size: 20, color: AppColors.textPrimary),
+              icon: const Icon(
+                LucideIcons.bell,
+                size: 20,
+                color: AppColors.textPrimary,
+              ),
               onPressed: () => NotificationModal.show(context),
             ),
           ),
@@ -186,17 +204,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               // Stat Cards
               Row(
                 children: [
-                  _buildStatCard('Total', _bookings.length.toString(), AppColors.textPrimary),
+                  _buildStatCard(
+                    'Total',
+                    _bookings.length.toString(),
+                    AppColors.textPrimary,
+                  ),
                   const SizedBox(width: 8),
-                  _buildStatCard('Upcoming', upcoming.toString(), const Color(0xFF2563EB)),
+                  _buildStatCard(
+                    'Upcoming',
+                    upcoming.toString(),
+                    const Color(0xFF2563EB),
+                  ),
                   const SizedBox(width: 8),
-                  _buildStatCard('Completed', completed.toString(), const Color(0xFF059669)),
+                  _buildStatCard(
+                    'Completed',
+                    completed.toString(),
+                    const Color(0xFF059669),
+                  ),
                   const SizedBox(width: 8),
-                  _buildStatCard('Cancelled', cancelled.toString(), const Color(0xFFDC2626)),
+                  _buildStatCard(
+                    'Cancelled',
+                    cancelled.toString(),
+                    const Color(0xFFDC2626),
+                  ),
                 ],
               ),
               const SizedBox(height: 20),
@@ -243,12 +276,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 children: [
                   Expanded(
                     child: _buildActionCard(
-                      icon: LucideIcons.trophy,
-                      title: 'Loyalty Rewards',
-                      subtitle: 'View points & tiers',
+                      icon: LucideIcons.repeat,
+                      title: 'My Plans',
+                      subtitle: 'Manage recurring cleans',
                       onTap: () {
                         if (widget.onNavigateTab != null) {
-                          widget.onNavigateTab!(3); // Switch to Rewards tab
+                          widget.onNavigateTab!(3);
                         }
                       },
                     ),
@@ -256,19 +289,218 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(width: 10),
                   Expanded(
                     child: _buildActionCard(
-                      icon: LucideIcons.user,
-                      title: 'My Profile',
-                      subtitle: 'Saved address & info',
+                      icon: LucideIcons.trophy,
+                      title: 'Loyalty Rewards',
+                      subtitle: 'View points & tiers',
                       onTap: () {
                         if (widget.onNavigateTab != null) {
-                          widget.onNavigateTab!(4); // Switch to Profile tab
+                          widget.onNavigateTab!(4);
                         }
                       },
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildActionCard(
+                      icon: LucideIcons.user,
+                      title: 'My Profile',
+                      subtitle: 'Saved address & info',
+                      onTap: () {
+                        if (widget.onNavigateTab != null) {
+                          widget.onNavigateTab!(5);
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Our Cleaning Services Carousel
+              if (_services.isNotEmpty) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'OUR CLEANING SERVICES',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textSecondary,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        if (widget.onNavigateTab != null) {
+                          widget.onNavigateTab!(1);
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const BookingWizardScreen(),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Row(
+                        children: [
+                          Text(
+                            'Book now',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(
+                            LucideIcons.arrowRight,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 195,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _services.length,
+                    separatorBuilder: (_, _) => const SizedBox(width: 12),
+                    itemBuilder: (context, index) {
+                      final svc = _services[index];
+                      return InkWell(
+                        onTap: () {
+                          if (widget.onNavigateTab != null) {
+                            widget.onNavigateTab!(1);
+                          } else {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const BookingWizardScreen(),
+                              ),
+                            );
+                          }
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: 175,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.borderLight),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Stack(
+                                children: [
+                                  ServiceImageWidget(
+                                    serviceId: svc.id,
+                                    imageUrl: svc.imageUrl,
+                                    height: 100,
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(15),
+                                    ),
+                                  ),
+                                  if (svc.popular)
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 7,
+                                          vertical: 3,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF16A34A),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'POPULAR',
+                                          style: TextStyle(
+                                            fontSize: 8,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(10),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      svc.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          '${Formatters.currency(svc.price)}/hr',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.all(4),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primarySurface,
+                                            borderRadius: BorderRadius.circular(
+                                              6,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            LucideIcons.arrowRight,
+                                            size: 12,
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ],
 
               // Recent Bookings Header
               Row(
@@ -301,7 +533,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             ),
                           ),
                           SizedBox(width: 4),
-                          Icon(LucideIcons.arrowRight, size: 14, color: AppColors.primary),
+                          Icon(
+                            LucideIcons.arrowRight,
+                            size: 14,
+                            color: AppColors.primary,
+                          ),
                         ],
                       ),
                     ),
@@ -313,7 +549,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               if (_bookings.isEmpty)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 40,
+                    horizontal: 20,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
@@ -321,7 +560,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   child: Column(
                     children: [
-                      const Icon(LucideIcons.calendar, size: 40, color: AppColors.textMuted),
+                      const Icon(
+                        LucideIcons.calendar,
+                        size: 40,
+                        color: AppColors.textMuted,
+                      ),
                       const SizedBox(height: 12),
                       const Text(
                         'No bookings yet',
@@ -363,7 +606,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => BookingDetailScreen(bookingId: b.id),
+                            builder: (_) =>
+                                BookingDetailScreen(bookingId: b.id),
                           ),
                         );
                       },
@@ -385,7 +629,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Icon(
-                                LucideIcons.sparkles,
+                                LucideIcons.calendarCheck,
                                 color: AppColors.primary,
                                 size: 20,
                               ),
@@ -408,18 +652,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   const SizedBox(height: 4),
                                   Row(
                                     children: [
-                                      const Icon(LucideIcons.calendar, size: 12, color: AppColors.textMuted),
+                                      const Icon(
+                                        LucideIcons.calendar,
+                                        size: 12,
+                                        color: AppColors.textMuted,
+                                      ),
                                       const SizedBox(width: 4),
                                       Text(
                                         Formatters.shortDate(b.date),
-                                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                        ),
                                       ),
                                       const SizedBox(width: 8),
-                                      const Icon(LucideIcons.clock, size: 12, color: AppColors.textMuted),
+                                      const Icon(
+                                        LucideIcons.clock,
+                                        size: 12,
+                                        color: AppColors.textMuted,
+                                      ),
                                       const SizedBox(width: 4),
                                       Text(
                                         b.timeSlot,
-                                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -541,7 +799,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-            const Icon(LucideIcons.chevronRight, size: 14, color: AppColors.textMuted),
+            const Icon(
+              LucideIcons.chevronRight,
+              size: 14,
+              color: AppColors.textMuted,
+            ),
           ],
         ),
       ),

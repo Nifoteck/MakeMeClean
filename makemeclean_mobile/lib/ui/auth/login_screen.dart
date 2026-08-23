@@ -88,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               borderRadius: BorderRadius.circular(16),
                             ),
                             child: const Icon(
-                              LucideIcons.sparkles,
+                              LucideIcons.sprayCan,
                               color: Colors.white,
                               size: 28,
                             ),

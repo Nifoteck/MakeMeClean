@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Sparkles, Eye, EyeOff, Mail, CheckCircle, RefreshCw } from "lucide-react";
+import { Eye, EyeOff, Mail, CheckCircle, RefreshCw } from "lucide-react";
 import { FunctionsHttpError } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import { sendOtp, verifyOtp } from "@/lib/otp";
@@ -50,7 +50,10 @@ export default function ForgotPassword() {
     if (cooldownRef.current) clearInterval(cooldownRef.current);
     cooldownRef.current = setInterval(() => {
       setResendCooldown((c) => {
-        if (c <= 1) { clearInterval(cooldownRef.current!); return 0; }
+        if (c <= 1) {
+          clearInterval(cooldownRef.current!);
+          return 0;
+        }
         return c - 1;
       });
     }, 1000);
@@ -61,7 +64,11 @@ export default function ForgotPassword() {
     setLoading(true);
     setError("");
     const result = await sendOtp(normalizedEmail, "password_reset");
-    if (!result.ok) { setError(result.error ?? "Failed to send code"); setLoading(false); return; }
+    if (!result.ok) {
+      setError(result.error ?? "Failed to send code");
+      setLoading(false);
+      return;
+    }
     setStage("verify");
     startCooldown();
     setLoading(false);
@@ -86,7 +93,10 @@ export default function ForgotPassword() {
   };
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
-    const digits = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    const digits = e.clipboardData
+      .getData("text")
+      .replace(/\D/g, "")
+      .slice(0, 6);
     if (digits.length === 6) {
       setOtp(digits.split(""));
       verifyCode(digits);
@@ -126,8 +136,14 @@ export default function ForgotPassword() {
 
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 6) { setError("Password must be at least 6 characters."); return; }
-    if (password !== confirmPassword) { setError("Passwords do not match."); return; }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
 
     setLoading(true);
     setError("");
@@ -162,8 +178,12 @@ export default function ForgotPassword() {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Password Reset</h2>
-          <p className="text-gray-500 text-sm">Your password has been updated. Redirecting to login...</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            Password Reset
+          </h2>
+          <p className="text-gray-500 text-sm">
+            Your password has been updated. Redirecting to login...
+          </p>
         </div>
       </div>
     );
@@ -173,11 +193,21 @@ export default function ForgotPassword() {
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-5">
-            <div className="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center shadow">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">Make<span className="text-green-600">Me</span>Clean</span>
+          <Link href="/" className="inline-flex items-center gap-2.5 mb-5">
+            <img
+              src="/logo.png"
+              alt="MakeMeClean"
+              className="w-10 h-10 rounded-xl object-cover shadow"
+              onError={(e) => {
+                (e.target as HTMLElement).style.display = "none";
+              }}
+            />
+            <span
+              className="text-2xl font-black text-gray-900 tracking-tight"
+              style={{ fontFamily: "Outfit, sans-serif" }}
+            >
+              Make<span className="text-green-600">Me</span>Clean
+            </span>
           </Link>
           <h1 className="text-2xl font-extrabold text-gray-900">
             {stage === "email" && "Reset your password"}
@@ -230,12 +260,19 @@ export default function ForgotPassword() {
               </div>
 
               <div>
-                <p className="text-xs font-semibold text-gray-500 text-center mb-4 uppercase tracking-wide">Enter verification code</p>
-                <div className="flex gap-2 justify-center" onPaste={handleOtpPaste}>
+                <p className="text-xs font-semibold text-gray-500 text-center mb-4 uppercase tracking-wide">
+                  Enter verification code
+                </p>
+                <div
+                  className="flex gap-2 justify-center"
+                  onPaste={handleOtpPaste}
+                >
                   {otp.map((digit, i) => (
                     <input
                       key={i}
-                      ref={(el) => { otpRefs.current[i] = el; }}
+                      ref={(el) => {
+                        otpRefs.current[i] = el;
+                      }}
                       type="text"
                       inputMode="numeric"
                       maxLength={1}
@@ -248,7 +285,9 @@ export default function ForgotPassword() {
                   ))}
                 </div>
                 {verifying && (
-                  <p className="text-center text-xs text-gray-400 mt-3">Verifying...</p>
+                  <p className="text-center text-xs text-gray-400 mt-3">
+                    Verifying...
+                  </p>
                 )}
               </div>
 
@@ -259,7 +298,11 @@ export default function ForgotPassword() {
                   className="inline-flex items-center gap-1.5 text-sm text-green-600 font-semibold hover:underline disabled:opacity-40 disabled:cursor-not-allowed disabled:no-underline"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
-                  {resending ? "Sending..." : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
+                  {resending
+                    ? "Sending..."
+                    : resendCooldown > 0
+                    ? `Resend in ${resendCooldown}s`
+                    : "Resend code"}
                 </button>
               </div>
             </div>
@@ -283,7 +326,11 @@ export default function ForgotPassword() {
                     onClick={() => setShowPw(!showPw)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPw ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -303,7 +350,11 @@ export default function ForgotPassword() {
                     onClick={() => setShowConfirmPw(!showConfirmPw)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   >
-                    {showConfirmPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showConfirmPw ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -318,7 +369,12 @@ export default function ForgotPassword() {
           )}
 
           <p className="text-center text-sm text-gray-500 mt-5">
-            <Link href="/login" className="text-green-600 font-semibold hover:underline">Back to login</Link>
+            <Link
+              href="/login"
+              className="text-green-600 font-semibold hover:underline"
+            >
+              Back to login
+            </Link>
           </p>
         </div>
       </div>

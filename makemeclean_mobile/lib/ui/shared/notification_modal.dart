@@ -168,7 +168,7 @@ class _NotificationModalState extends State<NotificationModal> {
                                     child: Icon(
                                       n.type == 'shift_approved'
                                           ? LucideIcons.circleCheck
-                                          : LucideIcons.sparkles,
+                                          : LucideIcons.bell,
                                       size: 18,
                                       color: n.type == 'shift_approved'
                                           ? AppColors.statusCompletedText

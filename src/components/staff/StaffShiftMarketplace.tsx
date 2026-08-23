@@ -7,7 +7,7 @@ import {
   CheckCircle2,
   Navigation,
   Info,
-  Sparkles,
+  CalendarCheck,
   ChevronRight,
   ShieldAlert,
 } from "lucide-react";
@@ -155,7 +155,7 @@ export default function StaffShiftMarketplace({
       <div className="bg-gradient-to-r from-green-600 to-green-800 rounded-2xl p-6 text-white shadow-sm flex items-center justify-between flex-wrap gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-5 h-5 text-green-200" />
+            <CalendarCheck className="w-5 h-5 text-green-200" />
             <span className="text-xs font-black uppercase tracking-wider text-green-200">
               UK Cleaner Shift Marketplace
             </span>

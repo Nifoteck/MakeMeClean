@@ -2,12 +2,14 @@
 node_modules/
 dist/
 .vite/
+.vercel/
 
-# Local env (may contain secrets)
+# Local env & secrets
+.env
 .env.local
 .env.*.local
-.env
 supabase/.temp/
+supabase/.branches/
 
 # Flutter & Dart Build Artifacts
 .dart_tool/
@@ -22,8 +24,13 @@ supabase/.temp/
 **/.pub/
 build/
 **/build/
+coverage/
+**/coverage/
+.widget_preview/
 
-# Mobile Ephemeral & Build Outputs
+# Mobile Binaries & Build Outputs
+*.apk
+*.aab
 **/ios/Flutter/.last_build_id
 **/ios/Flutter/ephemeral/
 **/macos/Flutter/ephemeral/
@@ -35,8 +42,18 @@ build/
 **/android/.gradle/
 **/.gradle/
 
-# OS & Editor Files
+# IDE & Editor Files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS & Logs
 .DS_Store
 Thumbs.db
 *.swp
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

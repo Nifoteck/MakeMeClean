@@ -14,6 +14,14 @@ function normalizeOrigin(value: string | null | undefined) {
   return (value ?? "").trim().replace(/\/$/, "");
 }
 
+function withoutWww(origin: string) {
+  return origin.replace("://www.", "://");
+}
+
+function sameSiteOrigin(a: string, b: string) {
+  return a === b || withoutWww(a) === withoutWww(b);
+}
+
 function getSlotStart(timeSlot: string | null | undefined) {
   return timeSlot?.match(/\b(\d{2}:\d{2})\b/)?.[1] ?? null;
 }
@@ -64,7 +72,10 @@ Deno.serve(async (req) => {
     const clientOrigin = normalizeOrigin(origin);
 
     if (configuredOrigin) {
-      if ((requestOrigin && requestOrigin !== configuredOrigin) || (clientOrigin && clientOrigin !== configuredOrigin)) {
+      if (
+        (requestOrigin && !sameSiteOrigin(requestOrigin, configuredOrigin)) ||
+        (clientOrigin && !sameSiteOrigin(clientOrigin, configuredOrigin))
+      ) {
         return json(403, { ok: false, error: "Invalid origin" });
       }
     }

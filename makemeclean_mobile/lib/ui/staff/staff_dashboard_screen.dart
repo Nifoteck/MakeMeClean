@@ -210,7 +210,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen>
               ),
               child: const Row(
                 children: [
-                  Icon(LucideIcons.sparkles, color: AppColors.primary, size: 14),
+                  Icon(LucideIcons.shieldCheck, color: AppColors.primary, size: 14),
                   SizedBox(width: 4),
                   Text(
                     'Cleaner Portal',
