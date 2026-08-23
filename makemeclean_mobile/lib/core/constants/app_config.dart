@@ -1,4 +1,9 @@
 class AppConfig {
+  // Supabase Backend Credentials
+  static const String supabaseUrl = 'https://dlbpldhtrwzyzhumhptx.supabase.co';
+  static const String supabaseAnonKey =
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsYnBsZGh0cnd6eXpodW1ocHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2ODc3MjksImV4cCI6MjA5MzI2MzcyOX0.2a6H2nipKseGDhf295Kzwtjrs5exrTM9DIkIMINYCaA';
+
   // Website Base URL & Bootstrapping API
   static const String siteUrl = 'https://makemeclean.co.uk';
   static const String apiBaseUrl = '$siteUrl/api';

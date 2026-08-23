@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Trophy, Star, Gift, Clock, ChevronRight } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useSettings } from "@/hooks/useSettings";
 import { supabase } from "@/lib/supabase";
 import { cn, formatDate } from "@/lib/utils";
 import { api } from "@/lib/apiClient";
@@ -104,6 +105,8 @@ function ProgressBar({ points }: { points: number }) {
 export default function Loyalty() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const settings = useSettings();
+  const loyaltyEnabled = settings.loyalty_enabled === "true";
 
   const [totalPoints, setTotalPoints] = useState(0);
   const [history, setHistory] = useState<LoyaltyPoint[]>([]);
@@ -140,6 +143,31 @@ export default function Loyalty() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!loyaltyEnabled) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-16">
+        <div className="max-w-md w-full text-center bg-white border border-gray-100 rounded-3xl p-8 shadow-sm">
+          <div className="w-16 h-16 bg-amber-50 border border-amber-100 text-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-5">
+            <Trophy className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-black text-gray-900 mb-2">
+            Loyalty Rewards
+          </h1>
+          <p className="text-sm text-gray-500 mb-6 leading-relaxed">
+            Our exclusive Customer Rewards & VIP Tier program will be launching
+            soon. Stay tuned!
+          </p>
+          <button
+            onClick={() => setLocation("/dashboard")}
+            className="btn-primary w-full py-3"
+          >
+            Back to Dashboard
+          </button>
+        </div>
       </div>
     );
   }

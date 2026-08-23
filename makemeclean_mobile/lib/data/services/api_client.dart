@@ -83,7 +83,7 @@ class ApiClient {
   Future<dynamic> get(String path, {Map<String, String>? queryParams}) async {
     final headers = await _getHeaders();
     final uri = _buildUri(path, queryParams);
-    final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 15));
+    final response = await http.get(uri, headers: headers).timeout(const Duration(seconds: 4));
     return _handleResponse(response);
   }
 
@@ -96,7 +96,7 @@ class ApiClient {
           headers: headers,
           body: body != null ? jsonEncode(body) : null,
         )
-        .timeout(const Duration(seconds: 20));
+        .timeout(const Duration(seconds: 5));
     return _handleResponse(response);
   }
 
@@ -109,14 +109,14 @@ class ApiClient {
           headers: headers,
           body: body != null ? jsonEncode(body) : null,
         )
-        .timeout(const Duration(seconds: 15));
+        .timeout(const Duration(seconds: 4));
     return _handleResponse(response);
   }
 
   Future<dynamic> delete(String path, {Map<String, String>? queryParams}) async {
     final headers = await _getHeaders();
     final uri = _buildUri(path, queryParams);
-    final response = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 15));
+    final response = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 4));
     return _handleResponse(response);
   }
 }

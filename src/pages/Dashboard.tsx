@@ -10,8 +10,10 @@ import {
   User,
   Star,
   Trophy,
+  Repeat,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useSettings } from "@/hooks/useSettings";
 import { supabase } from "@/lib/supabase";
 import { cn, formatDate, formatCurrency } from "@/lib/utils";
 import { Booking } from "@/types";
@@ -22,6 +24,8 @@ import { api } from "@/lib/apiClient";
 export default function Dashboard() {
   const { user, loading } = useAuth();
   const [, setLocation] = useLocation();
+  const settings = useSettings();
+  const loyaltyEnabled = settings.loyalty_enabled === "true";
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [serviceImages, setServiceImages] = useState<Record<string, string>>(
     {}
@@ -126,12 +130,23 @@ export default function Dashboard() {
               label: "My Bookings",
               sub: "View & manage bookings",
             },
-            {
-              href: "/loyalty",
-              icon: Trophy,
-              label: "My Rewards",
-              sub: "View loyalty points",
-            },
+            ...(loyaltyEnabled
+              ? [
+                  {
+                    href: "/loyalty",
+                    icon: Trophy,
+                    label: "My Rewards",
+                    sub: "View loyalty points",
+                  },
+                ]
+              : [
+                  {
+                    href: "/plans",
+                    icon: Repeat,
+                    label: "My Plans",
+                    sub: "Recurring clean plans",
+                  },
+                ]),
             {
               href: "/profile",
               icon: User,

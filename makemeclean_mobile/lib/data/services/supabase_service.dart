@@ -30,23 +30,25 @@ class SupabaseService {
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
   // ─── Dynamic Bootstrapping from Website API ────────────────────────────────
-  /// Connects to https://makemeclean.co.uk/api/config to fetch active Supabase credentials
-  /// at runtime. Zero credentials are hardcoded in the mobile app binary.
+  /// Connects to https://makemeclean.co.uk/api/config or uses AppConfig credentials
   Future<void> initializeFromWebsite() async {
     final prefs = await SharedPreferences.getInstance();
-    String? url = prefs.getString('supabase_url');
-    String? key = prefs.getString('supabase_anon_key');
+    String url = prefs.getString('supabase_url') ?? AppConfig.supabaseUrl;
+    String key = prefs.getString('supabase_anon_key') ?? AppConfig.supabaseAnonKey;
 
-    // 1. Try to fetch the latest config from the website API
+    // 1. Try to fetch the latest config from the website API (optional background refresh)
     try {
       final response = await http
           .get(Uri.parse(AppConfig.apiConfigEndpoint))
-          .timeout(const Duration(seconds: 8));
+          .timeout(const Duration(seconds: 4));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
-        final fetchedUrl = data['supabaseUrl']?.toString();
-        final fetchedKey = data['supabaseAnonKey']?.toString();
+        final payload = data['data'] is Map<String, dynamic>
+            ? data['data'] as Map<String, dynamic>
+            : data;
+        final fetchedUrl = payload['supabaseUrl']?.toString();
+        final fetchedKey = payload['supabaseAnonKey']?.toString();
 
         if (fetchedUrl != null &&
             fetchedKey != null &&
@@ -55,24 +57,17 @@ class SupabaseService {
           url = fetchedUrl;
           key = fetchedKey;
 
-          // Cache on device for instant offline launch
+          // Cache on device for future launches
           await prefs.setString('supabase_url', url);
           await prefs.setString('supabase_anon_key', key);
         }
       }
     } catch (_) {
-      // If offline or network error, fallback to cached credentials from device
-    }
-
-    if (url == null || key == null || url.isEmpty || key.isEmpty) {
-      throw Exception(
-        'Unable to connect to MakeMeClean API at ${AppConfig.apiConfigEndpoint}. Please ensure you are connected to the internet.',
-      );
+      // If network timeout or remote API down, smoothly proceed with valid config
     }
 
     // 2. Initialize Supabase in memory dynamically
     await Supabase.initialize(url: url, publishableKey: key);
-
     _isInitialized = true;
   }
 

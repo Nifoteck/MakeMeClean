@@ -24,6 +24,7 @@ export async function handleSettings(req: VercelRequest, res: VercelResponse) {
       email_recruitment: 'recruitment@makemeclean.co.uk',
       email_payment: 'payment@makemeclean.co.uk',
       email_payroll: 'payroll@makemeclean.co.uk',
+      loyalty_enabled: 'false',
     };
 
     if (data) {

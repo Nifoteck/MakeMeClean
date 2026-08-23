@@ -27,9 +27,12 @@ export function getEnv(name: string, fallback = ''): string {
 export const SUPABASE_URL = getEnv('SUPABASE_URL', 'https://dlbpldhtrwzyzhumhptx.supabase.co');
 export const SUPABASE_ANON_KEY = getEnv(
   'SUPABASE_ANON_KEY',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsYnBsZGh0cnd6eXpodW1ocHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAzNTI1OTksImV4cCI6MjA1NTkyODU5OX0.e4K3iLwK2qLd61rZ0K9b0yq5E0T3V8e0f1g2h3i4j5k'
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsYnBsZGh0cnd6eXpodW1ocHR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2ODc3MjksImV4cCI6MjA5MzI2MzcyOX0.2a6H2nipKseGDhf295Kzwtjrs5exrTM9DIkIMINYCaA'
 );
-export const SUPABASE_SERVICE_ROLE_KEY = getEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+export const SUPABASE_SERVICE_ROLE_KEY = getEnv(
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRsYnBsZGh0cnd6eXpodW1ocHR4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NzY4NzcyOSwiZXhwIjoyMDkzMjYzNzI5fQ.LYi55Bj8-w5ybDvIo9kk3-IT6rbL5rMfP9iE63ZkqxU'
+);
 export const SITE_URL = getEnv('SITE_URL', 'https://makemeclean.co.uk').replace(/\/$/, '');
 export const STRIPE_SECRET_KEY = getEnv('STRIPE_SECRET_KEY', '');
 export const TELEGRAM_BOT_TOKEN = getEnv('TELEGRAM_BOT_TOKEN', '');

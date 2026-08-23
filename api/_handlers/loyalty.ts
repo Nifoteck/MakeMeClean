@@ -11,11 +11,20 @@ export async function handleLoyalty(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, loyalty_points, created_at')
-      .eq('id', user.id)
-      .single();
+    const [{ data: profile, error }, { data: settingRow }] = await Promise.all([
+      supabase
+        .from('profiles')
+        .select('id, full_name, loyalty_points, created_at')
+        .eq('id', user.id)
+        .single(),
+      supabase
+        .from('settings')
+        .select('value')
+        .eq('key', 'loyalty_enabled')
+        .maybeSingle(),
+    ]);
+
+    const isEnabled = settingRow?.value === 'true';
 
     if (error && error.code !== 'PGRST116') {
       return sendError(res, error.message, 500);
@@ -50,6 +59,7 @@ export async function handleLoyalty(req: VercelRequest, res: VercelResponse) {
     }
 
     return sendSuccess(res, {
+      enabled: isEnabled,
       points,
       tier,
       discount_percent: discountPercent,

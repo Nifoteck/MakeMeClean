@@ -28,6 +28,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   ProfileModel? _profile;
   List<BookingModel> _bookings = [];
   List<ServiceModel> _services = [];
+  bool _loyaltyEnabled = false;
 
   @override
   void initState() {
@@ -46,13 +47,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
         SupabaseService.instance.getUserProfile(user.id),
         SupabaseService.instance.getUserBookings(user.id),
         SupabaseService.instance.getServices(),
+        SupabaseService.instance.adminGetSettings(),
       ]);
 
       if (mounted) {
+        final settings = results[3] as Map<String, String>;
         setState(() {
           _profile = results[0] as ProfileModel?;
           _bookings = results[1] as List<BookingModel>;
           _services = results[2] as List<ServiceModel>;
+          _loyaltyEnabled = settings['loyalty_enabled'] == 'true';
           _isLoading = false;
         });
       }
@@ -288,36 +292,51 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: _buildActionCard(
-                      icon: LucideIcons.trophy,
-                      title: 'Loyalty Rewards',
-                      subtitle: 'View points & tiers',
-                      onTap: () {
-                        if (widget.onNavigateTab != null) {
-                          widget.onNavigateTab!(4);
-                        }
-                      },
-                    ),
+                    child: _loyaltyEnabled
+                        ? _buildActionCard(
+                            icon: LucideIcons.trophy,
+                            title: 'Loyalty Rewards',
+                            subtitle: 'View points & tiers',
+                            onTap: () {
+                              if (widget.onNavigateTab != null) {
+                                widget.onNavigateTab!(4);
+                              }
+                            },
+                          )
+                        : _buildActionCard(
+                            icon: LucideIcons.user,
+                            title: 'My Profile',
+                            subtitle: 'Saved address & info',
+                            onTap: () {
+                              if (widget.onNavigateTab != null) {
+                                widget.onNavigateTab!(4);
+                              }
+                            },
+                          ),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildActionCard(
-                      icon: LucideIcons.user,
-                      title: 'My Profile',
-                      subtitle: 'Saved address & info',
-                      onTap: () {
-                        if (widget.onNavigateTab != null) {
-                          widget.onNavigateTab!(5);
-                        }
-                      },
+              if (_loyaltyEnabled) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildActionCard(
+                        icon: LucideIcons.user,
+                        title: 'My Profile',
+                        subtitle: 'Saved address & info',
+                        onTap: () {
+                          if (widget.onNavigateTab != null) {
+                            widget.onNavigateTab!(5);
+                          }
+                        },
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                    const SizedBox(width: 10),
+                    const Expanded(child: SizedBox()),
+                  ],
+                ),
+              ],
               const SizedBox(height: 24),
 
               // Our Cleaning Services Carousel

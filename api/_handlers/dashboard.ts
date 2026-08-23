@@ -18,7 +18,7 @@ export async function handleDashboard(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const [profileRes, bookingsRes, servicesRes, notifsRes] = await Promise.all([
+    const [profileRes, bookingsRes, servicesRes, notifsRes, settingsRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
       supabase
         .from('bookings')
@@ -27,7 +27,10 @@ export async function handleDashboard(req: VercelRequest, res: VercelResponse) {
         .order('date', { ascending: false }),
       supabase.from('services').select('*').eq('active', true).order('price', { ascending: true }),
       supabase.from('notifications').select('id, title, message, read, created_at').eq('user_id', user.id).eq('read', false),
+      supabase.from('settings').select('value').eq('key', 'loyalty_enabled').maybeSingle(),
     ]);
+
+    const loyaltyEnabled = settingsRes.data?.value === 'true';
 
     const bookings = bookingsRes.data || [];
     const counts = {
@@ -109,11 +112,13 @@ export async function handleDashboard(req: VercelRequest, res: VercelResponse) {
       recent_bookings: recentBookings,
       services,
       loyalty: {
+        enabled: loyaltyEnabled,
         points,
         tier,
         discount_percent: discountPercent,
         next_tier_points: nextTierPoints,
       },
+      loyalty_enabled: loyaltyEnabled,
       unread_notifications_count: notifsRes.data ? notifsRes.data.length : 0,
     });
   } catch (err: any) {

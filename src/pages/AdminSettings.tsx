@@ -9,6 +9,7 @@ import {
   Info,
   Send,
   Bell,
+  Trophy,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
@@ -113,16 +114,14 @@ function ScheduleDropdown() {
 
   const save = async () => {
     setSaving(true);
-    await supabase
-      .from("settings")
-      .upsert(
-        {
-          key: "reminder_schedule_cron",
-          value: cron,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "key" }
-      );
+    await supabase.from("settings").upsert(
+      {
+        key: "reminder_schedule_cron",
+        value: cron,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -193,16 +192,14 @@ function ReminderHoursSetting() {
 
   const save = async () => {
     setSaving(true);
-    await supabase
-      .from("settings")
-      .upsert(
-        {
-          key: "reminder_hours_before",
-          value: hours,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "key" }
-      );
+    await supabase.from("settings").upsert(
+      {
+        key: "reminder_hours_before",
+        value: hours,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -391,6 +388,118 @@ function ServiceCitiesManagement() {
                 + Add City
               </button>
             </form>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LoyaltyProgramToggle() {
+  const [enabled, setEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "loyalty_enabled")
+      .maybeSingle()
+      .then(({ data }) => {
+        setEnabled(data?.value === "true");
+        setLoading(false);
+      });
+  }, []);
+
+  const toggle = async () => {
+    const nextVal = !enabled;
+    setSaving(true);
+    setEnabled(nextVal);
+    await supabase.from("settings").upsert(
+      {
+        key: "loyalty_enabled",
+        value: nextVal ? "true" : "false",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+    invalidateSettingsCache();
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
+            <Trophy className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-sm font-black text-gray-900">
+              Customer Loyalty & Rewards Program
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Control whether the Loyalty Rewards system is visible to customers
+              across web and mobile
+            </p>
+          </div>
+        </div>
+        <span
+          className={`text-xs font-bold px-3 py-1 rounded-full border ${
+            enabled
+              ? "text-green-700 bg-green-50 border-green-200"
+              : "text-gray-500 bg-gray-50 border-gray-200"
+          }`}
+        >
+          {enabled ? "Active & Visible" : "Hidden / Disabled"}
+        </span>
+      </div>
+
+      <div className="p-6">
+        {loading ? (
+          <div className="py-4 flex justify-center">
+            <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap bg-gray-50 p-4 rounded-xl border border-gray-100">
+            <div>
+              <p className="text-xs font-bold text-gray-900">
+                {enabled
+                  ? "Loyalty Rewards is currently ACTIVE"
+                  : "Loyalty Rewards is currently HIDDEN"}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {enabled
+                  ? "Customers can see their points, tiers, and redeem rewards on both the web portal and mobile app."
+                  : "Loyalty links, badges, and points are completely hidden from customer navigation until you turn it on."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={toggle}
+              disabled={saving}
+              className={`px-5 py-2.5 text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 flex items-center gap-2 ${
+                enabled
+                  ? "bg-red-50 text-red-700 border border-red-200 hover:bg-red-100"
+                  : "bg-green-600 text-white hover:bg-green-700"
+              }`}
+            >
+              {saving ? (
+                "Saving..."
+              ) : saved ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4" /> Saved!
+                </>
+              ) : enabled ? (
+                "Turn Off Loyalty"
+              ) : (
+                "Turn On Loyalty"
+              )}
+            </button>
           </div>
         )}
       </div>
@@ -639,6 +748,9 @@ export default function AdminSettings() {
               </p>
             </div>
           </div>
+
+          {/* Customer Loyalty Toggle */}
+          <LoyaltyProgramToggle />
 
           {/* Service Cities Management */}
           <ServiceCitiesManagement />

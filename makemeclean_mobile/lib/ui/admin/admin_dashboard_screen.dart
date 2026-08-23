@@ -1131,6 +1131,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   title: const Text('Recurring Discounts', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                   subtitle: const Text('Weekly: 15% • Fortnightly: 10% • Monthly: 5%', style: TextStyle(fontSize: 12)),
                 ),
+                const Divider(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                  secondary: const Icon(LucideIcons.trophy, size: 18, color: AppColors.accent),
+                  title: const Text('Customer Loyalty Program', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  subtitle: Text(
+                    (_settings['loyalty_enabled'] == 'true')
+                        ? 'Active & Visible across web & app'
+                        : 'Hidden / Disabled from customers',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  value: _settings['loyalty_enabled'] == 'true',
+                  activeThumbColor: AppColors.primary,
+                  onChanged: (bool newVal) async {
+                    setState(() {
+                      _settings['loyalty_enabled'] = newVal ? 'true' : 'false';
+                    });
+                    await SupabaseService.instance.adminSaveSetting('loyalty_enabled', newVal ? 'true' : 'false');
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(newVal ? 'Loyalty program enabled' : 'Loyalty program disabled'),
+                          backgroundColor: newVal ? AppColors.primary : Colors.grey[800],
+                        ),
+                      );
+                    }
+                  },
+                ),
               ],
             ),
           ),
