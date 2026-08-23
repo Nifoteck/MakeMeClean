@@ -26,25 +26,19 @@ function getSlotStart(timeSlot: string | null | undefined) {
   return timeSlot?.match(/\b(\d{2}:\d{2})\b/)?.[1] ?? null;
 }
 
-function isFutureBooking(date: string, timeSlot: string) {
-  const startTime = getSlotStart(timeSlot);
-  if (!startTime) return false;
-
+function isPayableBooking(date: string, status: string | null | undefined) {
+  if (status === "cancelled") return false;
   const nowParts = new Intl.DateTimeFormat("en-GB", {
     timeZone: "Europe/London",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
   }).formatToParts(new Date());
 
   const part = (type: string) => nowParts.find((p) => p.type === type)?.value ?? "";
   const today = `${part("year")}-${part("month")}-${part("day")}`;
-  const nowTime = `${part("hour")}:${part("minute")}`;
 
-  return date > today || (date === today && startTime > nowTime);
+  return date >= today;
 }
 
 Deno.serve(async (req) => {
@@ -100,8 +94,8 @@ Deno.serve(async (req) => {
     if (booking.payment_status === "paid") {
       return json(409, { ok: false, error: "This booking is already paid" });
     }
-    if (!isFutureBooking(String(booking.date), String(booking.time_slot))) {
-      return json(409, { ok: false, error: "This booking date and time has already passed" });
+    if (!isPayableBooking(String(booking.date), booking.status)) {
+      return json(409, { ok: false, error: "This booking date has already passed or is cancelled" });
     }
 
     const amount = Math.round(Number(booking.price) * 100);

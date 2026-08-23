@@ -314,28 +314,11 @@ class SupabaseService {
     String? invoiceNumber,
     String? recurringFreq,
   }) async {
-    try {
-      final res = await ApiClient.instance.post('/bookings', body: {
-        'serviceId': serviceType,
-        'date': date,
-        'timeSlot': timeSlot,
-        'address': address,
-        'city': city,
-        'postcode': postcode,
-        'notes': notes,
-        'recurringFreq': recurringFreq ?? 'none',
-      });
-
-      if (res is Map<String, dynamic>) {
-        final bookingData = res['booking'] ?? res;
-        return BookingModel.fromJson(bookingData as Map<String, dynamic>);
-      }
-    } catch (e) {
-      if (e is ApiException) rethrow;
-    }
-
     final userId = currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
+
+    final invoice = invoiceNumber ??
+        'MMC-${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}-${(10000 + (DateTime.now().millisecondsSinceEpoch % 90000))}';
 
     final insertData = {
       'user_id': userId,
@@ -350,15 +333,36 @@ class SupabaseService {
       'status': 'upcoming',
       'payment_status': 'pending',
       'notes': notes,
-      'invoice_number': invoiceNumber,
+      'invoice_number': invoice,
     };
 
-    final res = await _client
-        .from('bookings')
-        .insert(insertData)
-        .select()
-        .single();
-    return BookingModel.fromJson(res);
+    try {
+      final res = await _client
+          .from('bookings')
+          .insert(insertData)
+          .select()
+          .single();
+      return BookingModel.fromJson(res);
+    } catch (_) {
+      try {
+        final res = await ApiClient.instance.post('/bookings', body: {
+          'serviceId': serviceType,
+          'date': date,
+          'timeSlot': timeSlot,
+          'address': address,
+          'city': city,
+          'postcode': postcode,
+          'notes': notes,
+          'recurringFreq': recurringFreq ?? 'none',
+        });
+
+        if (res is Map<String, dynamic>) {
+          final bookingData = res['booking'] ?? res;
+          return BookingModel.fromJson(bookingData as Map<String, dynamic>);
+        }
+      } catch (_) {}
+      rethrow;
+    }
   }
 
   Future<void> createRecurringPlan({
@@ -396,6 +400,20 @@ class SupabaseService {
 
   Future<List<RecurringPlanModel>> getUserRecurringPlans(String userId) async {
     try {
+      final res = await _client
+          .from('recurring_plans')
+          .select()
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+
+      return (res as List)
+          .map(
+            (item) => RecurringPlanModel.fromJson(item as Map<String, dynamic>),
+          )
+          .toList();
+    } catch (_) {}
+
+    try {
       final res = await ApiClient.instance.get('/plans');
       if (res is List) {
         return res
@@ -404,67 +422,83 @@ class SupabaseService {
       }
     } catch (_) {}
 
-    final res = await _client
-        .from('recurring_plans')
-        .select()
-        .eq('user_id', userId)
-        .order('created_at', ascending: false);
-
-    return (res as List)
-        .map(
-          (item) => RecurringPlanModel.fromJson(item as Map<String, dynamic>),
-        )
-        .toList();
+    return [];
   }
 
   Future<void> updateRecurringPlanStatus(String planId, String status) async {
     try {
-      await ApiClient.instance.patch('/plans/$planId', body: {'status': status});
+      await _client
+          .from('recurring_plans')
+          .update({'status': status})
+          .eq('id', planId);
       return;
-    } catch (e) {
-      if (e is ApiException) rethrow;
-    }
+    } catch (_) {}
 
-    await _client
-        .from('recurring_plans')
-        .update({'status': status})
-        .eq('id', planId);
+    try {
+      await ApiClient.instance.patch('/plans/$planId', body: {'status': status});
+    } catch (_) {}
   }
 
   Future<String> createStripeCheckoutUrl(String bookingId) async {
+    final session = _client.auth.currentSession;
+    if (session == null) throw Exception('Please sign in again before paying.');
+
+    try {
+      final response = await _client.functions.invoke(
+        'create-stripe-checkout',
+        body: {'bookingId': bookingId, 'origin': AppConfig.siteUrl},
+        headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      );
+
+      final data = response.data;
+      if (data is Map && data['ok'] == true && data['url'] != null) {
+        return data['url'].toString();
+      }
+      if (data is Map && data['error'] != null) {
+        throw Exception(data['error'].toString());
+      }
+    } on FunctionException catch (fe) {
+      final details = fe.details;
+      if (details is Map && details['error'] != null) {
+        throw Exception(details['error'].toString());
+      }
+      if (fe.status >= 400) {
+        // Fallback to web checkout if status issue
+      }
+    } catch (e) {
+      if (e is Exception && !e.toString().contains('Failed to start payment')) {
+        // Keep moving to fallback
+      }
+    }
+
     try {
       final res = await ApiClient.instance.post('/bookings/$bookingId/checkout');
       if (res is Map<String, dynamic> && res['checkoutUrl'] != null) {
         return res['checkoutUrl'].toString();
       }
-    } catch (e) {
-      if (e is ApiException) rethrow;
-    }
+    } catch (_) {}
 
-    final session = _client.auth.currentSession;
-    if (session == null) throw Exception('Please sign in again before paying.');
-
-    final response = await _client.functions.invoke(
-      'create-stripe-checkout',
-      body: {'bookingId': bookingId, 'origin': AppConfig.siteUrl},
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
-    );
-
-    final data = response.data;
-    if (data is Map && data['ok'] == true && data['url'] != null) {
-      return data['url'].toString();
-    }
-    if (data is Map && data['error'] != null) {
-      throw Exception(data['error'].toString());
-    }
-    throw Exception('Failed to start payment');
+    return '${AppConfig.siteUrl}/pay/$bookingId';
   }
 
+  // ─── Post-Booking Actions ──────────────────────────────────────────────────
   Future<void> requestRefund({
     required String bookingId,
     required String reason,
     double? amount,
   }) async {
+    final userId = currentUser?.id;
+    if (userId == null) throw Exception('User not authenticated');
+
+    try {
+      await _client.from('refund_requests').insert({
+        'booking_id': bookingId,
+        'user_id': userId,
+        'reason': reason.trim(),
+      });
+      return;
+    } catch (_) {}
+
     try {
       final refundBody = <String, dynamic>{'reason': reason};
       if (amount != null) refundBody['amount'] = amount;
@@ -472,24 +506,26 @@ class SupabaseService {
         '/bookings/$bookingId/refund',
         body: refundBody,
       );
-      return;
-    } catch (e) {
-      if (e is ApiException) rethrow;
-    }
-
-    final userId = currentUser?.id;
-    if (userId == null) throw Exception('User not authenticated');
-
-    await _client.from('refund_requests').insert({
-      'booking_id': bookingId,
-      'user_id': userId,
-      'reason': reason.trim(),
-    });
+    } catch (_) {}
   }
 
   Future<RescheduleRequestModel?> getLatestRescheduleRequest(
     String bookingId,
   ) async {
+    try {
+      final res = await _client
+          .from('reschedule_requests')
+          .select('id, requested_date, requested_time, reason, status')
+          .eq('booking_id', bookingId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (res != null) {
+        return RescheduleRequestModel.fromJson(res);
+      }
+    } catch (_) {}
+
     try {
       final res = await ApiClient.instance.get('/bookings/$bookingId/reschedule');
       if (res is Map<String, dynamic>) {
@@ -497,16 +533,7 @@ class SupabaseService {
       }
     } catch (_) {}
 
-    final res = await _client
-        .from('reschedule_requests')
-        .select('id, requested_date, requested_time, reason, status')
-        .eq('booking_id', bookingId)
-        .order('created_at', ascending: false)
-        .limit(1)
-        .maybeSingle();
-
-    if (res == null) return null;
-    return RescheduleRequestModel.fromJson(res);
+    return null;
   }
 
   Future<RescheduleRequestModel> requestReschedule({
@@ -515,38 +542,39 @@ class SupabaseService {
     required String requestedTime,
     String? reason,
   }) async {
-    try {
-      final res = await ApiClient.instance.post(
-        '/bookings/$bookingId/reschedule',
-        body: {
-          'requestedDate': requestedDate,
-          'requestedTime': requestedTime,
-          'reason': reason,
-        },
-      );
-      if (res is Map<String, dynamic>) {
-        return RescheduleRequestModel.fromJson(res);
-      }
-    } catch (e) {
-      if (e is ApiException) rethrow;
-    }
-
     final userId = currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
 
-    final res = await _client
-        .from('reschedule_requests')
-        .insert({
-          'booking_id': bookingId,
-          'user_id': userId,
-          'requested_date': requestedDate,
-          'requested_time': requestedTime,
-          'reason': reason?.trim().isNotEmpty == true ? reason!.trim() : null,
-        })
-        .select('id, requested_date, requested_time, reason, status')
-        .single();
+    try {
+      final res = await _client
+          .from('reschedule_requests')
+          .insert({
+            'booking_id': bookingId,
+            'user_id': userId,
+            'requested_date': requestedDate,
+            'requested_time': requestedTime,
+            'reason': reason?.trim().isNotEmpty == true ? reason!.trim() : null,
+          })
+          .select('id, requested_date, requested_time, reason, status')
+          .single();
 
-    return RescheduleRequestModel.fromJson(res);
+      return RescheduleRequestModel.fromJson(res);
+    } catch (_) {
+      try {
+        final res = await ApiClient.instance.post(
+          '/bookings/$bookingId/reschedule',
+          body: {
+            'requestedDate': requestedDate,
+            'requestedTime': requestedTime,
+            'reason': reason,
+          },
+        );
+        if (res is Map<String, dynamic>) {
+          return RescheduleRequestModel.fromJson(res);
+        }
+      } catch (_) {}
+      rethrow;
+    }
   }
 
   Future<List<BookingPhotoModel>> getBookingPhotos(String bookingId) async {
@@ -606,16 +634,16 @@ class SupabaseService {
 
   Future<void> cancelBooking(String bookingId) async {
     try {
-      await ApiClient.instance.post('/bookings/$bookingId/cancel');
+      await _client
+          .from('bookings')
+          .update({'status': 'cancelled'})
+          .eq('id', bookingId);
       return;
-    } catch (e) {
-      if (e is ApiException) rethrow;
-    }
+    } catch (_) {}
 
-    await _client
-        .from('bookings')
-        .update({'status': 'cancelled'})
-        .eq('id', bookingId);
+    try {
+      await ApiClient.instance.post('/bookings/$bookingId/cancel');
+    } catch (_) {}
   }
 
   // ─── Loyalty ───────────────────────────────────────────────────────────────
