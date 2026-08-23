@@ -170,13 +170,6 @@ class SupabaseService {
   // ─── Active Service Cities ────────────────────────────────────────────────
   Future<List<String>> getActiveCities() async {
     try {
-      final res = await ApiClient.instance.get('/service-cities');
-      if (res is List && res.isNotEmpty) {
-        return res.map((e) => e.toString()).toList();
-      }
-    } catch (_) {}
-
-    try {
       final res = await _client
           .from('service_cities')
           .select('name')
@@ -188,10 +181,32 @@ class SupabaseService {
       }
     } catch (_) {}
 
+    try {
+      final res = await ApiClient.instance.get('/service-cities');
+      if (res is List && res.isNotEmpty) {
+        return res.map((e) => e.toString()).toList();
+      }
+    } catch (_) {}
+
     return AppConfig.serviceCities;
   }
 
   Future<Map<String, String>> getSettings({List<String>? keys}) async {
+    try {
+      final query = _client.from('settings').select('key, value');
+      final res = keys == null || keys.isEmpty
+          ? await query
+          : await query.inFilter('key', keys);
+
+      final settings = <String, String>{};
+      for (final row in (res as List)) {
+        final key = row['key']?.toString();
+        if (key == null || key.isEmpty) continue;
+        settings[key] = row['value']?.toString() ?? '';
+      }
+      if (settings.isNotEmpty) return settings;
+    } catch (_) {}
+
     try {
       final res = await ApiClient.instance.get('/settings');
       if (res is Map<String, dynamic>) {
@@ -205,22 +220,26 @@ class SupabaseService {
       }
     } catch (_) {}
 
-    final query = _client.from('settings').select('key, value');
-    final res = keys == null || keys.isEmpty
-        ? await query
-        : await query.inFilter('key', keys);
-
-    final settings = <String, String>{};
-    for (final row in (res as List)) {
-      final key = row['key']?.toString();
-      if (key == null || key.isEmpty) continue;
-      settings[key] = row['value']?.toString() ?? '';
-    }
-    return settings;
+    return {};
   }
 
   // ─── Services ──────────────────────────────────────────────────────────────
   Future<List<ServiceModel>> getServices() async {
+    try {
+      final res = await _client
+          .from('services')
+          .select(
+            'id, name, description, price, image_url, discount_percent, popular, active',
+          )
+          .eq('active', true)
+          .order('name', ascending: true);
+
+      final list = (res as List)
+          .map((item) => ServiceModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+      if (list.isNotEmpty) return list;
+    } catch (_) {}
+
     try {
       final res = await ApiClient.instance.get('/services');
       if (res is List) {
@@ -230,21 +249,23 @@ class SupabaseService {
       }
     } catch (_) {}
 
-    final res = await _client
-        .from('services')
-        .select(
-          'id, name, description, price, image_url, discount_percent, popular, active',
-        )
-        .eq('active', true)
-        .order('name', ascending: true);
-
-    return (res as List)
-        .map((item) => ServiceModel.fromJson(item as Map<String, dynamic>))
-        .toList();
+    return [];
   }
 
   // ─── Bookings ──────────────────────────────────────────────────────────────
   Future<List<BookingModel>> getUserBookings(String userId) async {
+    try {
+      final res = await _client
+          .from('bookings')
+          .select()
+          .eq('user_id', userId)
+          .order('date', ascending: false);
+
+      return (res as List)
+          .map((item) => BookingModel.fromJson(item as Map<String, dynamic>))
+          .toList();
+    } catch (_) {}
+
     try {
       final res = await ApiClient.instance.get('/bookings');
       if (res is List) {
@@ -254,18 +275,22 @@ class SupabaseService {
       }
     } catch (_) {}
 
-    final res = await _client
-        .from('bookings')
-        .select()
-        .eq('user_id', userId)
-        .order('date', ascending: false);
-
-    return (res as List)
-        .map((item) => BookingModel.fromJson(item as Map<String, dynamic>))
-        .toList();
+    return [];
   }
 
   Future<BookingModel?> getBookingById(String bookingId) async {
+    try {
+      final res = await _client
+          .from('bookings')
+          .select()
+          .eq('id', bookingId)
+          .maybeSingle();
+
+      if (res != null) {
+        return BookingModel.fromJson(res);
+      }
+    } catch (_) {}
+
     try {
       final res = await ApiClient.instance.get('/bookings/$bookingId');
       if (res is Map<String, dynamic>) {
@@ -273,14 +298,7 @@ class SupabaseService {
       }
     } catch (_) {}
 
-    final res = await _client
-        .from('bookings')
-        .select()
-        .eq('id', bookingId)
-        .maybeSingle();
-
-    if (res == null) return null;
-    return BookingModel.fromJson(res);
+    return null;
   }
 
   Future<BookingModel> createBooking({
@@ -795,11 +813,19 @@ class SupabaseService {
     try {
       final res = await _client
           .from('bookings')
-          .select('*, profiles(full_name, phone, email)')
+          .select('*, profiles(full_name, phone)')
           .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(res as List);
     } catch (_) {
-      return [];
+      try {
+        final res = await _client
+            .from('bookings')
+            .select('*')
+            .order('created_at', ascending: false);
+        return List<Map<String, dynamic>>.from(res as List);
+      } catch (_) {
+        return [];
+      }
     }
   }
 
@@ -900,13 +926,13 @@ class SupabaseService {
     } catch (_) {}
   }
 
-  // 5. Payroll
+  // 5. Payroll (Payslips)
   Future<List<Map<String, dynamic>>> adminGetPayrollRuns() async {
     try {
       final res = await _client
-          .from('payroll_runs')
-          .select('*, staff(first_name, last_name, email)')
-          .order('created_at', ascending: false);
+          .from('payslips')
+          .select('*')
+          .order('period_start', ascending: false);
       return List<Map<String, dynamic>>.from(res as List);
     } catch (_) {
       return [];
@@ -940,7 +966,7 @@ class SupabaseService {
     try {
       final res = await _client
           .from('recurring_plans')
-          .select('*, profiles(full_name, email)')
+          .select('*')
           .order('created_at', ascending: false);
       return List<Map<String, dynamic>>.from(res as List);
     } catch (_) {
@@ -996,9 +1022,9 @@ class SupabaseService {
   Future<List<Map<String, dynamic>>> adminGetCleanPhotos() async {
     try {
       final res = await _client
-          .from('clean_photos')
-          .select('*, bookings(*)')
-          .order('created_at', ascending: false);
+          .from('booking_photos')
+          .select('*')
+          .order('uploaded_at', ascending: false);
       return List<Map<String, dynamic>>.from(res as List);
     } catch (_) {
       return [];
@@ -1009,9 +1035,9 @@ class SupabaseService {
   Future<List<Map<String, dynamic>>> adminGetLoyaltyRecords() async {
     try {
       final res = await _client
-          .from('profiles')
-          .select('id, full_name, email, loyalty_points, tier')
-          .order('loyalty_points', ascending: false);
+          .from('loyalty_rewards')
+          .select('*')
+          .order('points_required', ascending: true);
       return List<Map<String, dynamic>>.from(res as List);
     } catch (_) {
       return [];
