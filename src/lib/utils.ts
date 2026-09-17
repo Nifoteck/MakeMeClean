@@ -21,6 +21,17 @@ export function formatDate(dateStr: string): string {
   });
 }
 
+export function isPastDate(dateStr: string): boolean {
+  const bookingDate = new Date(`${dateStr}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Number.isFinite(bookingDate.getTime()) && bookingDate < today;
+}
+
+export function isActiveUpcomingBooking(status: string, dateStr: string): boolean {
+  return ["upcoming", "pending", "confirmed"].includes(status) && !isPastDate(dateStr);
+}
+
 export function generateInvoiceNumber(): string {
   const date = new Date();
   const year = date.getFullYear();

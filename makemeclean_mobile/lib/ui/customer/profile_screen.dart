@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_config.dart';
 import '../../data/models/profile_model.dart';
@@ -131,16 +132,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
             onPressed: () async {
               if (newPasswordController.text.length < 6) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Password must be at least 6 characters')),
+                  const SnackBar(
+                    content: Text('Password must be at least 6 characters'),
+                  ),
                 );
                 return;
               }
               try {
-                await SupabaseService.instance.updatePassword(newPasswordController.text);
+                await SupabaseService.instance.updatePassword(
+                  newPasswordController.text,
+                );
                 if (ctx.mounted) {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('Password updated successfully')),
+                    const SnackBar(
+                      content: Text('Password updated successfully'),
+                    ),
                   );
                 }
               } catch (e) {
@@ -179,18 +186,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('My Profile'),
         actions: [
           IconButton(
-            icon: const Icon(LucideIcons.logOut, color: AppColors.statusCancelledText),
+            icon: const Icon(
+              LucideIcons.logOut,
+              color: AppColors.statusCancelledText,
+            ),
             onPressed: () async {
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
                   title: const Text('Sign Out'),
-                  content: const Text('Are you sure you want to sign out of MakeMeClean?'),
+                  content: const Text(
+                    'Are you sure you want to sign out of MakeMeClean?',
+                  ),
                   actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancel'),
+                    ),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.statusCancelledText),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.statusCancelledText,
+                      ),
                       onPressed: () => Navigator.pop(ctx, true),
                       child: const Text('Sign Out'),
                     ),
@@ -315,7 +334,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   const Text(
                     'City / Region',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Container(
@@ -329,11 +352,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: DropdownButton<String>(
                         value: _selectedCity,
                         isExpanded: true,
-                        icon: const Icon(LucideIcons.chevronDown, size: 18, color: AppColors.textMuted),
+                        icon: const Icon(
+                          LucideIcons.chevronDown,
+                          size: 18,
+                          color: AppColors.textMuted,
+                        ),
                         items: AppConfig.serviceCities.map((city) {
                           return DropdownMenuItem(
                             value: city,
-                            child: Text(city, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                            child: Text(
+                              city,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
                           );
                         }).toList(),
                         onChanged: (val) {
@@ -382,26 +415,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  ListTile(
-                    onTap: _showChangePasswordDialog,
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: const BoxDecoration(
-                        color: AppColors.primarySurface,
-                        shape: BoxShape.circle,
+                  Material(
+                    color: Colors.transparent,
+                    child: ListTile(
+                      onTap: _showChangePasswordDialog,
+                      contentPadding: EdgeInsets.zero,
+                      leading: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: AppColors.primarySurface,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          LucideIcons.lock,
+                          color: AppColors.primary,
+                          size: 18,
+                        ),
                       ),
-                      child: const Icon(LucideIcons.lock, color: AppColors.primary, size: 18),
+                      title: const Text(
+                        'Change Password',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      subtitle: const Text(
+                        'Update your account login password',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      trailing: const Icon(
+                        LucideIcons.chevronRight,
+                        size: 16,
+                        color: AppColors.textMuted,
+                      ),
                     ),
-                    title: const Text(
-                      'Change Password',
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: const Text(
-                      'Update your account login password',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                    ),
-                    trailing: const Icon(LucideIcons.chevronRight, size: 16, color: AppColors.textMuted),
                   ),
                 ],
               ),

@@ -61,21 +61,11 @@ Deno.serve(async (req) => {
     const { bookingId, origin } = (await req.json()) as { bookingId?: string; origin?: string };
     if (!bookingId) return json(400, { ok: false, error: "bookingId is required" });
 
-    const configuredOrigin = normalizeOrigin(Deno.env.get("SITE_URL"));
-    const requestOrigin = normalizeOrigin(req.headers.get("Origin"));
+    const configuredOrigin = normalizeOrigin(Deno.env.get("SITE_URL")) || "https://makemeclean.co.uk";
     const clientOrigin = normalizeOrigin(origin);
-
-    if (configuredOrigin) {
-      if (
-        (requestOrigin && !sameSiteOrigin(requestOrigin, configuredOrigin)) ||
-        (clientOrigin && !sameSiteOrigin(clientOrigin, configuredOrigin))
-      ) {
-        return json(403, { ok: false, error: "Invalid origin" });
-      }
-    }
-
-    const appOrigin = configuredOrigin || requestOrigin || clientOrigin;
-    if (!appOrigin) return json(400, { ok: false, error: "Missing site origin" });
+    const appOrigin = clientOrigin && sameSiteOrigin(clientOrigin, configuredOrigin)
+      ? clientOrigin
+      : configuredOrigin;
 
     const supabase = createClient(supabaseUrl, serviceKey);
     const stripe = new Stripe(stripeKey, { apiVersion: "2024-06-20" });
@@ -85,7 +75,7 @@ Deno.serve(async (req) => {
 
     const { data: booking, error: bookingErr } = await supabase
       .from("bookings")
-      .select("id, user_id, service_name, date, time_slot, price, invoice_number, payment_status")
+      .select("id, user_id, service_name, date, time_slot, price, invoice_number, status, payment_status")
       .eq("id", bookingId)
       .single();
 

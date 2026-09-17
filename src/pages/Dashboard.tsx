@@ -15,7 +15,13 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useSettings } from "@/hooks/useSettings";
 import { supabase } from "@/lib/supabase";
-import { cn, formatDate, formatCurrency } from "@/lib/utils";
+import {
+  cn,
+  formatDate,
+  formatCurrency,
+  isActiveUpcomingBooking,
+  isPastDate,
+} from "@/lib/utils";
 import { Booking } from "@/types";
 import { BOOKING_STATUS_STYLES } from "@/lib/constants";
 import Spinner from "@/components/Spinner";
@@ -67,7 +73,9 @@ export default function Dashboard() {
     );
   }
 
-  const upcoming = bookings.filter((b) => b.status === "upcoming").length;
+  const upcoming = bookings.filter((b) =>
+    isActiveUpcomingBooking(b.status, b.date)
+  ).length;
   const completed = bookings.filter((b) => b.status === "completed").length;
   const cancelled = bookings.filter((b) => b.status === "cancelled").length;
   const displayName =
@@ -253,11 +261,19 @@ export default function Dashboard() {
                     <span
                       className={cn(
                         "text-xs font-semibold px-2 py-0.5 rounded-full",
-                        BOOKING_STATUS_STYLES[b.status] ??
-                          "bg-gray-100 text-gray-600"
+                        isActiveUpcomingBooking(b.status, b.date) &&
+                          b.payment_status !== "paid"
+                          ? "bg-amber-100 text-amber-700"
+                          : BOOKING_STATUS_STYLES[b.status] ??
+                            "bg-gray-100 text-gray-600"
                       )}
                     >
-                      {b.status}
+                      {isPastDate(b.date) && b.status === "upcoming"
+                        ? "Past"
+                        : isActiveUpcomingBooking(b.status, b.date) &&
+                            b.payment_status !== "paid"
+                        ? "Payment Pending"
+                        : b.status}
                     </span>
                     {b.status === "completed" && !reviewedIds.has(b.id) && (
                       <span className="inline-flex items-center gap-1 text-xs text-green-600 font-semibold">

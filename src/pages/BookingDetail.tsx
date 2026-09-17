@@ -252,16 +252,18 @@ export default function BookingDetail() {
                     {booking.service_name}
                   </h1>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
-                    <span
-                      className={cn(
-                        "text-xs font-semibold px-2.5 py-1 rounded-full",
-                        STATUS_STYLES[booking.status] ??
-                          "bg-gray-100 text-gray-600"
-                      )}
-                    >
-                      {booking.status.charAt(0).toUpperCase() +
-                        booking.status.slice(1)}
-                    </span>
+                    {(booking.status !== "upcoming" || isPaid) && (
+                      <span
+                        className={cn(
+                          "text-xs font-semibold px-2.5 py-1 rounded-full",
+                          STATUS_STYLES[booking.status] ??
+                            "bg-gray-100 text-gray-600"
+                        )}
+                      >
+                        {booking.status.charAt(0).toUpperCase() +
+                          booking.status.slice(1)}
+                      </span>
+                    )}
                     <span
                       className={cn(
                         "text-xs font-semibold px-2.5 py-1 rounded-full",

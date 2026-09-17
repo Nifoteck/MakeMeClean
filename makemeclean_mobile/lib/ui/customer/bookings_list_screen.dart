@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/models/booking_model.dart';
@@ -18,10 +19,12 @@ class BookingsListScreen extends StatefulWidget {
   State<BookingsListScreen> createState() => _BookingsListScreenState();
 }
 
-class _BookingsListScreenState extends State<BookingsListScreen> with SingleTickerProviderStateMixin {
+class _BookingsListScreenState extends State<BookingsListScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   bool _isLoading = true;
   List<BookingModel> _bookings = [];
+  String? _loadError;
 
   @override
   void initState() {
@@ -38,9 +41,20 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
 
   Future<void> _loadBookings() async {
     final user = SupabaseService.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      debugPrint('[BookingsList] No signed-in user found');
+      setState(() {
+        _loadError = 'No signed-in user found.';
+        _isLoading = false;
+      });
+      return;
+    }
 
-    setState(() => _isLoading = true);
+    debugPrint('[BookingsList] Loading for ${user.email} (${user.id})');
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
 
     try {
       final list = await SupabaseService.instance.getUserBookings(user.id);
@@ -49,20 +63,43 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
           _bookings = list;
           _isLoading = false;
         });
+        debugPrint('[BookingsList] Loaded ${list.length} bookings');
       }
-    } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+    } catch (e) {
+      debugPrint('[BookingsList] Load failed: $e');
+      if (mounted) {
+        setState(() {
+          _loadError = e.toString();
+          _isLoading = false;
+        });
+      }
     }
+  }
+
+  bool _isPastBooking(BookingModel booking) {
+    final parsed = DateTime.tryParse(booking.date);
+    if (parsed == null) return false;
+    final date = DateTime(parsed.year, parsed.month, parsed.day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return date.isBefore(today);
+  }
+
+  bool _isActiveUpcomingBooking(BookingModel booking) {
+    final status = booking.status.toLowerCase();
+    return ['upcoming', 'pending', 'confirmed'].contains(status) &&
+        !_isPastBooking(booking);
   }
 
   @override
   Widget build(BuildContext context) {
-    final upcomingList = _bookings
-        .where((b) => b.status.toLowerCase() == 'upcoming' || b.status.toLowerCase() == 'pending')
-        .toList();
-    final pastList = _bookings
-        .where((b) => b.status.toLowerCase() != 'upcoming' && b.status.toLowerCase() != 'pending')
-        .toList();
+    final upcomingList = _bookings.where(_isActiveUpcomingBooking).toList();
+    final pastList = _bookings.where((b) {
+      final status = b.status.toLowerCase();
+      return _isPastBooking(b) ||
+          status == 'completed' ||
+          status == 'cancelled';
+    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -74,7 +111,10 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
           indicatorWeight: 3,
           labelColor: AppColors.primary,
           unselectedLabelColor: AppColors.textSecondary,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+          ),
           tabs: [
             Tab(text: 'Upcoming (${upcomingList.length})'),
             Tab(text: 'Past (${pastList.length})'),
@@ -83,6 +123,41 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
       ),
       body: _isLoading
           ? const LoadingIndicator(message: 'Loading your bookings...')
+          : _loadError != null
+          ? RefreshIndicator(
+              onRefresh: _loadBookings,
+              color: AppColors.primary,
+              child: ListView(
+                padding: const EdgeInsets.all(32),
+                children: [
+                  const SizedBox(height: 120),
+                  const Icon(
+                    LucideIcons.circleAlert,
+                    color: AppColors.statusCancelledText,
+                    size: 42,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Could not load bookings',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _loadError!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            )
           : RefreshIndicator(
               onRefresh: _loadBookings,
               color: AppColors.primary,
@@ -97,7 +172,10 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
     );
   }
 
-  Widget _buildBookingsList(List<BookingModel> list, {required bool isUpcoming}) {
+  Widget _buildBookingsList(
+    List<BookingModel> list, {
+    required bool isUpcoming,
+  }) {
     if (list.isEmpty) {
       return Center(
         child: Padding(
@@ -113,7 +191,9 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  isUpcoming ? LucideIcons.calendarClock : LucideIcons.calendarCheck,
+                  isUpcoming
+                      ? LucideIcons.calendarClock
+                      : LucideIcons.calendarCheck,
                   color: AppColors.primary,
                   size: 32,
                 ),
@@ -133,7 +213,10 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
                     ? 'Schedule your next professional cleaning in a few taps.'
                     : 'Your completed or cancelled bookings will appear here.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
               ),
               if (isUpcoming) ...[
                 const SizedBox(height: 20),
@@ -207,7 +290,10 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
                         ),
                       ),
                     ),
-                    StatusBadge(status: b.status),
+                    StatusBadge(
+                      status: b.status,
+                      paymentStatus: b.paymentStatus,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -215,32 +301,56 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
                 // Details
                 Row(
                   children: [
-                    const Icon(LucideIcons.calendar, size: 14, color: AppColors.primary),
+                    const Icon(
+                      LucideIcons.calendar,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       Formatters.date(b.date),
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(width: 12),
-                    const Icon(LucideIcons.clock, size: 14, color: AppColors.primary),
+                    const Icon(
+                      LucideIcons.clock,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
                     const SizedBox(width: 6),
                     Text(
                       b.timeSlot,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    const Icon(LucideIcons.mapPin, size: 14, color: AppColors.textMuted),
+                    const Icon(
+                      LucideIcons.mapPin,
+                      size: 14,
+                      color: AppColors.textMuted,
+                    ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        '${b.address ?? ''}, ${b.city} ${b.postcode ?? ''}'.trim(),
+                        '${b.address ?? ''}, ${b.city} ${b.postcode ?? ''}'
+                            .trim(),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -270,7 +380,11 @@ class _BookingsListScreenState extends State<BookingsListScreen> with SingleTick
                           ),
                         ),
                         SizedBox(width: 4),
-                        Icon(LucideIcons.chevronRight, size: 14, color: AppColors.primary),
+                        Icon(
+                          LucideIcons.chevronRight,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
                       ],
                     ),
                   ],

@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -34,7 +34,8 @@ class SupabaseService {
   Future<void> initializeFromWebsite() async {
     final prefs = await SharedPreferences.getInstance();
     String url = prefs.getString('supabase_url') ?? AppConfig.supabaseUrl;
-    String key = prefs.getString('supabase_anon_key') ?? AppConfig.supabaseAnonKey;
+    String key =
+        prefs.getString('supabase_anon_key') ?? AppConfig.supabaseAnonKey;
 
     // 1. Try to fetch the latest config from the website API (optional background refresh)
     try {
@@ -254,6 +255,7 @@ class SupabaseService {
 
   // ─── Bookings ──────────────────────────────────────────────────────────────
   Future<List<BookingModel>> getUserBookings(String userId) async {
+    debugPrint('[Bookings] Loading bookings for user_id=$userId');
     try {
       final res = await _client
           .from('bookings')
@@ -261,20 +263,32 @@ class SupabaseService {
           .eq('user_id', userId)
           .order('date', ascending: false);
 
-      return (res as List)
+      final list = (res as List)
           .map((item) => BookingModel.fromJson(item as Map<String, dynamic>))
           .toList();
-    } catch (_) {}
+      debugPrint('[Bookings] Direct Supabase returned ${list.length} rows');
+      return list;
+    } catch (e) {
+      debugPrint('[Bookings] Direct Supabase failed: $e');
+    }
 
     try {
       final res = await ApiClient.instance.get('/bookings');
       if (res is List) {
-        return res
+        final list = res
             .map((item) => BookingModel.fromJson(item as Map<String, dynamic>))
             .toList();
+        debugPrint('[Bookings] API returned ${list.length} rows');
+        return list;
       }
-    } catch (_) {}
+      debugPrint(
+        '[Bookings] API returned unexpected payload: ${res.runtimeType}',
+      );
+    } catch (e) {
+      debugPrint('[Bookings] API failed: $e');
+    }
 
+    debugPrint('[Bookings] No bookings returned from either source');
     return [];
   }
 
@@ -317,7 +331,8 @@ class SupabaseService {
     final userId = currentUser?.id;
     if (userId == null) throw Exception('User not authenticated');
 
-    final invoice = invoiceNumber ??
+    final invoice =
+        invoiceNumber ??
         'MMC-${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}-${(10000 + (DateTime.now().millisecondsSinceEpoch % 90000))}';
 
     final insertData = {
@@ -345,16 +360,19 @@ class SupabaseService {
       return BookingModel.fromJson(res);
     } catch (_) {
       try {
-        final res = await ApiClient.instance.post('/bookings', body: {
-          'serviceId': serviceType,
-          'date': date,
-          'timeSlot': timeSlot,
-          'address': address,
-          'city': city,
-          'postcode': postcode,
-          'notes': notes,
-          'recurringFreq': recurringFreq ?? 'none',
-        });
+        final res = await ApiClient.instance.post(
+          '/bookings',
+          body: {
+            'serviceId': serviceType,
+            'date': date,
+            'timeSlot': timeSlot,
+            'address': address,
+            'city': city,
+            'postcode': postcode,
+            'notes': notes,
+            'recurringFreq': recurringFreq ?? 'none',
+          },
+        );
 
         if (res is Map<String, dynamic>) {
           final bookingData = res['booking'] ?? res;
@@ -417,7 +435,10 @@ class SupabaseService {
       final res = await ApiClient.instance.get('/plans');
       if (res is List) {
         return res
-            .map((item) => RecurringPlanModel.fromJson(item as Map<String, dynamic>))
+            .map(
+              (item) =>
+                  RecurringPlanModel.fromJson(item as Map<String, dynamic>),
+            )
             .toList();
       }
     } catch (_) {}
@@ -435,7 +456,10 @@ class SupabaseService {
     } catch (_) {}
 
     try {
-      await ApiClient.instance.patch('/plans/$planId', body: {'status': status});
+      await ApiClient.instance.patch(
+        '/plans/$planId',
+        body: {'status': status},
+      );
     } catch (_) {}
   }
 
@@ -457,28 +481,24 @@ class SupabaseService {
       if (data is Map && data['error'] != null) {
         throw Exception(data['error'].toString());
       }
+      throw Exception('Payment checkout session could not be created.');
     } on FunctionException catch (fe) {
       final details = fe.details;
       if (details is Map && details['error'] != null) {
         throw Exception(details['error'].toString());
       }
-      if (fe.status >= 400) {
-        // Fallback to web checkout if status issue
-      }
+      throw Exception('Payment service error: $fe');
     } catch (e) {
-      if (e is Exception && !e.toString().contains('Failed to start payment')) {
-        // Keep moving to fallback
-      }
+      debugPrint('[Stripe] Checkout creation failed: $e');
     }
 
-    try {
-      final res = await ApiClient.instance.post('/bookings/$bookingId/checkout');
-      if (res is Map<String, dynamic> && res['checkoutUrl'] != null) {
-        return res['checkoutUrl'].toString();
-      }
-    } catch (_) {}
+    final res = await ApiClient.instance.post('/bookings/$bookingId/checkout');
+    if (res is Map<String, dynamic>) {
+      final checkoutUrl = res['checkoutUrl'] ?? res['url'];
+      if (checkoutUrl != null) return checkoutUrl.toString();
+    }
 
-    return '${AppConfig.siteUrl}/pay/$bookingId';
+    throw Exception('Payment checkout session could not be created.');
   }
 
   // ─── Post-Booking Actions ──────────────────────────────────────────────────
@@ -527,7 +547,9 @@ class SupabaseService {
     } catch (_) {}
 
     try {
-      final res = await ApiClient.instance.get('/bookings/$bookingId/reschedule');
+      final res = await ApiClient.instance.get(
+        '/bookings/$bookingId/reschedule',
+      );
       if (res is Map<String, dynamic>) {
         return RescheduleRequestModel.fromJson(res);
       }

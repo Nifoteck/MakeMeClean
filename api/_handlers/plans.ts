@@ -16,6 +16,9 @@ export async function handlePlans(
   const auth = await verifyAuth(req);
   if (!auth) {
     return sendError(res, 'Authentication required', 401);
+  const { user, supabase, error: authError } = await verifyAuth(req);
+  if (authError || !user) {
+    return sendError(res, authError || 'Authentication required', 401);
   }
 
   const { supabase, user } = auth;

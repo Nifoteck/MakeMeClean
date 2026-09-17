@@ -376,9 +376,15 @@ export default function AdminPanel() {
 
                   {/* Actions */}
                   <div className="flex items-center gap-2 min-w-0 md:justify-end">
-                    <span className={cn("text-xs font-bold px-3 py-1.5 rounded-full", STATUS_PILL[b.status] ?? "bg-gray-100 text-gray-500")}>
-                      {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
-                    </span>
+                    {(b.status !== "upcoming" || b.payment_status === "paid") ? (
+                      <span className={cn("text-xs font-bold px-3 py-1.5 rounded-full", STATUS_PILL[b.status] ?? "bg-gray-100 text-gray-500")}>
+                        {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
+                      </span>
+                    ) : (
+                      <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-amber-100 text-amber-700">
+                        Payment pending
+                      </span>
+                    )}
                     {b.status !== "completed" && (
                       <button disabled={updatingId === b.id} onClick={() => updateStatus(b.id, "completed")}
                         className="w-8 h-8 flex items-center justify-center rounded-xl border border-emerald-200 text-emerald-600 hover:bg-emerald-50 disabled:opacity-40 transition-colors" title="Mark complete">

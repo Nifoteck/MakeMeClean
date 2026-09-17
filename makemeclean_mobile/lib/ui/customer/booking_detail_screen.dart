@@ -76,10 +76,7 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
         mode: LaunchMode.inAppBrowserView,
       );
       if (!launched) {
-        await launchUrl(
-          Uri.parse(url),
-          mode: LaunchMode.externalApplication,
-        );
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
       }
       // When the user returns from Stripe checkout, refresh the booking state
       await Future.delayed(const Duration(seconds: 1));
@@ -329,7 +326,10 @@ class _BookingDetailScreenState extends State<BookingDetailScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      StatusBadge(status: b.status),
+                      StatusBadge(
+                        status: b.status,
+                        paymentStatus: b.paymentStatus,
+                      ),
                       Text(
                         'Ref: #${b.id.substring(0, 8).toUpperCase()}',
                         style: const TextStyle(

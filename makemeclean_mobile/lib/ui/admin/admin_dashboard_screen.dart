@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../data/services/supabase_service.dart';
@@ -8,18 +9,38 @@ import '../shared/notification_modal.dart';
 import '../shared/service_image_widget.dart';
 
 enum AdminSection {
-  bookings('Bookings', LucideIcons.layoutDashboard, 'Manage customer cleans & assignments'),
-  applicants('Applicants', LucideIcons.usersRound, 'Cleaner job applications & hiring'),
-  staff('Staff', LucideIcons.briefcaseBusiness, 'Active cleaners & team management'),
+  bookings(
+    'Bookings',
+    LucideIcons.layoutDashboard,
+    'Manage customer cleans & assignments',
+  ),
+  applicants(
+    'Applicants',
+    LucideIcons.usersRound,
+    'Cleaner job applications & hiring',
+  ),
+  staff(
+    'Staff',
+    LucideIcons.briefcaseBusiness,
+    'Active cleaners & team management',
+  ),
   services('Services', LucideIcons.sprayCan, 'Service catalog & pricing rates'),
   payroll('Payroll', LucideIcons.banknote, 'Friday cleaner payouts & hours'),
-  reschedules('Reschedules', LucideIcons.calendarClock, 'Customer reschedule requests'),
+  reschedules(
+    'Reschedules',
+    LucideIcons.calendarClock,
+    'Customer reschedule requests',
+  ),
   plans('Plans', LucideIcons.repeat, 'Recurring cleaning subscriptions'),
   messages('Messages', LucideIcons.messageSquare, 'Customer contact enquiries'),
   refunds('Refunds', LucideIcons.dollarSign, 'Refund requests & adjustments'),
   photos('Photos', LucideIcons.image, 'Before & After clean QA photos'),
   loyalty('Loyalty', LucideIcons.trophy, 'Customer points & VIP tiers'),
-  settings('Settings', LucideIcons.settings, 'Service coverage & system configuration');
+  settings(
+    'Settings',
+    LucideIcons.settings,
+    'Service coverage & system configuration',
+  );
 
   final String label;
   final IconData icon;
@@ -142,18 +163,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(LucideIcons.bell, size: 20, color: AppColors.textPrimary),
+            icon: const Icon(
+              LucideIcons.bell,
+              size: 20,
+              color: AppColors.textPrimary,
+            ),
             onPressed: () => NotificationModal.show(context),
           ),
           IconButton(
-            icon: const Icon(LucideIcons.logOut, size: 20, color: AppColors.statusCancelledText),
+            icon: const Icon(
+              LucideIcons.logOut,
+              size: 20,
+              color: AppColors.statusCancelledText,
+            ),
             onPressed: () => SupabaseService.instance.signOut(),
           ),
         ],
       ),
       drawer: _buildAdminDrawer(),
       body: _isLoading
-          ? const Center(child: LoadingIndicator(message: 'Loading back office...'))
+          ? const Center(
+              child: LoadingIndicator(message: 'Loading back office...'),
+            )
           : RefreshIndicator(
               onRefresh: _loadAllRealData,
               color: AppColors.primary,
@@ -184,7 +215,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Icon(LucideIcons.sprayCan, color: Colors.white, size: 22),
+                    child: const Icon(
+                      LucideIcons.sprayCan,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   const Column(
@@ -215,7 +250,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             // 12 Navigation Items
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 children: AdminSection.values.map((section) {
                   final isActive = _currentSection == section;
                   return Container(
@@ -226,22 +264,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     ),
                     child: ListTile(
                       dense: true,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                       leading: Icon(
                         section.icon,
                         size: 19,
-                        color: isActive ? Colors.white : AppColors.textSecondary,
+                        color: isActive
+                            ? Colors.white
+                            : AppColors.textSecondary,
                       ),
                       title: Text(
                         section.label,
                         style: TextStyle(
                           fontSize: 14,
-                          fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
-                          color: isActive ? Colors.white : AppColors.textPrimary,
+                          fontWeight: isActive
+                              ? FontWeight.w800
+                              : FontWeight.w600,
+                          color: isActive
+                              ? Colors.white
+                              : AppColors.textPrimary,
                         ),
                       ),
                       trailing: isActive
-                          ? const Icon(LucideIcons.chevronRight, size: 16, color: Colors.white70)
+                          ? const Icon(
+                              LucideIcons.chevronRight,
+                              size: 16,
+                              color: Colors.white70,
+                            )
                           : null,
                       onTap: () {
                         setState(() => _currentSection = section);
@@ -261,8 +311,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               child: ListTile(
                 dense: true,
-                leading: const Icon(LucideIcons.logOut, size: 18, color: AppColors.statusCancelledText),
-                title: const Text('Sign Out', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.statusCancelledText)),
+                leading: const Icon(
+                  LucideIcons.logOut,
+                  size: 18,
+                  color: AppColors.statusCancelledText,
+                ),
+                title: const Text(
+                  'Sign Out',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.statusCancelledText,
+                  ),
+                ),
                 onTap: () => SupabaseService.instance.signOut(),
               ),
             ),
@@ -306,10 +367,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   Widget _buildBookingsSection() {
     final filtered = _bookings.where((b) {
       final status = (b['status']?.toString() ?? '').toLowerCase();
-      if (_bookingStatusFilter != 'all' && status != _bookingStatusFilter) return false;
+      if (_bookingStatusFilter != 'all' && status != _bookingStatusFilter) {
+        return false;
+      }
       if (_searchQuery.isEmpty) return true;
       final q = _searchQuery.toLowerCase();
-      final name = (b['profiles']?['full_name']?.toString() ?? '').toLowerCase();
+      final name = (b['profiles']?['full_name']?.toString() ?? '')
+          .toLowerCase();
       final city = (b['city']?.toString() ?? '').toLowerCase();
       final postcode = (b['postcode']?.toString() ?? '').toLowerCase();
       return name.contains(q) || city.contains(q) || postcode.contains(q);
@@ -333,7 +397,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(color: AppColors.border),
                   ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                 ),
                 onChanged: (val) => setState(() => _searchQuery = val),
               ),
@@ -341,23 +408,35 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
-                  children: ['all', 'upcoming', 'in_progress', 'completed', 'cancelled'].map((status) {
-                    final selected = _bookingStatusFilter == status;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(status.toUpperCase().replaceAll('_', ' ')),
-                        selected: selected,
-                        selectedColor: AppColors.primary,
-                        labelStyle: TextStyle(
-                          color: selected ? Colors.white : AppColors.textPrimary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w800,
-                        ),
-                        onSelected: (_) => setState(() => _bookingStatusFilter = status),
-                      ),
-                    );
-                  }).toList(),
+                  children:
+                      [
+                        'all',
+                        'upcoming',
+                        'in_progress',
+                        'completed',
+                        'cancelled',
+                      ].map((status) {
+                        final selected = _bookingStatusFilter == status;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ChoiceChip(
+                            label: Text(
+                              status.toUpperCase().replaceAll('_', ' '),
+                            ),
+                            selected: selected,
+                            selectedColor: AppColors.primary,
+                            labelStyle: TextStyle(
+                              color: selected
+                                  ? Colors.white
+                                  : AppColors.textPrimary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
+                            onSelected: (_) =>
+                                setState(() => _bookingStatusFilter = status),
+                          ),
+                        );
+                      }).toList(),
                 ),
               ),
             ],
@@ -374,7 +453,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final b = filtered[index];
-                    final customerName = b['profiles']?['full_name'] ?? 'Customer';
+                    final customerName =
+                        b['profiles']?['full_name'] ?? 'Customer';
                     final customerPhone = b['profiles']?['phone'] ?? '';
                     final price = (b['price'] as num?)?.toDouble() ?? 0.0;
                     final status = b['status']?.toString() ?? 'upcoming';
@@ -397,18 +477,39 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               Expanded(
                                 child: Text(
                                   b['service_name'] ?? 'Cleaning Service',
-                                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primarySurface,
+                                  color:
+                                      (b['payment_status'] != 'paid' &&
+                                          status == 'upcoming')
+                                      ? AppColors.statusPendingBg
+                                      : AppColors.primarySurface,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  status.toUpperCase(),
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary),
+                                  (b['payment_status'] != 'paid' &&
+                                          status == 'upcoming')
+                                      ? 'PAYMENT PENDING'
+                                      : status.toUpperCase(),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color:
+                                        (b['payment_status'] != 'paid' &&
+                                            status == 'upcoming')
+                                        ? AppColors.statusPendingText
+                                        : AppColors.primary,
+                                  ),
                                 ),
                               ),
                             ],
@@ -416,17 +517,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           const SizedBox(height: 6),
                           Text(
                             '$customerName • ${Formatters.date(date)} ($timeSlot)',
-                            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                           if (customerPhone.isNotEmpty)
                             Text(
                               '📞 $customerPhone',
-                              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMuted,
+                              ),
                             ),
                           const SizedBox(height: 4),
                           Text(
                             '📍 ${b['address'] ?? ''}, ${b['city'] ?? ''} (${b['postcode'] ?? ''})',
-                            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
                           ),
                           const Divider(height: 20),
                           Row(
@@ -434,25 +544,49 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             children: [
                               Text(
                                 Formatters.currency(price),
-                                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppColors.primary),
+                                style: const TextStyle(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppColors.primary,
+                                ),
                               ),
                               Row(
                                 children: [
                                   if (status != 'completed')
                                     TextButton(
                                       onPressed: () async {
-                                        await SupabaseService.instance.adminUpdateBookingStatus(b['id'], 'completed');
+                                        await SupabaseService.instance
+                                            .adminUpdateBookingStatus(
+                                              b['id'],
+                                              'completed',
+                                            );
                                         _loadAllRealData();
                                       },
-                                      child: const Text('Complete', style: TextStyle(color: Color(0xFF059669), fontWeight: FontWeight.w800)),
+                                      child: const Text(
+                                        'Complete',
+                                        style: TextStyle(
+                                          color: Color(0xFF059669),
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
                                     ),
                                   if (status != 'cancelled')
                                     TextButton(
                                       onPressed: () async {
-                                        await SupabaseService.instance.adminUpdateBookingStatus(b['id'], 'cancelled');
+                                        await SupabaseService.instance
+                                            .adminUpdateBookingStatus(
+                                              b['id'],
+                                              'cancelled',
+                                            );
                                         _loadAllRealData();
                                       },
-                                      child: const Text('Cancel', style: TextStyle(color: AppColors.statusCancelledText, fontWeight: FontWeight.w800)),
+                                      child: const Text(
+                                        'Cancel',
+                                        style: TextStyle(
+                                          color: AppColors.statusCancelledText,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
                                     ),
                                 ],
                               ),
@@ -470,7 +604,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ─── 2. Applicants Management ──────────────────────────────────────────────
   Widget _buildApplicantsSection() {
-    if (_applicants.isEmpty) return _buildEmptyState('No cleaner job applications yet.');
+    if (_applicants.isEmpty) {
+      return _buildEmptyState('No cleaner job applications yet.');
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -497,40 +633,82 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(name.isNotEmpty ? name : 'Applicant', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  Text(
+                    name.isNotEmpty ? name : 'Applicant',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primarySurface,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(status.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 4),
-              Text('📧 $email • 📞 $phone', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              Text(
+                '📧 $email • 📞 $phone',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text('Experience: $experience', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              Text(
+                'Experience: $experience',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
               const Divider(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
                     onPressed: () async {
-                      await SupabaseService.instance.adminUpdateApplicantStatus(a['id'], 'rejected');
+                      await SupabaseService.instance.adminUpdateApplicantStatus(
+                        a['id'],
+                        'rejected',
+                      );
                       _loadAllRealData();
                     },
-                    child: const Text('Reject', style: TextStyle(color: AppColors.statusCancelledText)),
+                    child: const Text(
+                      'Reject',
+                      style: TextStyle(color: AppColors.statusCancelledText),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
                     onPressed: () async {
-                      await SupabaseService.instance.adminUpdateApplicantStatus(a['id'], 'accepted');
+                      await SupabaseService.instance.adminUpdateApplicantStatus(
+                        a['id'],
+                        'accepted',
+                      );
                       _loadAllRealData();
                     },
-                    child: const Text('Accept Cleaner', style: TextStyle(color: Colors.white)),
+                    child: const Text(
+                      'Accept Cleaner',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
@@ -543,7 +721,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ─── 3. Staff Directory ───────────────────────────────────────────────────
   Widget _buildStaffSection() {
-    if (_staff.isEmpty) return _buildEmptyState('No staff members registered in database.');
+    if (_staff.isEmpty) {
+      return _buildEmptyState('No staff members registered in database.');
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -569,19 +749,43 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: active ? AppColors.primarySurface : AppColors.background,
+                  color: active
+                      ? AppColors.primarySurface
+                      : AppColors.background,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(LucideIcons.userCheck, color: active ? AppColors.primary : AppColors.textMuted),
+                child: Icon(
+                  LucideIcons.userCheck,
+                  color: active ? AppColors.primary : AppColors.textMuted,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name.isNotEmpty ? name : 'Cleaner', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                    Text(email, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                    Text('Rate: ${Formatters.currency(rate)}/hr', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    Text(
+                      name.isNotEmpty ? name : 'Cleaner',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      email,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    Text(
+                      'Rate: ${Formatters.currency(rate)}/hr',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -589,7 +793,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 value: active,
                 activeThumbColor: AppColors.primary,
                 onChanged: (_) async {
-                  await SupabaseService.instance.adminToggleStaffActive(s['id'], active);
+                  await SupabaseService.instance.adminToggleStaffActive(
+                    s['id'],
+                    active,
+                  );
                   _loadAllRealData();
                 },
               ),
@@ -638,11 +845,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                    Text(
+                      name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 3),
                     Text(
                       '${Formatters.currency(price)}/hr${discount > 0 ? ' • $discount% off' : ''}',
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
@@ -651,7 +868,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 value: active,
                 activeThumbColor: AppColors.primary,
                 onChanged: (_) async {
-                  await SupabaseService.instance.adminToggleServiceActive(s['id'], active);
+                  await SupabaseService.instance.adminToggleServiceActive(
+                    s['id'],
+                    active,
+                  );
                   _loadAllRealData();
                 },
               ),
@@ -664,7 +884,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ─── 5. Payroll Management ────────────────────────────────────────────────
   Widget _buildPayrollSection() {
-    if (_payroll.isEmpty) return _buildEmptyState('No payroll records found for completed weeks.');
+    if (_payroll.isEmpty) {
+      return _buildEmptyState('No payroll records found for completed weeks.');
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -672,7 +894,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final p = _payroll[index];
-        final cleanerName = '${p['staff']?['first_name'] ?? ''} ${p['staff']?['last_name'] ?? ''}'.trim();
+        final cleanerName =
+            '${p['staff']?['first_name'] ?? ''} ${p['staff']?['last_name'] ?? ''}'
+                .trim();
         final amount = (p['total_pay'] as num?)?.toDouble() ?? 0.0;
         final hours = (p['hours_worked'] as num?)?.toDouble() ?? 0.0;
 
@@ -689,14 +913,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(cleanerName.isNotEmpty ? cleanerName : 'Cleaner', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                  Text(
+                    cleanerName.isNotEmpty ? cleanerName : 'Cleaner',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('$hours hours logged', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  Text(
+                    '$hours hours logged',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
               Text(
                 Formatters.currency(amount),
-                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppColors.primary),
+                style: const TextStyle(
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.primary,
+                ),
               ),
             ],
           ),
@@ -707,7 +947,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ─── 6. Reschedule Requests ───────────────────────────────────────────────
   Widget _buildReschedulesSection() {
-    if (_reschedules.isEmpty) return _buildEmptyState('No pending reschedule requests from customers.');
+    if (_reschedules.isEmpty) {
+      return _buildEmptyState('No pending reschedule requests from customers.');
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -728,28 +970,47 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Requested Date: $newDate', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+              Text(
+                'Requested Date: $newDate',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 4),
-              Text('Status: ${status.toUpperCase()}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              Text(
+                'Status: ${status.toUpperCase()}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
               const Divider(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
                     onPressed: () async {
-                      await SupabaseService.instance.adminUpdateRescheduleStatus(r['id'], 'declined');
+                      await SupabaseService.instance
+                          .adminUpdateRescheduleStatus(r['id'], 'declined');
                       _loadAllRealData();
                     },
                     child: const Text('Decline'),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
                     onPressed: () async {
-                      await SupabaseService.instance.adminUpdateRescheduleStatus(r['id'], 'approved');
+                      await SupabaseService.instance
+                          .adminUpdateRescheduleStatus(r['id'], 'approved');
                       _loadAllRealData();
                     },
-                    child: const Text('Approve Reschedule', style: TextStyle(color: Colors.white)),
+                    child: const Text(
+                      'Approve Reschedule',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
@@ -762,7 +1023,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ─── 7. Plans (Subscriptions) ─────────────────────────────────────────────
   Widget _buildPlansSection() {
-    if (_plans.isEmpty) return _buildEmptyState('No recurring cleaning subscriptions active.');
+    if (_plans.isEmpty) {
+      return _buildEmptyState('No recurring cleaning subscriptions active.');
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -786,18 +1049,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(customer, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                  Text(
+                    customer,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('Plan: $freq', style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  Text(
+                    'Plan: $freq',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primarySurface,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Text('ACTIVE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                child: const Text(
+                  'ACTIVE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
             ],
           ),
@@ -808,7 +1093,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ─── 8. Messages (Contact Inquiries) ──────────────────────────────────────
   Widget _buildMessagesSection() {
-    if (_messages.isEmpty) return _buildEmptyState('No contact inquiries received.');
+    if (_messages.isEmpty) {
+      return _buildEmptyState('No contact inquiries received.');
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -834,19 +1121,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                  Text(email, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    email,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 8),
-              Text(message, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                ),
+              ),
               const Divider(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   TextButton(
                     onPressed: () async {
-                      await SupabaseService.instance.adminMarkMessageRead(m['id'], !isRead);
+                      await SupabaseService.instance.adminMarkMessageRead(
+                        m['id'],
+                        !isRead,
+                      );
                       _loadAllRealData();
                     },
                     child: Text(isRead ? 'Mark as Unread' : 'Mark as Read'),
@@ -887,31 +1195,62 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(Formatters.currency(amount), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w900, color: AppColors.primary)),
-                  Text(status.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: AppColors.textSecondary)),
+                  Text(
+                    Formatters.currency(amount),
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  Text(
+                    status.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
-              Text('Reason: $reason', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary)),
+              Text(
+                'Reason: $reason',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                ),
+              ),
               const Divider(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   OutlinedButton(
                     onPressed: () async {
-                      await SupabaseService.instance.adminUpdateRefundStatus(r['id'], 'declined');
+                      await SupabaseService.instance.adminUpdateRefundStatus(
+                        r['id'],
+                        'declined',
+                      );
                       _loadAllRealData();
                     },
                     child: const Text('Decline'),
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                    ),
                     onPressed: () async {
-                      await SupabaseService.instance.adminUpdateRefundStatus(r['id'], 'approved');
+                      await SupabaseService.instance.adminUpdateRefundStatus(
+                        r['id'],
+                        'approved',
+                      );
                       _loadAllRealData();
                     },
-                    child: const Text('Approve Refund', style: TextStyle(color: Colors.white)),
+                    child: const Text(
+                      'Approve Refund',
+                      style: TextStyle(color: Colors.white),
+                    ),
                   ),
                 ],
               ),
@@ -924,7 +1263,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ─── 10. Photos QA ────────────────────────────────────────────────────────
   Widget _buildPhotosSection() {
-    if (_photos.isEmpty) return _buildEmptyState('No clean photos uploaded by staff yet.');
+    if (_photos.isEmpty) {
+      return _buildEmptyState('No clean photos uploaded by staff yet.');
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -945,12 +1286,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Type: ${type.toUpperCase()}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800)),
+              Text(
+                'Type: ${type.toUpperCase()}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 8),
               if (url.isNotEmpty)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(url, height: 180, width: double.infinity, fit: BoxFit.cover),
+                  child: Image.network(
+                    url,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
                 ),
             ],
           ),
@@ -961,7 +1313,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   // ─── 11. Loyalty Points ───────────────────────────────────────────────────
   Widget _buildLoyaltySection() {
-    if (_loyalty.isEmpty) return _buildEmptyState('No customer loyalty records found.');
+    if (_loyalty.isEmpty) {
+      return _buildEmptyState('No customer loyalty records found.');
+    }
 
     return ListView.separated(
       padding: const EdgeInsets.all(16),
@@ -987,18 +1341,47 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                  Text(email, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                  Text('Tier: $tier', style: const TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w700)),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    email,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  Text(
+                    'Tier: $tier',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppColors.primarySurface,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text('$points PTS', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.primary)),
+                child: Text(
+                  '$points PTS',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1028,12 +1411,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Service Locations (Wales)', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
-                    Text('${_cities.where((c) => c['is_active'] == true).length} Active', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                    const Text(
+                      'Service Locations (Wales)',
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '${_cities.where((c) => c['is_active'] == true).length} Active',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 6),
-                const Text('Tap any city to immediately open or close booking service.', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const Text(
+                  'Tap any city to immediately open or close booking service.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
                 const SizedBox(height: 14),
                 Wrap(
                   spacing: 8,
@@ -1042,23 +1444,52 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     final isActive = city['is_active'] == true;
                     return InkWell(
                       onTap: () async {
-                        await SupabaseService.instance.adminToggleCity(city['id'], isActive);
+                        await SupabaseService.instance.adminToggleCity(
+                          city['id'],
+                          isActive,
+                        );
                         _loadAllRealData();
                       },
                       borderRadius: BorderRadius.circular(10),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
-                          color: isActive ? AppColors.primarySurface : AppColors.background,
+                          color: isActive
+                              ? AppColors.primarySurface
+                              : AppColors.background,
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: isActive ? AppColors.primary : AppColors.border),
+                          border: Border.all(
+                            color: isActive
+                                ? AppColors.primary
+                                : AppColors.border,
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(city['name'] ?? '', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: isActive ? AppColors.primaryDark : AppColors.textSecondary)),
+                            Text(
+                              city['name'] ?? '',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                color: isActive
+                                    ? AppColors.primaryDark
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
                             const SizedBox(width: 4),
-                            Icon(isActive ? LucideIcons.circleCheck : LucideIcons.circleX, size: 13, color: isActive ? AppColors.primary : AppColors.textMuted),
+                            Icon(
+                              isActive
+                                  ? LucideIcons.circleCheck
+                                  : LucideIcons.circleX,
+                              size: 13,
+                              color: isActive
+                                  ? AppColors.primary
+                                  : AppColors.textMuted,
+                            ),
                           ],
                         ),
                       ),
@@ -1073,21 +1504,34 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         controller: _newCityController,
                         decoration: InputDecoration(
                           hintText: 'Add new city / town...',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                      style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                      ),
                       onPressed: () async {
                         if (_newCityController.text.trim().isEmpty) return;
-                        await SupabaseService.instance.adminAddCity(_newCityController.text.trim(), _newCityRegion);
+                        await SupabaseService.instance.adminAddCity(
+                          _newCityController.text.trim(),
+                          _newCityRegion,
+                        );
                         _newCityController.clear();
                         _loadAllRealData();
                       },
-                      child: const Text('Add', style: TextStyle(color: Colors.white)),
+                      child: const Text(
+                        'Add',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
@@ -1106,37 +1550,77 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('System Configuration & Info', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                const Text(
+                  'System Configuration & Info',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  leading: const Icon(LucideIcons.phone, size: 18, color: AppColors.primary),
-                  title: const Text('Business Phone', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  subtitle: Text(_settings['business_phone'] ?? '+44 (0) 7900 000000', style: const TextStyle(fontSize: 12)),
+                  leading: const Icon(
+                    LucideIcons.phone,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text(
+                    'Business Phone',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    _settings['business_phone'] ?? '+44 (0) 7900 000000',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
                 const Divider(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  leading: const Icon(LucideIcons.mail, size: 18, color: AppColors.primary),
-                  title: const Text('Contact Email', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  subtitle: Text(_settings['contact_email'] ?? 'info@makemeclean.co.uk', style: const TextStyle(fontSize: 12)),
+                  leading: const Icon(
+                    LucideIcons.mail,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text(
+                    'Contact Email',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Text(
+                    _settings['contact_email'] ?? 'info@makemeclean.co.uk',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                 ),
                 const Divider(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  leading: const Icon(LucideIcons.percent, size: 18, color: AppColors.primary),
-                  title: const Text('Recurring Discounts', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-                  subtitle: const Text('Weekly: 15% • Fortnightly: 10% • Monthly: 5%', style: TextStyle(fontSize: 12)),
+                  leading: const Icon(
+                    LucideIcons.percent,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  title: const Text(
+                    'Recurring Discounts',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text(
+                    'Weekly: 15% • Fortnightly: 10% • Monthly: 5%',
+                    style: TextStyle(fontSize: 12),
+                  ),
                 ),
                 const Divider(height: 12),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   dense: true,
-                  secondary: const Icon(LucideIcons.trophy, size: 18, color: AppColors.accent),
-                  title: const Text('Customer Loyalty Program', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  secondary: const Icon(
+                    LucideIcons.trophy,
+                    size: 18,
+                    color: AppColors.accent,
+                  ),
+                  title: const Text(
+                    'Customer Loyalty Program',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
                   subtitle: Text(
                     (_settings['loyalty_enabled'] == 'true')
                         ? 'Active & Visible across web & app'
@@ -1149,12 +1633,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     setState(() {
                       _settings['loyalty_enabled'] = newVal ? 'true' : 'false';
                     });
-                    await SupabaseService.instance.adminSaveSetting('loyalty_enabled', newVal ? 'true' : 'false');
+                    await SupabaseService.instance.adminSaveSetting(
+                      'loyalty_enabled',
+                      newVal ? 'true' : 'false',
+                    );
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(newVal ? 'Loyalty program enabled' : 'Loyalty program disabled'),
-                          backgroundColor: newVal ? AppColors.primary : Colors.grey[800],
+                          content: Text(
+                            newVal
+                                ? 'Loyalty program enabled'
+                                : 'Loyalty program disabled',
+                          ),
+                          backgroundColor: newVal
+                              ? AppColors.primary
+                              : Colors.grey[800],
                         ),
                       );
                     }
@@ -1175,12 +1668,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(LucideIcons.inbox, size: 44, color: AppColors.textMuted.withValues(alpha: 0.5)),
+            Icon(
+              LucideIcons.inbox,
+              size: 44,
+              color: AppColors.textMuted.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 12),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
             ),
           ],
         ),

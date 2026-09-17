@@ -72,6 +72,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return 'Good evening';
   }
 
+  bool _isPastBooking(BookingModel booking) {
+    final parsed = DateTime.tryParse(booking.date);
+    if (parsed == null) return false;
+    final date = DateTime(parsed.year, parsed.month, parsed.day);
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    return date.isBefore(today);
+  }
+
+  bool _isActiveUpcomingBooking(BookingModel booking) {
+    final status = booking.status.toLowerCase();
+    return ['upcoming', 'pending', 'confirmed'].contains(status) &&
+        !_isPastBooking(booking);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -86,9 +101,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final initial = (displayName.isNotEmpty ? displayName[0] : 'U')
         .toUpperCase();
 
-    final upcoming = _bookings
-        .where((b) => b.status.toLowerCase() == 'upcoming')
-        .length;
+    final upcoming = _bookings.where(_isActiveUpcomingBooking).length;
     final completed = _bookings
         .where((b) => b.status.toLowerCase() == 'completed')
         .length;
@@ -715,7 +728,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                StatusBadge(status: b.status),
+                                StatusBadge(
+                                  status: b.status,
+                                  paymentStatus: b.paymentStatus,
+                                ),
                               ],
                             ),
                           ],

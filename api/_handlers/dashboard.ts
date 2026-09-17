@@ -7,6 +7,15 @@ import {
   resolveServiceImageUrl,
 } from '../_lib/server.js';
 
+function isPastDate(date: string) {
+  const today = new Date().toISOString().slice(0, 10);
+  return date < today;
+}
+
+function isActiveUpcoming(status: string, date: string) {
+  return ['upcoming', 'pending', 'confirmed'].includes(status) && !isPastDate(date);
+}
+
 export async function handleDashboard(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return sendError(res, 'Method not allowed', 405);
@@ -35,7 +44,7 @@ export async function handleDashboard(req: VercelRequest, res: VercelResponse) {
     const bookings = bookingsRes.data || [];
     const counts = {
       total: bookings.length,
-      upcoming: bookings.filter((b) => b.status === 'upcoming').length,
+      upcoming: bookings.filter((b) => isActiveUpcoming(b.status, b.date)).length,
       in_progress: bookings.filter((b) => b.status === 'in_progress').length,
       completed: bookings.filter((b) => b.status === 'completed').length,
       cancelled: bookings.filter((b) => b.status === 'cancelled').length,
@@ -125,4 +134,3 @@ export async function handleDashboard(req: VercelRequest, res: VercelResponse) {
     return sendError(res, err?.message || 'Failed to fetch dashboard data', 500);
   }
 }
-

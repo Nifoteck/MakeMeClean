@@ -3,7 +3,13 @@ import { Link, useLocation } from "wouter";
 import { Calendar, Clock, MapPin, Plus, Search, Star } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { cn, formatDate, formatCurrency } from "@/lib/utils";
+import {
+  cn,
+  formatDate,
+  formatCurrency,
+  isActiveUpcomingBooking,
+  isPastDate,
+} from "@/lib/utils";
 import Pagination from "@/components/Pagination";
 import { Booking } from "@/types";
 import {
@@ -14,7 +20,7 @@ import {
 import Spinner from "@/components/Spinner";
 import { api } from "@/lib/apiClient";
 
-type FilterStatus = "all" | "upcoming" | "completed" | "cancelled";
+type FilterStatus = "all" | "upcoming" | "past" | "completed" | "cancelled";
 
 function paymentStatusLabel(status: string | null | undefined) {
   if (status === "paid") return "Paid";
@@ -74,13 +80,20 @@ export default function Bookings() {
 
   const counts = {
     all: bookings.length,
-    upcoming: bookings.filter((b) => b.status === "upcoming").length,
+    upcoming: bookings.filter((b) => isActiveUpcomingBooking(b.status, b.date))
+      .length,
+    past: bookings.filter((b) => isPastDate(b.date)).length,
     completed: bookings.filter((b) => b.status === "completed").length,
     cancelled: bookings.filter((b) => b.status === "cancelled").length,
   };
 
   const filtered = bookings
-    .filter((b) => filter === "all" || b.status === filter)
+    .filter((b) => {
+      if (filter === "all") return true;
+      if (filter === "upcoming") return isActiveUpcomingBooking(b.status, b.date);
+      if (filter === "past") return isPastDate(b.date);
+      return b.status === filter;
+    })
     .filter((b) => {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
@@ -124,7 +137,7 @@ export default function Bookings() {
         {/* Stat cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
           {(
-            ["all", "upcoming", "completed", "cancelled"] as FilterStatus[]
+            ["all", "upcoming", "past", "completed"] as FilterStatus[]
           ).map((f) => (
             <button
               key={f}
@@ -158,7 +171,7 @@ export default function Bookings() {
           </div>
           <div className="flex gap-2 overflow-x-auto pb-0.5">
             {(
-              ["all", "upcoming", "completed", "cancelled"] as FilterStatus[]
+              ["all", "upcoming", "past", "completed", "cancelled"] as FilterStatus[]
             ).map((f) => (
               <button
                 key={f}
@@ -235,15 +248,17 @@ export default function Bookings() {
                       {b.service_name}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      <span
-                        className={cn(
-                          "text-xs font-semibold px-2 py-0.5 rounded-full",
-                          BOOKING_STATUS_STYLES[b.status] ??
-                            "bg-gray-100 text-gray-600"
-                        )}
-                      >
-                        {b.status}
-                      </span>
+                      {(b.status !== "upcoming" || b.payment_status === "paid") && (
+                        <span
+                          className={cn(
+                            "text-xs font-semibold px-2 py-0.5 rounded-full",
+                            BOOKING_STATUS_STYLES[b.status] ??
+                              "bg-gray-100 text-gray-600"
+                          )}
+                        >
+                          {b.status}
+                        </span>
+                      )}
                       <span
                         className={cn(
                           "text-xs font-semibold px-2 py-0.5 rounded-full",
