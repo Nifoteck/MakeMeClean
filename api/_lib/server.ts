@@ -16,12 +16,24 @@ export interface ApiHandlerContext {
 
 // ─── Environment Variables ──────────────────────────────────────────────────
 export function getEnv(name: string, fallback = ''): string {
-  return (
-    process.env[name] ||
-    process.env[`VITE_${name}`] ||
-    process.env[`NEXT_PUBLIC_${name}`] ||
-    fallback
-  );
+  const aliases: Record<string, string[]> = {
+    SUPABASE_URL: ['SUPABASE_URL', 'VITE_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_URL'],
+    SUPABASE_ANON_KEY: ['SUPABASE_ANON_KEY', 'VITE_SUPABASE_ANON_KEY', 'ANON_KEY', 'VITE_ANON_KEY', 'NEXT_PUBLIC_SUPABASE_ANON_KEY'],
+    SUPABASE_SERVICE_ROLE_KEY: ['SUPABASE_SERVICE_ROLE_KEY', 'VITE_SUPABASE_SERVICE_ROLE_KEY', 'SERVICE_ROLE_KEY'],
+    TELEGRAM_BOT_TOKEN: ['TELEGRAM_BOT_TOKEN', 'VITE_TELEGRAM_BOT_TOKEN', 'BOT_TOKEN'],
+    TELEGRAM_CHAT_ID: ['TELEGRAM_CHAT_ID', 'VITE_TELEGRAM_CHAT_ID', 'TELEGRAM_ADMIN_CHAT_ID', 'VITE_TELEGRAM_ADMIN_CHAT_ID'],
+    TELEGRAM_ADMIN_CHAT_ID: ['TELEGRAM_ADMIN_CHAT_ID', 'VITE_TELEGRAM_ADMIN_CHAT_ID', 'TELEGRAM_CHAT_ID', 'VITE_TELEGRAM_CHAT_ID'],
+    SITE_URL: ['SITE_URL', 'VITE_SITE_URL', 'NEXT_PUBLIC_SITE_URL'],
+    STRIPE_SECRET_KEY: ['STRIPE_SECRET_KEY', 'VITE_STRIPE_SECRET_KEY'],
+    STRIPE_WEBHOOK_SECRET: ['STRIPE_WEBHOOK_SECRET', 'VITE_STRIPE_WEBHOOK_SECRET'],
+    GROQ_API_KEY: ['GROQ_API_KEY', 'VITE_GROQ_API_KEY'],
+  };
+
+  const keysToCheck = aliases[name] || [name, `VITE_${name}`, `NEXT_PUBLIC_${name}`];
+  for (const k of keysToCheck) {
+    if (process.env[k]) return process.env[k] as string;
+  }
+  return fallback;
 }
 
 export const SUPABASE_URL = getEnv('SUPABASE_URL');

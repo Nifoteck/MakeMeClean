@@ -6,13 +6,6 @@ export async function handleSettings(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const supabase = getServerSupabase();
-    const { data, error } = await supabase.from('settings').select('key, value');
-
-    if (error) {
-      return sendError(res, error.message, 500);
-    }
-
     const settingsMap: Record<string, string> = {
       discount_weekly: '15',
       discount_fortnightly: '10',
@@ -26,6 +19,13 @@ export async function handleSettings(req: VercelRequest, res: VercelResponse) {
       email_payroll: 'payroll@makemeclean.co.uk',
       loyalty_enabled: 'false',
     };
+
+    const supabase = getServerSupabase();
+    const { data, error } = await supabase.from('settings').select('key, value');
+
+    if (error) {
+      return sendSuccess(res, settingsMap);
+    }
 
     if (data) {
       for (const row of data) {

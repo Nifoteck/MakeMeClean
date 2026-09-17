@@ -123,6 +123,13 @@ export async function handleBookings(
       const finalPrice = Math.round(basePrice * (1 - totalDiscountPercent / 100) * 100) / 100;
       const invoiceNumber = generateInvoiceNumber();
 
+      // Ensure profile row exists to prevent foreign key violations
+      try {
+        await supabase
+          .from('profiles')
+          .upsert({ id: user.id }, { onConflict: 'id' });
+      } catch (_) {}
+
       const bookingInsert = {
         user_id: user.id,
         service_type: service.id,
@@ -146,30 +153,38 @@ export async function handleBookings(
         .single();
 
       if (insertErr || !booking) {
+        console.error('[Booking Insert Error]:', insertErr);
         return sendError(res, insertErr?.message || 'Failed to create booking', 500);
       }
 
-      if (recurringFreq !== 'none' && recurringFreq !== 'one_off') {
-        await supabase.from('recurring_plans').insert({
-          user_id: user.id,
-          service_type: service.id,
-          service_name: service.name,
-          frequency: recurringFreq,
-          preferred_day: new Date(date).toLocaleDateString('en-GB', { weekday: 'long' }),
-          preferred_time: startHour || timeSlot.split(' - ')[0] || '09:00',
-          address: address.trim(),
-          city: (city || 'South Wales').trim(),
-          postcode: postcode.trim().toUpperCase(),
-          discount_percent: recurringDiscountPercent,
-          price_per_clean: finalPrice,
-          status: 'active',
-        });
+      if (recurringFreq && recurringFreq !== 'none' && recurringFreq !== 'one_off') {
+        const normalizedFreq = recurringFreq === 'biweekly' ? 'fortnightly' : recurringFreq;
+        if (['weekly', 'fortnightly', 'monthly'].includes(normalizedFreq)) {
+          const { error: planErr } = await supabase.from('recurring_plans').insert({
+            user_id: user.id,
+            service_type: service.id,
+            service_name: service.name,
+            frequency: normalizedFreq,
+            start_time: startHour || timeSlot.split(' - ')[0] || '09:00',
+            duration_hours: durationHours,
+            address: address.trim(),
+            city: (city || 'South Wales').trim(),
+            postcode: postcode.trim().toUpperCase(),
+            price_per_visit: finalPrice,
+            discount_percent: recurringDiscountPercent,
+            status: 'active',
+            notes: notes ? String(notes).trim() : null,
+          });
+          if (planErr) {
+            console.error('[Recurring Plan Insert Warning]:', planErr);
+          }
+        }
       }
 
       // Telegram notification
       try {
         const botToken = getEnv('TELEGRAM_BOT_TOKEN');
-        const chatId = getEnv('TELEGRAM_ADMIN_CHAT_ID');
+        const chatId = getEnv('TELEGRAM_ADMIN_CHAT_ID') || getEnv('TELEGRAM_CHAT_ID');
         if (botToken && chatId) {
           const msg = `🧹 *New Booking Created*\n*ID:* \`${booking.id}\`\n*Service:* ${service.name}\n*Date:* ${date} (${timeSlot})\n*Address:* ${booking.address}, ${booking.postcode}\n*Price:* £${finalPrice.toFixed(2)}`;
           await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
