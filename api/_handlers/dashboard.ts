@@ -28,10 +28,10 @@ export async function handleDashboard(req: VercelRequest, res: VercelResponse) {
 
   try {
     const [profileRes, bookingsRes, servicesRes, notifsRes, settingsRes] = await Promise.all([
-      supabase.from('profiles').select('*').eq('id', user.id).single(),
+      supabase.from('profiles').select('*').eq('id', user.id).maybeSingle(),
       supabase
         .from('bookings')
-        .select('*, staff:cleaner_id(full_name, phone)')
+        .select('*')
         .eq('user_id', user.id)
         .order('date', { ascending: false }),
       supabase.from('services').select('*').eq('active', true).order('price', { ascending: true }),
@@ -39,9 +39,9 @@ export async function handleDashboard(req: VercelRequest, res: VercelResponse) {
       supabase.from('settings').select('value').eq('key', 'loyalty_enabled').maybeSingle(),
     ]);
 
-    const loyaltyEnabled = settingsRes.data?.value === 'true';
+    const loyaltyEnabled = settingsRes?.data?.value === 'true';
 
-    const bookings = bookingsRes.data || [];
+    const bookings = bookingsRes?.data || [];
     const counts = {
       total: bookings.length,
       upcoming: bookings.filter((b) => isActiveUpcoming(b.status, b.date)).length,
@@ -63,8 +63,6 @@ export async function handleDashboard(req: VercelRequest, res: VercelResponse) {
       address: b.address,
       city: b.city,
       postcode: b.postcode,
-      cleaner_id: b.cleaner_id,
-      cleaner_name: b.staff?.full_name || null,
       created_at: b.created_at,
     }));
 
