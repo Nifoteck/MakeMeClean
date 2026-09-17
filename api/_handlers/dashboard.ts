@@ -5,7 +5,6 @@ import {
   sendSuccess,
   sendError,
   resolveServiceImageUrl,
-} from '../_lib/server';
 
 function isPastDate(date: string) {
   const today = new Date().toISOString().slice(0, 10);

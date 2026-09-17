@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse, getServerSupabase, sendSuccess, sendError, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } from '../_lib/server';
+import { VercelRequest, VercelResponse, getServerSupabase, sendSuccess, sendError, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID } from '../_lib/server.js';
 
 export async function handleContact(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

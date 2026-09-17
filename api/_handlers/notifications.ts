@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse, verifyAuth, sendSuccess, sendError } from '../_lib/server';
+import { VercelRequest, VercelResponse, verifyAuth, sendSuccess, sendError } from '../_lib/server.js';
 
 export async function handleNotifications(req: VercelRequest, res: VercelResponse) {
   const { user, supabase, error: authError } = await verifyAuth(req);

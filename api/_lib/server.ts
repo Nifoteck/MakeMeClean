@@ -149,6 +149,18 @@ export function calcTimeSlot(startHour: string, durationHours: number): string {
   return `${startHour} – ${endStr}`;
 }
 
+export function calculateDurationHours(timeSlot: string): number {
+  if (!timeSlot) return 2.0;
+  const parts = timeSlot.split(/[-–]/).map((s) => s.trim());
+  if (parts.length < 2) return 2.0;
+  const [startH, startM] = (parts[0] || '09:00').split(':').map(Number);
+  const [endH, endM] = (parts[1] || '11:00').split(':').map(Number);
+  const startMins = (startH || 0) * 60 + (startM || 0);
+  const endMins = (endH || 0) * 60 + (endM || 0);
+  const diff = (endMins - startMins) / 60;
+  return diff > 0 ? diff : 2.0;
+}
+
 export function generateInvoiceNumber(): string {
   const now = new Date();
   const year = now.getFullYear();
