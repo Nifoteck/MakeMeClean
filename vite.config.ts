@@ -14,6 +14,7 @@ function apiDevServerPlugin(): Plugin {
         }
 
         const parsed = url.parse(reqUrl, true);
+        const pathname = parsed.pathname || reqUrl;
         const queryParams: Record<string, any> = { ...(parsed.query as Record<string, any>) };
         const modulePath = path.resolve(__dirname, "./api/index.ts");
 
