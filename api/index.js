@@ -1,4 +1,4 @@
-// api/_lib/server.ts
+// server/_lib/server.ts
 import { createClient } from "@supabase/supabase-js";
 function getEnv(name, fallback = "") {
   const aliases = {
@@ -170,7 +170,7 @@ function resolveServiceImageUrl(serviceId, dbImageUrl) {
   return "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&auto=format&fit=crop&q=80";
 }
 
-// api/_handlers/config.ts
+// server/_handlers/config.ts
 async function handleConfig(req, res) {
   if (req.method !== "GET") {
     return sendError(res, "Method not allowed", 405);
@@ -189,7 +189,7 @@ async function handleConfig(req, res) {
   });
 }
 
-// api/_handlers/services.ts
+// server/_handlers/services.ts
 async function handleServices(req, res) {
   if (req.method !== "GET") {
     return sendError(res, "Method not allowed", 405);
@@ -217,7 +217,7 @@ async function handleServices(req, res) {
   }
 }
 
-// api/_handlers/settings.ts
+// server/_handlers/settings.ts
 async function handleSettings(req, res) {
   if (req.method !== "GET") {
     return sendError(res, "Method not allowed", 405);
@@ -252,7 +252,7 @@ async function handleSettings(req, res) {
   }
 }
 
-// api/_handlers/service-cities.ts
+// server/_handlers/service-cities.ts
 async function handleServiceCities(req, res) {
   if (req.method !== "GET") {
     return sendError(res, "Method not allowed", 405);
@@ -285,7 +285,7 @@ async function handleServiceCities(req, res) {
   }
 }
 
-// api/_handlers/booking-options.ts
+// server/_handlers/booking-options.ts
 async function handleBookingOptions(req, res) {
   if (req.method !== "GET") {
     return sendError(res, "Method not allowed", 405);
@@ -350,7 +350,7 @@ async function handleBookingOptions(req, res) {
   }
 }
 
-// api/_handlers/dashboard.ts
+// server/_handlers/dashboard.ts
 function isPastDate(date) {
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   return date < today;
@@ -461,7 +461,7 @@ async function handleDashboard(req, res) {
   }
 }
 
-// api/_handlers/bookings.ts
+// server/_handlers/bookings.ts
 async function handleBookings(req, res, subPath, params = {}) {
   const method = (req.method || "GET").toUpperCase();
   const auth = await verifyAuth(req);
@@ -789,7 +789,7 @@ async function handleBookings(req, res, subPath, params = {}) {
   return sendError(res, "Endpoint not found", 404);
 }
 
-// api/_handlers/plans.ts
+// server/_handlers/plans.ts
 async function handlePlans(req, res, subPath, params = {}) {
   const method = (req.method || "GET").toUpperCase();
   const auth = await verifyAuth(req);
@@ -822,7 +822,7 @@ async function handlePlans(req, res, subPath, params = {}) {
   return sendError(res, "Method not allowed", 405);
 }
 
-// api/_handlers/loyalty.ts
+// server/_handlers/loyalty.ts
 async function handleLoyalty(req, res) {
   if (req.method !== "GET") {
     return sendError(res, "Method not allowed", 405);
@@ -885,7 +885,7 @@ async function handleLoyalty(req, res) {
   }
 }
 
-// api/_handlers/contact.ts
+// server/_handlers/contact.ts
 async function handleContact(req, res) {
   if (req.method !== "POST") {
     return sendError(res, "Method not allowed", 405);
@@ -943,7 +943,7 @@ async function handleContact(req, res) {
   }
 }
 
-// api/_handlers/notifications.ts
+// server/_handlers/notifications.ts
 async function handleNotifications(req, res) {
   const { user, supabase, error: authError } = await verifyAuth(req);
   if (authError || !user) {
@@ -977,7 +977,7 @@ async function handleNotifications(req, res) {
   return sendError(res, "Method not allowed", 405);
 }
 
-// api/index.ts
+// server/index.ts
 async function handler(req, res) {
   if (handleCors(req, res)) return;
   let path = "";

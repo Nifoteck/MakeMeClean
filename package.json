@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 5000 --host 0.0.0.0",
-    "build:api": "npx esbuild api/index.ts --bundle --platform=node --format=esm --packages=external --outfile=api/index.js",
+    "build:api": "esbuild server/index.ts --bundle --platform=node --format=esm --packages=external --outfile=api/index.js",
     "build": "npm run build:api && vite build",
     "preview": "vite preview"
   },
