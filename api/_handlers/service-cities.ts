@@ -1,4 +1,5 @@
 import { VercelRequest, VercelResponse, getServerSupabase, sendSuccess, sendError } from '../_lib/server.js';
+import { VercelRequest, VercelResponse, getServerSupabase, sendSuccess, sendError } from '../_lib/server';
 
 export async function handleServiceCities(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {

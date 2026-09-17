@@ -11,6 +11,18 @@ import { handlePlans } from './_handlers/plans.js';
 import { handleLoyalty } from './_handlers/loyalty.js';
 import { handleContact } from './_handlers/contact.js';
 import { handleNotifications } from './_handlers/notifications.js';
+import { handleCors, sendError } from './_lib/server';
+import { handleConfig } from './_handlers/config';
+import { handleServices } from './_handlers/services';
+import { handleSettings } from './_handlers/settings';
+import { handleServiceCities } from './_handlers/service-cities';
+import { handleBookingOptions } from './_handlers/booking-options';
+import { handleDashboard } from './_handlers/dashboard';
+import { handleBookings } from './_handlers/bookings';
+import { handlePlans } from './_handlers/plans';
+import { handleLoyalty } from './_handlers/loyalty';
+import { handleContact } from './_handlers/contact';
+import { handleNotifications } from './_handlers/notifications';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleCors(req, res)) return;
