@@ -9,7 +9,7 @@ import {
   MIN_DURATION_HOURS,
   MAX_DURATION_HOURS,
   DURATION_STEP_HOURS,
-} from '../_lib/server.js';
+} from '../_lib/server';
 
 export async function handleBookingOptions(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {

@@ -10,7 +10,7 @@ import {
   generateInvoiceNumber,
   resolveServiceImageUrl,
   getEnv,
-} from '../_lib/server.js';
+} from '../_lib/server';
 
 export async function handleBookings(
   req: VercelRequest,

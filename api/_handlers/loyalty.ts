@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse, verifyAuth, sendSuccess, sendError } from '../_lib/server.js';
+import { VercelRequest, VercelResponse, verifyAuth, sendSuccess, sendError } from '../_lib/server';
 
 export async function handleLoyalty(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {

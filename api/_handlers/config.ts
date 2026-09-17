@@ -1,4 +1,4 @@
-import { VercelRequest, VercelResponse, sendSuccess, sendError, SUPABASE_URL, SUPABASE_ANON_KEY, SITE_URL } from '../_lib/server.js';
+import { VercelRequest, VercelResponse, sendSuccess, sendError, SUPABASE_URL, SUPABASE_ANON_KEY, SITE_URL } from '../_lib/server';
 
 export async function handleConfig(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
