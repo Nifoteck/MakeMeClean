@@ -66,4 +66,8 @@ export const FREQ_LABELS_SHORT: Record<string, string> = {
   monthly:     "Monthly",
 };
 
-// Discount percentages are now fetched from database (settings table) — no hardcoded defaults
+// ─── Booking Durations ────────────────────────────────────────────────────────
+
+export const MIN_DURATION_HOURS = 1.5;
+export const MAX_DURATION_HOURS = 12;
+export const DURATION_STEP_HOURS = 0.5;

@@ -20,8 +20,13 @@ import {
   fetchActiveCities,
   Service,
 } from "@/lib/services";
-import { cn, formatCurrency, generateInvoiceNumber } from "@/lib/utils";
-import { sendTelegramBookingNotification } from "@/lib/telegram";
+import { cn, formatCurrency } from "@/lib/utils";
+import {
+  FREQ_LABELS,
+  MIN_DURATION_HOURS,
+  MAX_DURATION_HOURS,
+  DURATION_STEP_HOURS,
+} from "@/lib/constants";
 import { useServices } from "@/hooks/useServices";
 import { api } from "@/lib/apiClient";
 
@@ -35,16 +40,6 @@ const EMPTY_DISCOUNTS: Record<RecurringFreq, number> = {
   fortnightly: 0,
   monthly: 0,
 };
-
-const FREQ_LABELS: Record<string, string> = {
-  weekly: "Every week",
-  fortnightly: "Every 2 weeks",
-  monthly: "Every month",
-};
-
-const MIN_DURATION_HOURS = 1.5;
-const MAX_DURATION_HOURS = 12;
-const DURATION_STEP_HOURS = 0.5;
 
 function formatDuration(hours: number) {
   if (hours === 0.5) return "30 minutes";

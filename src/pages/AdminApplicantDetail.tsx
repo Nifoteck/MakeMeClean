@@ -1,6 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useParams } from "wouter";
-import { ArrowLeft, Mail, Phone, MapPin, Calendar, Briefcase, ShieldCheck, Wrench, Car, FileText, X, Send, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  Briefcase,
+  ShieldCheck,
+  Wrench,
+  Car,
+  FileText,
+  X,
+  Send,
+  CheckCircle2,
+} from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -10,7 +24,7 @@ import { useSettings } from "@/hooks/useSettings";
 import { ApplicationStatus, JobApplication } from "@/types";
 import { APPLICATION_STATUS_STYLES } from "@/lib/constants";
 
-type _ExtendedJobApplication = JobApplication & {
+type ExtendedJobApplication = JobApplication & {
   date_of_birth?: string | null;
   emergency_contact_name?: string | null;
   emergency_contact_phone?: string | null;
@@ -40,7 +54,7 @@ type _ExtendedJobApplication = JobApplication & {
   equal_opps_religion?: string | null;
   has_staff_relationship?: string | null;
   staff_relationship_details?: string | null;
-}
+};
 
 const STATUS_STYLES = APPLICATION_STATUS_STYLES;
 
@@ -52,15 +66,43 @@ function SectionHeading({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Field({ label, value, mono, href, className }: { label: string; value?: string | null; mono?: boolean; href?: string; className?: string }) {
+function Field({
+  label,
+  value,
+  mono,
+  href,
+  className,
+}: {
+  label: string;
+  value?: string | null;
+  mono?: boolean;
+  href?: string;
+  className?: string;
+}) {
   if (!value) return null;
   return (
     <div>
       <p className="text-xs text-gray-400 mb-0.5">{label}</p>
       {href ? (
-        <a href={href} className={cn("text-sm font-medium text-green-700 hover:underline break-all", className)}>{value}</a>
+        <a
+          href={href}
+          className={cn(
+            "text-sm font-medium text-green-700 hover:underline break-all",
+            className
+          )}
+        >
+          {value}
+        </a>
       ) : (
-        <p className={cn("text-sm font-medium text-gray-900", mono && "font-mono tracking-widest", className)}>{value}</p>
+        <p
+          className={cn(
+            "text-sm font-medium text-gray-900",
+            mono && "font-mono tracking-widest",
+            className
+          )}
+        >
+          {value}
+        </p>
       )}
     </div>
   );
@@ -73,11 +115,14 @@ export default function AdminApplicantDetail() {
   const { user, loading } = useAuth();
   const { isAdmin, loading: roleLoading } = useIsAdmin(user?.id);
 
-  const [applicant, setApplicant] = useState<_ExtendedJobApplication | null>(null);
+  const [applicant, setApplicant] = useState<ExtendedJobApplication | null>(
+    null
+  );
   const [fetching, setFetching] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus | null>(null);
+  const [selectedStatus, setSelectedStatus] =
+    useState<ApplicationStatus | null>(null);
   const [notes, setNotes] = useState("");
 
   const [emailOpen, setEmailOpen] = useState(false);
@@ -96,10 +141,15 @@ export default function AdminApplicantDetail() {
         .select("*")
         .eq("id", id)
         .single();
-      if (err || !data) { setError("Applicant not found."); setFetching(false); return; }
-      setApplicant(data as JobApplication);
-      setSelectedStatus((data as JobApplication).status);
-      setNotes((data as JobApplication).admin_notes ?? "");
+      if (err || !data) {
+        setError("Applicant not found.");
+        setFetching(false);
+        return;
+      }
+      const record = data as ExtendedJobApplication;
+      setApplicant(record);
+      setSelectedStatus(record.status);
+      setNotes(record.admin_notes ?? "");
       setFetching(false);
     })();
   }, [isAdmin, id]);
@@ -126,20 +176,30 @@ export default function AdminApplicantDetail() {
     setEmailSending(true);
     setEmailError("");
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data, error: fnErr } = await supabase.functions.invoke("send-recruitment-email", {
-        body: {
-          to: applicant.email,
-          toName: `${applicant.first_name} ${applicant.last_name}`,
-          subject: emailSubject.trim(),
-          bodyText: emailBody.trim(),
-        },
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-      });
-      if (fnErr || !data?.ok) throw new Error(fnErr?.message ?? data?.error ?? "Failed to send");
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const { data, error: fnErr } = await supabase.functions.invoke(
+        "send-recruitment-email",
+        {
+          body: {
+            to: applicant.email,
+            toName: `${applicant.first_name} ${applicant.last_name}`,
+            subject: emailSubject.trim(),
+            bodyText: emailBody.trim(),
+          },
+          headers: session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {},
+        }
+      );
+      if (fnErr || !data?.ok)
+        throw new Error(fnErr?.message ?? data?.error ?? "Failed to send");
       setEmailSent(true);
     } catch (e) {
-      setEmailError((e as Error).message ?? "Something went wrong. Please try again.");
+      setEmailError(
+        (e as Error).message ?? "Something went wrong. Please try again."
+      );
     } finally {
       setEmailSending(false);
     }
@@ -152,31 +212,45 @@ export default function AdminApplicantDetail() {
     const status = selectedStatus;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
       if (status === "hired") {
         // hire-applicant: creates auth user, staff row, sends portal login email, marks hired
-        const { data: hireData, error: hireErr } = await supabase.functions.invoke("hire-applicant", {
-          body: { applicationId: applicant.id },
-          headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-        });
+        const { data: hireData, error: hireErr } =
+          await supabase.functions.invoke("hire-applicant", {
+            body: { applicationId: applicant.id },
+            headers: session?.access_token
+              ? { Authorization: `Bearer ${session.access_token}` }
+              : {},
+          });
         if (hireErr) {
           // Extract real error message from function response body
           let detail = hireErr.message;
           try {
-            const body = typeof (hireErr as any).context?.json === "function"
-              ? await (hireErr as any).context.json()
-              : hireData;
+            const body =
+              typeof (hireErr as any).context?.json === "function"
+                ? await (hireErr as any).context.json()
+                : hireData;
             if (body?.error) detail = body.error;
-          } catch { /* ignore parse errors */ }
+          } catch {
+            /* ignore parse errors */
+          }
           setError(detail);
           setSaving(false);
           return;
         }
-
       } else if (status === "rejected") {
-        const { error: err } = await supabase.from("job_applications").update({ status }).eq("id", applicant.id);
-        if (err) { setError(err.message); setSaving(false); return; }
+        const { error: err } = await supabase
+          .from("job_applications")
+          .update({ status })
+          .eq("id", applicant.id);
+        if (err) {
+          setError(err.message);
+          setSaving(false);
+          return;
+        }
 
         const fullName = `${applicant.first_name} ${applicant.last_name}`;
         const subject = `Your Application – ${applicant.role} | MakeMeClean`;
@@ -197,18 +271,26 @@ Wales, UK`;
         try {
           await supabase.functions.invoke("send-recruitment-email", {
             body: { to: applicant.email, toName: fullName, subject, bodyText },
-            headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
+            headers: session?.access_token
+              ? { Authorization: `Bearer ${session.access_token}` }
+              : {},
           });
         } catch {
           // Email failure is non-fatal — status already saved
         }
-
       } else {
-        const { error: err } = await supabase.from("job_applications").update({ status }).eq("id", applicant.id);
-        if (err) { setError(err.message); setSaving(false); return; }
+        const { error: err } = await supabase
+          .from("job_applications")
+          .update({ status })
+          .eq("id", applicant.id);
+        if (err) {
+          setError(err.message);
+          setSaving(false);
+          return;
+        }
       }
 
-      setApplicant((a) => a ? { ...a, status } : a);
+      setApplicant((a) => (a ? { ...a, status } : a));
     } catch (e: unknown) {
       setError((e as Error)?.message ?? "Unexpected error");
     }
@@ -218,7 +300,10 @@ Wales, UK`;
 
   const saveNotes = async () => {
     if (!applicant) return;
-    await supabase.from("job_applications").update({ admin_notes: notes }).eq("id", applicant.id);
+    await supabase
+      .from("job_applications")
+      .update({ admin_notes: notes })
+      .eq("id", applicant.id);
   };
 
   if (loading || roleLoading || fetching) {
@@ -228,12 +313,18 @@ Wales, UK`;
       </div>
     );
   }
-  if (!user || !isAdmin) return <div className="min-h-screen flex items-center justify-center"><p className="text-gray-500">No access.</p></div>;
-  if (error && !applicant) return (
-    <AdminLayout title="Applicant" subtitle="Not found">
-      <div className="card text-center py-16 text-gray-400">{error}</div>
-    </AdminLayout>
-  );
+  if (!user || !isAdmin)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500">No access.</p>
+      </div>
+    );
+  if (error && !applicant)
+    return (
+      <AdminLayout title="Applicant" subtitle="Not found">
+        <div className="card text-center py-16 text-gray-400">{error}</div>
+      </AdminLayout>
+    );
   if (!applicant) return null;
 
   return (
@@ -250,23 +341,40 @@ Wales, UK`;
       }
     >
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl px-4 py-3 mb-4">
+          {error}
+        </div>
       )}
 
       {/* ── Email compose modal ── */}
       {emailOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={closeEmailModal} />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={closeEmailModal}
+          />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-
             {/* Modal header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div>
-                <p className="text-base font-extrabold text-gray-900">Email applicant</p>
+                <p className="text-base font-extrabold text-gray-900">
+                  Email applicant
+                </p>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  From: <span className="font-medium text-gray-600">{settings.email_recruitment}</span>
+                  From:{" "}
+                  <span className="font-medium text-gray-600">
+                    {settings.email_recruitment}
+                  </span>
                   <span className="mx-2 text-gray-200">·</span>
-                  To: <span className="font-medium text-gray-600">{applicant.first_name} {applicant.last_name} &lt;{applicant.email}&gt;</span>
+                  To:{" "}
+                  <span className="font-medium text-gray-600">
+                    {applicant.first_name} {applicant.last_name} &lt;
+                    {applicant.email}&gt;
+                  </span>
                 </p>
               </div>
               <button
@@ -283,7 +391,9 @@ Wales, UK`;
                 <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle2 className="w-7 h-7 text-green-600" />
                 </div>
-                <p className="text-base font-bold text-gray-900 mb-1">Email sent!</p>
+                <p className="text-base font-bold text-gray-900 mb-1">
+                  Email sent!
+                </p>
                 <p className="text-sm text-gray-500 mb-6">
                   Your message has been sent to {applicant.first_name}.
                 </p>
@@ -301,7 +411,9 @@ Wales, UK`;
 
                 {/* Subject */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 block mb-1.5">Subject</label>
+                  <label className="text-xs font-semibold text-gray-500 block mb-1.5">
+                    Subject
+                  </label>
                   <input
                     ref={subjectRef}
                     type="text"
@@ -315,7 +427,9 @@ Wales, UK`;
 
                 {/* Body */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 block mb-1.5">Message</label>
+                  <label className="text-xs font-semibold text-gray-500 block mb-1.5">
+                    Message
+                  </label>
                   <textarea
                     className="input-field resize-none text-sm"
                     rows={8}
@@ -325,7 +439,9 @@ Wales, UK`;
                     disabled={emailSending}
                   />
                   <p className="text-xs text-gray-400 mt-1.5">
-                    Your message will be wrapped in a branded email template. The applicant can reply directly to {settings.email_recruitment}.
+                    Your message will be wrapped in a branded email template.
+                    The applicant can reply directly to{" "}
+                    {settings.email_recruitment}.
                   </p>
                 </div>
 
@@ -340,7 +456,9 @@ Wales, UK`;
                   </button>
                   <button
                     onClick={sendEmail}
-                    disabled={emailSending || !emailSubject.trim() || !emailBody.trim()}
+                    disabled={
+                      emailSending || !emailSubject.trim() || !emailBody.trim()
+                    }
                     className="btn-primary flex items-center gap-2 text-sm py-2 disabled:opacity-50"
                   >
                     <Send className="w-4 h-4" />
@@ -359,7 +477,8 @@ Wales, UK`;
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center shrink-0">
               <span className="text-xl font-extrabold text-green-700">
-                {applicant.first_name[0]}{applicant.last_name[0]}
+                {applicant.first_name[0]}
+                {applicant.last_name[0]}
               </span>
             </div>
             <div>
@@ -367,16 +486,30 @@ Wales, UK`;
                 {applicant.first_name} {applicant.last_name}
               </h2>
               <div className="flex flex-wrap items-center gap-2 mt-1">
-                <span className="text-sm text-gray-600 font-medium">{applicant.role}</span>
+                <span className="text-sm text-gray-600 font-medium">
+                  {applicant.role}
+                </span>
                 {applicant.employment_type && (
-                  <span className="px-2.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full font-medium">{applicant.employment_type}</span>
+                  <span className="px-2.5 py-0.5 bg-gray-100 text-gray-500 text-xs rounded-full font-medium">
+                    {applicant.employment_type}
+                  </span>
                 )}
-                <span className={cn("px-2.5 py-0.5 text-xs font-bold rounded-full uppercase tracking-wide", STATUS_STYLES[applicant.status])}>
+                <span
+                  className={cn(
+                    "px-2.5 py-0.5 text-xs font-bold rounded-full uppercase tracking-wide",
+                    STATUS_STYLES[applicant.status]
+                  )}
+                >
                   {applicant.status}
                 </span>
               </div>
               <p className="text-xs text-gray-400 mt-1">
-                Applied {new Date(applicant.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}
+                Applied{" "}
+                {new Date(applicant.created_at).toLocaleDateString("en-GB", {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                })}
               </p>
             </div>
           </div>
@@ -392,10 +525,8 @@ Wales, UK`;
 
       {/* ── Main content grid ── */}
       <div className="grid lg:grid-cols-3 gap-4">
-
         {/* ── LEFT COLUMN ── */}
         <div className="lg:col-span-1 space-y-4">
-
           {/* 1. Contact & Personal details */}
           <div className="card">
             <SectionHeading>Contact & personal details</SectionHeading>
@@ -404,14 +535,24 @@ Wales, UK`;
                 <Mail className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
                 <div className="min-w-0">
                   <p className="text-xs text-gray-400">Email</p>
-                  <button onClick={openEmailModal} className="text-sm font-medium text-green-700 hover:underline break-all text-left">{applicant.email}</button>
+                  <button
+                    onClick={openEmailModal}
+                    className="text-sm font-medium text-green-700 hover:underline break-all text-left"
+                  >
+                    {applicant.email}
+                  </button>
                 </div>
               </div>
               <div className="flex items-start gap-3">
                 <Phone className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
                 <div>
                   <p className="text-xs text-gray-400">Phone</p>
-                  <a href={`tel:${applicant.phone}`} className="text-sm font-medium text-gray-900 hover:text-green-700">{applicant.phone}</a>
+                  <a
+                    href={`tel:${applicant.phone}`}
+                    className="text-sm font-medium text-gray-900 hover:text-green-700"
+                  >
+                    {applicant.phone}
+                  </a>
                 </div>
               </div>
               {(applicant.address || applicant.city || applicant.postcode) && (
@@ -420,7 +561,13 @@ Wales, UK`;
                   <div>
                     <p className="text-xs text-gray-400">Address</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {[applicant.address, applicant.city, applicant.postcode?.toUpperCase()].filter(Boolean).join(", ")}
+                      {[
+                        applicant.address,
+                        applicant.city,
+                        applicant.postcode?.toUpperCase(),
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
                     </p>
                   </div>
                 </div>
@@ -430,17 +577,25 @@ Wales, UK`;
                   <Calendar className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-xs text-gray-400">Date of birth</p>
-                    <p className="text-sm font-medium text-gray-900">{applicant.date_of_birth}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {applicant.date_of_birth}
+                    </p>
                   </div>
                 </div>
               )}
-              {(applicant.emergency_contact_name || applicant.emergency_contact_phone) && (
+              {(applicant.emergency_contact_name ||
+                applicant.emergency_contact_phone) && (
                 <div className="flex items-start gap-3">
                   <Phone className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-xs text-gray-400">Emergency contact</p>
                     <p className="text-sm font-medium text-gray-900">
-                      {[applicant.emergency_contact_name, applicant.emergency_contact_phone].filter(Boolean).join(" · ")}
+                      {[
+                        applicant.emergency_contact_name,
+                        applicant.emergency_contact_phone,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </p>
                   </div>
                 </div>
@@ -449,8 +604,12 @@ Wales, UK`;
                 <div className="flex items-start gap-3">
                   <Briefcase className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-xs text-gray-400">How they heard about us</p>
-                    <p className="text-sm font-medium text-gray-900">{applicant.heard_about_us}</p>
+                    <p className="text-xs text-gray-400">
+                      How they heard about us
+                    </p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {applicant.heard_about_us}
+                    </p>
                   </div>
                 </div>
               )}
@@ -466,7 +625,14 @@ Wales, UK`;
                   <ShieldCheck className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-xs text-gray-400">RTW eligible</p>
-                    <p className={cn("text-sm font-semibold", applicant.rtw_eligible === "yes" ? "text-green-700" : "text-red-600")}>
+                    <p
+                      className={cn(
+                        "text-sm font-semibold",
+                        applicant.rtw_eligible === "yes"
+                          ? "text-green-700"
+                          : "text-red-600"
+                      )}
+                    >
                       {applicant.rtw_eligible === "yes" ? "✓ Yes" : "✗ No"}
                     </p>
                   </div>
@@ -477,7 +643,9 @@ Wales, UK`;
                   <ShieldCheck className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
                   <div>
                     <p className="text-xs text-gray-400">RTW document type</p>
-                    <p className="text-sm font-medium text-gray-900">{applicant.rtw_type}</p>
+                    <p className="text-sm font-medium text-gray-900">
+                      {applicant.rtw_type}
+                    </p>
                   </div>
                 </div>
               )}
@@ -485,8 +653,12 @@ Wales, UK`;
                 <div className="flex items-start gap-3">
                   <ShieldCheck className="w-4 h-4 text-gray-300 mt-0.5 shrink-0" />
                   <div>
-                    <p className="text-xs text-gray-400">National Insurance number</p>
-                    <p className="text-sm font-mono font-semibold tracking-widest text-gray-900">{applicant.ni_number.toUpperCase()}</p>
+                    <p className="text-xs text-gray-400">
+                      National Insurance number
+                    </p>
+                    <p className="text-sm font-mono font-semibold tracking-widest text-gray-900">
+                      {applicant.ni_number.toUpperCase()}
+                    </p>
                   </div>
                 </div>
               )}
@@ -497,12 +669,14 @@ Wales, UK`;
           <div className="card">
             <SectionHeading>Uploaded documents</SectionHeading>
             <div className="space-y-2">
-              {([
-                ["CV / Resume", applicant.cv_url],
-                ["Proof of Identity", applicant.id_proof_url],
-                ["Right to Work", applicant.rtw_doc_url],
-                ["DBS Certificate", applicant.dbs_cert_url],
-              ] as const).map(([label, url]) => (
+              {(
+                [
+                  ["CV / Resume", applicant.cv_url],
+                  ["Proof of Identity", applicant.id_proof_url],
+                  ["Right to Work", applicant.rtw_doc_url],
+                  ["DBS Certificate", applicant.dbs_cert_url],
+                ] as const
+              ).map(([label, url]) => (
                 <a
                   key={label}
                   href={url ?? "#"}
@@ -515,12 +689,22 @@ Wales, UK`;
                       : "border-gray-100 bg-gray-50 text-gray-300 pointer-events-none"
                   )}
                 >
-                  <FileText className={cn("w-4 h-4 shrink-0", url ? "text-green-500" : "text-gray-200")} />
+                  <FileText
+                    className={cn(
+                      "w-4 h-4 shrink-0",
+                      url ? "text-green-500" : "text-gray-200"
+                    )}
+                  />
                   <span className="flex-1">{label}</span>
-                  {url
-                    ? <span className="text-xs text-green-500 font-semibold">View ↗</span>
-                    : <span className="text-xs font-normal text-gray-300">Not uploaded</span>
-                  }
+                  {url ? (
+                    <span className="text-xs text-green-500 font-semibold">
+                      View ↗
+                    </span>
+                  ) : (
+                    <span className="text-xs font-normal text-gray-300">
+                      Not uploaded
+                    </span>
+                  )}
                 </a>
               ))}
             </div>
@@ -537,101 +721,172 @@ Wales, UK`;
               onBlur={saveNotes}
               placeholder="Add internal notes about this applicant — saved automatically when you click away."
             />
-            <p className="text-xs text-gray-400 mt-1.5">Saved automatically on blur. Visible to admins only.</p>
+            <p className="text-xs text-gray-400 mt-1.5">
+              Saved automatically on blur. Visible to admins only.
+            </p>
           </div>
-
         </div>
 
         {/* ── RIGHT COLUMNS ── */}
         <div className="lg:col-span-2 space-y-4">
-
           {/* 4. Role & Availability */}
           <div className="card">
             <SectionHeading>Role & availability</SectionHeading>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
               <Field label="Role applied for" value={applicant.role} />
-              {applicant.employment_type && <Field label="Employment type" value={applicant.employment_type} />}
-              {applicant.available_hours && <Field label="Hours per week" value={applicant.available_hours} />}
-              {applicant.earliest_start && <Field label="Earliest start date" value={applicant.earliest_start} />}
-              {applicant.notice_period && <Field label="Notice period" value={applicant.notice_period} />}
+              {applicant.employment_type && (
+                <Field
+                  label="Employment type"
+                  value={applicant.employment_type}
+                />
+              )}
+              {applicant.available_hours && (
+                <Field
+                  label="Hours per week"
+                  value={applicant.available_hours}
+                />
+              )}
+              {applicant.earliest_start && (
+                <Field
+                  label="Earliest start date"
+                  value={applicant.earliest_start}
+                />
+              )}
+              {applicant.notice_period && (
+                <Field label="Notice period" value={applicant.notice_period} />
+              )}
             </div>
-            {applicant.available_days && applicant.available_days.length > 0 && (
-              <div>
-                <p className="text-xs text-gray-400 mb-2">Available days</p>
-                <div className="flex gap-2 flex-wrap">
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                    <span
-                      key={d}
-                      className={cn(
-                        "px-4 py-2 rounded-xl text-sm font-bold border",
-                        applicant.available_days?.includes(d)
-                          ? "bg-green-600 text-white border-green-600 shadow-sm"
-                          : "bg-gray-50 text-gray-300 border-gray-100"
-                      )}
-                    >
-                      {d}
-                    </span>
-                  ))}
+            {applicant.available_days &&
+              applicant.available_days.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-2">Available days</p>
+                  <div className="flex gap-2 flex-wrap">
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map(
+                      (d) => (
+                        <span
+                          key={d}
+                          className={cn(
+                            "px-4 py-2 rounded-xl text-sm font-bold border",
+                            applicant.available_days?.includes(d)
+                              ? "bg-green-600 text-white border-green-600 shadow-sm"
+                              : "bg-gray-50 text-gray-300 border-gray-100"
+                          )}
+                        >
+                          {d}
+                        </span>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
 
           {/* 5. Experience & Skills */}
           <div className="card">
             <SectionHeading>Experience & skills</SectionHeading>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-              <Field label="Years of experience" value={applicant.years_experience} />
+              <Field
+                label="Years of experience"
+                value={applicant.years_experience}
+              />
               {applicant.own_equipment && (
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">Own equipment</p>
-                  <p className={cn("text-sm font-semibold flex items-center gap-1", applicant.own_equipment === "yes" ? "text-green-700" : "text-gray-600")}>
+                  <p
+                    className={cn(
+                      "text-sm font-semibold flex items-center gap-1",
+                      applicant.own_equipment === "yes"
+                        ? "text-green-700"
+                        : "text-gray-600"
+                    )}
+                  >
                     <Wrench className="w-3.5 h-3.5" />
-                    {applicant.own_equipment === "yes" ? "Yes" : applicant.own_equipment === "no" ? "No" : applicant.own_equipment}
+                    {applicant.own_equipment === "yes"
+                      ? "Yes"
+                      : applicant.own_equipment === "no"
+                      ? "No"
+                      : applicant.own_equipment}
                   </p>
                 </div>
               )}
               {applicant.driving_licence && (
                 <div>
-                  <p className="text-xs text-gray-400 mb-0.5">Driving licence</p>
-                  <p className={cn("text-sm font-semibold flex items-center gap-1", applicant.driving_licence === "yes" ? "text-green-700" : "text-gray-600")}>
+                  <p className="text-xs text-gray-400 mb-0.5">
+                    Driving licence
+                  </p>
+                  <p
+                    className={cn(
+                      "text-sm font-semibold flex items-center gap-1",
+                      applicant.driving_licence === "yes"
+                        ? "text-green-700"
+                        : "text-gray-600"
+                    )}
+                  >
                     <Car className="w-3.5 h-3.5" />
-                    {applicant.driving_licence === "yes" ? "Yes" : applicant.driving_licence === "no" ? "No" : applicant.driving_licence}
+                    {applicant.driving_licence === "yes"
+                      ? "Yes"
+                      : applicant.driving_licence === "no"
+                      ? "No"
+                      : applicant.driving_licence}
                   </p>
                 </div>
               )}
               {applicant.own_transport && (
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">Own transport</p>
-                  <p className={cn("text-sm font-semibold flex items-center gap-1", applicant.own_transport === "yes" ? "text-green-700" : "text-gray-600")}>
+                  <p
+                    className={cn(
+                      "text-sm font-semibold flex items-center gap-1",
+                      applicant.own_transport === "yes"
+                        ? "text-green-700"
+                        : "text-gray-600"
+                    )}
+                  >
                     <Car className="w-3.5 h-3.5" />
-                    {applicant.own_transport === "yes" ? "Yes" : applicant.own_transport === "no" ? "No" : applicant.own_transport}
+                    {applicant.own_transport === "yes"
+                      ? "Yes"
+                      : applicant.own_transport === "no"
+                      ? "No"
+                      : applicant.own_transport}
                   </p>
                 </div>
               )}
             </div>
-            {applicant.experience_types && applicant.experience_types.length > 0 && (
-              <div>
-                <p className="text-xs text-gray-400 mb-2">Experience areas</p>
-                <div className="flex flex-wrap gap-2">
-                  {applicant.experience_types.map((t) => (
-                    <span key={t} className="px-3 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 flex items-center gap-1.5">
-                      <Briefcase className="w-3 h-3" />{t}
-                    </span>
-                  ))}
+            {applicant.experience_types &&
+              applicant.experience_types.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-2">Experience areas</p>
+                  <div className="flex flex-wrap gap-2">
+                    {applicant.experience_types.map((t) => (
+                      <span
+                        key={t}
+                        className="px-3 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-100 flex items-center gap-1.5"
+                      >
+                        <Briefcase className="w-3 h-3" />
+                        {t}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
 
           {/* 6. Employment History */}
-          {(applicant.current_employer || applicant.notice_period || applicant.current_job_title) && (
+          {(applicant.current_employer ||
+            applicant.notice_period ||
+            applicant.current_job_title) && (
             <div className="card">
               <SectionHeading>Employment history</SectionHeading>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                <Field label="Most recent employer" value={applicant.current_employer} />
+                <Field
+                  label="Most recent employer"
+                  value={applicant.current_employer}
+                />
                 <Field label="Job title" value={applicant.current_job_title} />
-                <Field label="Reason for leaving" value={applicant.reason_for_leaving} />
+                <Field
+                  label="Reason for leaving"
+                  value={applicant.reason_for_leaving}
+                />
               </div>
             </div>
           )}
@@ -643,20 +898,40 @@ Wales, UK`;
               <div className="grid sm:grid-cols-2 gap-6">
                 {applicant.ref1_name && (
                   <div className="space-y-1">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Reference 1</p>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                      Reference 1
+                    </p>
                     <Field label="Name" value={applicant.ref1_name} />
                     <Field label="Company" value={applicant.ref1_company} />
                     <Field label="Phone" value={applicant.ref1_phone} />
-                    <Field label="Email" value={applicant.ref1_email} href={applicant.ref1_email ? `mailto:${applicant.ref1_email}` : undefined} />
+                    <Field
+                      label="Email"
+                      value={applicant.ref1_email}
+                      href={
+                        applicant.ref1_email
+                          ? `mailto:${applicant.ref1_email}`
+                          : undefined
+                      }
+                    />
                   </div>
                 )}
                 {applicant.ref2_name && (
                   <div className="space-y-1">
-                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Reference 2</p>
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                      Reference 2
+                    </p>
                     <Field label="Name" value={applicant.ref2_name} />
                     <Field label="Company" value={applicant.ref2_company} />
                     <Field label="Phone" value={applicant.ref2_phone} />
-                    <Field label="Email" value={applicant.ref2_email} href={applicant.ref2_email ? `mailto:${applicant.ref2_email}` : undefined} />
+                    <Field
+                      label="Email"
+                      value={applicant.ref2_email}
+                      href={
+                        applicant.ref2_email
+                          ? `mailto:${applicant.ref2_email}`
+                          : undefined
+                      }
+                    />
                   </div>
                 )}
               </div>
@@ -667,27 +942,56 @@ Wales, UK`;
           <div className="card">
             <SectionHeading>Declarations</SectionHeading>
             <div className="space-y-5">
-
               {/* Criminal record */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Criminal convictions (DBS)</p>
-                <p className={cn("text-sm font-semibold", applicant.has_convictions === "yes" ? "text-amber-600" : "text-green-700")}>
-                  {applicant.has_convictions === "yes" ? "Yes — disclosed" : applicant.has_convictions === "no" ? "None declared" : "Not answered"}
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  Criminal convictions (DBS)
+                </p>
+                <p
+                  className={cn(
+                    "text-sm font-semibold",
+                    applicant.has_convictions === "yes"
+                      ? "text-amber-600"
+                      : "text-green-700"
+                  )}
+                >
+                  {applicant.has_convictions === "yes"
+                    ? "Yes — disclosed"
+                    : applicant.has_convictions === "no"
+                    ? "None declared"
+                    : "Not answered"}
                 </p>
                 {applicant.convictions_details && (
-                  <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{applicant.convictions_details}</p>
+                  <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">
+                    {applicant.convictions_details}
+                  </p>
                 )}
               </div>
 
               {/* Health */}
               {applicant.health_declaration && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Health declaration</p>
-                  <p className={cn("text-sm font-semibold", applicant.health_declaration === "yes" ? "text-amber-600" : "text-green-700")}>
-                    {applicant.health_declaration === "yes" ? "Yes — disclosed" : applicant.health_declaration === "prefer_not" ? "Prefer not to say" : "None declared"}
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    Health declaration
+                  </p>
+                  <p
+                    className={cn(
+                      "text-sm font-semibold",
+                      applicant.health_declaration === "yes"
+                        ? "text-amber-600"
+                        : "text-green-700"
+                    )}
+                  >
+                    {applicant.health_declaration === "yes"
+                      ? "Yes — disclosed"
+                      : applicant.health_declaration === "prefer_not"
+                      ? "Prefer not to say"
+                      : "None declared"}
                   </p>
                   {applicant.health_details && (
-                    <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">{applicant.health_details}</p>
+                    <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap">
+                      {applicant.health_details}
+                    </p>
                   )}
                 </div>
               )}
@@ -695,32 +999,58 @@ Wales, UK`;
               {/* Staff relationship */}
               {applicant.has_staff_relationship && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Relationship with existing staff</p>
-                  <p className={cn("text-sm font-semibold", applicant.has_staff_relationship === "yes" ? "text-amber-600" : "text-green-700")}>
-                    {applicant.has_staff_relationship === "yes" ? "Yes — disclosed" : "None declared"}
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                    Relationship with existing staff
+                  </p>
+                  <p
+                    className={cn(
+                      "text-sm font-semibold",
+                      applicant.has_staff_relationship === "yes"
+                        ? "text-amber-600"
+                        : "text-green-700"
+                    )}
+                  >
+                    {applicant.has_staff_relationship === "yes"
+                      ? "Yes — disclosed"
+                      : "None declared"}
                   </p>
                   {applicant.staff_relationship_details && (
-                    <p className="text-sm text-gray-700 mt-1">{applicant.staff_relationship_details}</p>
+                    <p className="text-sm text-gray-700 mt-1">
+                      {applicant.staff_relationship_details}
+                    </p>
                   )}
                 </div>
               )}
             </div>
           </div>
-
         </div>
       </div>
 
       {/* ── Equal Opportunities — full width, always last before status ── */}
-      {(applicant.equal_opps_gender || applicant.equal_opps_age || applicant.equal_opps_ethnicity || applicant.equal_opps_disability || applicant.equal_opps_sexual_orientation || applicant.equal_opps_religion) && (
+      {(applicant.equal_opps_gender ||
+        applicant.equal_opps_age ||
+        applicant.equal_opps_ethnicity ||
+        applicant.equal_opps_disability ||
+        applicant.equal_opps_sexual_orientation ||
+        applicant.equal_opps_religion) && (
         <div className="card mt-4 bg-blue-50 border border-blue-100">
           <SectionHeading>Equal opportunities monitoring</SectionHeading>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <Field label="Gender" value={applicant.equal_opps_gender} />
             <Field label="Age band" value={applicant.equal_opps_age} />
-            <Field label="Ethnic origin" value={applicant.equal_opps_ethnicity} />
+            <Field
+              label="Ethnic origin"
+              value={applicant.equal_opps_ethnicity}
+            />
             <Field label="Disability" value={applicant.equal_opps_disability} />
-            <Field label="Sexual orientation" value={applicant.equal_opps_sexual_orientation} />
-            <Field label="Religion or belief" value={applicant.equal_opps_religion} />
+            <Field
+              label="Sexual orientation"
+              value={applicant.equal_opps_sexual_orientation}
+            />
+            <Field
+              label="Religion or belief"
+              value={applicant.equal_opps_religion}
+            />
           </div>
         </div>
       )}
@@ -735,10 +1065,22 @@ Wales, UK`;
               className="input-field text-sm"
               value={selectedStatus ?? applicant.status}
               disabled={saving}
-              onChange={(e) => setSelectedStatus(e.target.value as ApplicationStatus)}
+              onChange={(e) =>
+                setSelectedStatus(e.target.value as ApplicationStatus)
+              }
             >
-              {(["pending", "reviewing", "shortlisted", "hired", "rejected"] as const).map((s) => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+              {(
+                [
+                  "pending",
+                  "reviewing",
+                  "shortlisted",
+                  "hired",
+                  "rejected",
+                ] as const
+              ).map((s) => (
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1)}
+                </option>
               ))}
             </select>
           </div>
@@ -748,22 +1090,27 @@ Wales, UK`;
             className={cn(
               "flex items-center justify-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white transition-all whitespace-nowrap",
               "disabled:opacity-40 disabled:cursor-not-allowed",
-              selectedStatus === "hired" ? "bg-emerald-600 hover:bg-emerald-700" :
-              selectedStatus === "rejected" ? "bg-red-600 hover:bg-red-700" :
-              "bg-blue-600 hover:bg-blue-700"
+              selectedStatus === "hired"
+                ? "bg-emerald-600 hover:bg-emerald-700"
+                : selectedStatus === "rejected"
+                ? "bg-red-600 hover:bg-red-700"
+                : "bg-blue-600 hover:bg-blue-700"
             )}
           >
             <CheckCircle2 className="w-4 h-4" />
-            {saving ? "Saving…" :
-              selectedStatus === applicant.status ? "No changes" :
-              selectedStatus === "hired" ? "Confirm offer" :
-              selectedStatus === "rejected" ? "Confirm rejection" :
-              `Confirm → ${selectedStatus}`}
+            {saving
+              ? "Saving…"
+              : selectedStatus === applicant.status
+              ? "No changes"
+              : selectedStatus === "hired"
+              ? "Confirm offer"
+              : selectedStatus === "rejected"
+              ? "Confirm rejection"
+              : `Confirm → ${selectedStatus}`}
           </button>
         </div>
         {error && <p className="text-sm text-red-600 mt-3">{error}</p>}
       </div>
-
     </AdminLayout>
   );
 }

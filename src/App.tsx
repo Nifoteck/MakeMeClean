@@ -42,7 +42,9 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const TermsPage = lazy(() => import("@/pages/TermsPage"));
 const PrivacyPage = lazy(() => import("@/pages/PrivacyPage"));
 const CancellationPolicy = lazy(() => import("@/pages/CancellationPolicy"));
-const AccessibilityStatement = lazy(() => import("@/pages/AccessibilityStatement"));
+const AccessibilityStatement = lazy(
+  () => import("@/pages/AccessibilityStatement")
+);
 const ComplaintsProcedure = lazy(() => import("@/pages/ComplaintsProcedure"));
 const ServiceTerms = lazy(() => import("@/pages/ServiceTerms"));
 const Blog = lazy(() => import("@/pages/Blog"));
@@ -79,15 +81,26 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (!loading && user?.user_metadata?.must_change_password && location !== "/change-password") setLocation("/change-password");
+    if (
+      !loading &&
+      user?.user_metadata?.must_change_password &&
+      location !== "/change-password"
+    )
+      setLocation("/change-password");
   }, [loading, user, location, setLocation]);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center gap-4">
-          <img src="/logo.png" alt="MakeMeClean" className="w-12 h-12 rounded-2xl"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+          <img
+            src="/logo.png"
+            alt="MakeMeClean"
+            className="w-12 h-12 rounded-2xl"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
           <div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
         </div>
       </div>
@@ -99,7 +112,13 @@ function App() {
       <ScrollToTop />
       {!isAdminRoute && !isStaffRoute && <Navbar />}
       <main className="flex-1">
-        <Suspense fallback={<div className="min-h-[40vh] flex items-center justify-center"><div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" /></div>}>
+        <Suspense
+          fallback={
+            <div className="min-h-[40vh] flex items-center justify-center">
+              <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          }
+        >
           <Switch>
             <Route path="/" component={Home} />
             <Route path="/services" component={Services} />
@@ -111,13 +130,19 @@ function App() {
             <Route path="/profile" component={Profile} />
             <Route path="/bookings" component={Bookings} />
             <Route path="/bookings/:id" component={BookingDetail} />
+            <Route path="/booking-detail/:id" component={BookingDetail} />
             <Route path="/pay/:bookingId" component={PaymentPage} />
+            <Route path="/payment/:bookingId" component={PaymentPage} />
             <Route path="/invoice/:bookingId" component={InvoicePage} />
             <Route path="/contact" component={ContactPage} />
             <Route path="/plans" component={MyPlans} />
+            <Route path="/my-plans" component={MyPlans} />
             <Route path="/admin" component={AdminPanel} />
             <Route path="/admin/services" component={AdminServices} />
-            <Route path="/admin/applicants/:id" component={AdminApplicantDetail} />
+            <Route
+              path="/admin/applicants/:id"
+              component={AdminApplicantDetail}
+            />
             <Route path="/admin/applicants" component={AdminApplicants} />
             <Route path="/admin/staff" component={AdminStaff} />
             <Route path="/admin/reschedules" component={AdminReschedules} />
@@ -134,14 +159,21 @@ function App() {
             <Route path="/terms" component={TermsPage} />
             <Route path="/privacy" component={PrivacyPage} />
             <Route path="/cancellation" component={CancellationPolicy} />
+            <Route path="/cancellation-policy" component={CancellationPolicy} />
             <Route path="/accessibility" component={AccessibilityStatement} />
             <Route path="/complaints" component={ComplaintsProcedure} />
             <Route path="/service-terms" component={ServiceTerms} />
             <Route path="/blog/:slug" component={BlogArticle} />
             <Route path="/blog" component={Blog} />
             <Route path="/unsubscribe" component={UnsubscribePage} />
-            <Route path="/bookings/:bookingId/photos" component={BookingPhotos} />
-            <Route path="/bookings/:bookingId/refund" component={BookingRefundRequest} />
+            <Route
+              path="/bookings/:bookingId/photos"
+              component={BookingPhotos}
+            />
+            <Route
+              path="/bookings/:bookingId/refund"
+              component={BookingRefundRequest}
+            />
             <Route path="/admin/refunds" component={AdminRefunds} />
             <Route path="/admin/photos" component={AdminPhotos} />
             <Route path="/loyalty" component={Loyalty} />

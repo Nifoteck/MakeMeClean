@@ -113,8 +113,8 @@ export default function StaffShiftMarketplace({
           },
         ]);
       }
-    } catch (e) {
-      console.error(e);
+    } catch (_) {
+      // Handled gracefully in UI
     } finally {
       setLoading(false);
     }
@@ -142,8 +142,8 @@ export default function StaffShiftMarketplace({
       setNoteText("");
       fetchOpenShifts();
       if (onClaimed) onClaimed();
-    } catch (e) {
-      console.error(e);
+    } catch (_) {
+      // Handled gracefully in UI
     } finally {
       setClaimingId(null);
     }

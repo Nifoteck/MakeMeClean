@@ -1,0 +1,39 @@
+User-agent: *
+Allow: /
+Allow: /services
+Allow: /book
+Allow: /careers
+Allow: /contact
+Allow: /blog
+Allow: /reviews
+Allow: /terms
+Allow: /privacy
+Allow: /cancellation-policy
+Allow: /service-terms
+Allow: /accessibility
+Allow: /complaints
+
+# Disallow private and administrative areas
+Disallow: /admin
+Disallow: /admin/*
+Disallow: /staff
+Disallow: /staff/*
+Disallow: /dashboard
+Disallow: /dashboard/*
+Disallow: /bookings
+Disallow: /bookings/*
+Disallow: /booking-detail
+Disallow: /booking-detail/*
+Disallow: /booking-photos/*
+Disallow: /booking-refund/*
+Disallow: /profile
+Disallow: /my-plans
+Disallow: /loyalty
+Disallow: /payment/*
+Disallow: /invoice/*
+Disallow: /change-password
+Disallow: /api/*
+
+# Sitemap
+Sitemap: https://makemeclean.co.uk/sitemap.xml
+
