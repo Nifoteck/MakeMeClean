@@ -46,8 +46,12 @@ export const TELEGRAM_CHAT_ID = getEnv('TELEGRAM_CHAT_ID', '');
 
 // ─── Supabase Client Factory ────────────────────────────────────────────────
 export function getServerSupabase(token?: string): SupabaseClient {
-  const key = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
-  return createClient(SUPABASE_URL, key, {
+  const url = getEnv('SUPABASE_URL');
+  const key = getEnv('SUPABASE_SERVICE_ROLE_KEY') || getEnv('SUPABASE_ANON_KEY');
+  if (!url || !key) {
+    throw new Error('Supabase URL or Key missing in server environment variables.');
+  }
+  return createClient(url, key, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,

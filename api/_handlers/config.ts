@@ -1,20 +1,23 @@
-import { VercelRequest, VercelResponse, sendSuccess, sendError, SUPABASE_URL, SUPABASE_ANON_KEY, SITE_URL } from '../_lib/server.js';
-import { VercelRequest, VercelResponse, sendSuccess, sendError, SUPABASE_URL, SUPABASE_ANON_KEY, SITE_URL } from '../_lib/server';
+import { VercelRequest, VercelResponse, sendSuccess, sendError, getEnv } from '../_lib/server.js';
 
 export async function handleConfig(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return sendError(res, 'Method not allowed', 405);
   }
 
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  const supabaseUrl = getEnv('SUPABASE_URL');
+  const supabaseAnonKey = getEnv('SUPABASE_ANON_KEY');
+  const siteUrl = getEnv('SITE_URL', 'https://makemeclean.co.uk').replace(/\/$/, '');
+
+  if (!supabaseUrl || !supabaseAnonKey) {
     return sendError(res, 'Backend credentials not configured in environment variables.', 500);
   }
 
   return sendSuccess(res, {
     apiVersion: '2.2.0',
-    siteUrl: SITE_URL,
-    supabaseUrl: SUPABASE_URL,
-    supabaseAnonKey: SUPABASE_ANON_KEY,
+    siteUrl,
+    supabaseUrl,
+    supabaseAnonKey,
   });
 }
 

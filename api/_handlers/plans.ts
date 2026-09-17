@@ -4,7 +4,7 @@ import {
   verifyAuth,
   sendSuccess,
   sendError,
-} from '../_lib/server';
+} from '../_lib/server.js';
 
 export async function handlePlans(
   req: VercelRequest,

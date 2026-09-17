@@ -27,8 +27,12 @@ var STRIPE_SECRET_KEY = getEnv("STRIPE_SECRET_KEY", "");
 var TELEGRAM_BOT_TOKEN = getEnv("TELEGRAM_BOT_TOKEN", "");
 var TELEGRAM_CHAT_ID = getEnv("TELEGRAM_CHAT_ID", "");
 function getServerSupabase(token) {
-  const key = SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY;
-  return createClient(SUPABASE_URL, key, {
+  const url = getEnv("SUPABASE_URL");
+  const key = getEnv("SUPABASE_SERVICE_ROLE_KEY") || getEnv("SUPABASE_ANON_KEY");
+  if (!url || !key) {
+    throw new Error("Supabase URL or Key missing in server environment variables.");
+  }
+  return createClient(url, key, {
     auth: {
       persistSession: false,
       autoRefreshToken: false
@@ -171,14 +175,17 @@ async function handleConfig(req, res) {
   if (req.method !== "GET") {
     return sendError(res, "Method not allowed", 405);
   }
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  const supabaseUrl = getEnv("SUPABASE_URL");
+  const supabaseAnonKey = getEnv("SUPABASE_ANON_KEY");
+  const siteUrl = getEnv("SITE_URL", "https://makemeclean.co.uk").replace(/\/$/, "");
+  if (!supabaseUrl || !supabaseAnonKey) {
     return sendError(res, "Backend credentials not configured in environment variables.", 500);
   }
   return sendSuccess(res, {
     apiVersion: "2.2.0",
-    siteUrl: SITE_URL,
-    supabaseUrl: SUPABASE_URL,
-    supabaseAnonKey: SUPABASE_ANON_KEY
+    siteUrl,
+    supabaseUrl,
+    supabaseAnonKey
   });
 }
 
