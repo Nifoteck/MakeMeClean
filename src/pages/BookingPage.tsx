@@ -46,13 +46,49 @@ const EMPTY_DISCOUNTS: Record<RecurringFreq, number> = {
   monthly: 0,
 };
 
-const AVAILABLE_EXTRAS = [
-  { id: "oven", label: "Inside Oven & Grill", icon: "🍳", duration: 0.75, desc: "Deep degreasing & rack soaking" },
-  { id: "fridge", label: "Inside Fridge / Freezer", icon: "❄️", duration: 0.5, desc: "Shelves washed & sanitized" },
-  { id: "windows", label: "Interior Window Glass", icon: "🪟", duration: 0.5, desc: "Internal panes & sills buffed" },
-  { id: "ironing", label: "Ironing & Laundry", icon: "🧺", duration: 1.0, desc: "Shirts, linens & folding" },
-  { id: "carpet", label: "Carpet Stain Extraction", icon: "🧹", duration: 1.0, desc: "Hot water shampoo machine" },
-  { id: "cupboards", label: "Inside Kitchen Cabinets", icon: "📦", duration: 0.75, desc: "Shelves wiped & sanitized" },
+const DEFAULT_BOOKING_EXTRAS = [
+  {
+    id: "oven",
+    label: "Inside Oven & Grill",
+    icon: "🍳",
+    duration: 0.75,
+    desc: "Deep degreasing & rack soaking",
+  },
+  {
+    id: "fridge",
+    label: "Inside Fridge / Freezer",
+    icon: "❄️",
+    duration: 0.5,
+    desc: "Shelves washed & sanitized",
+  },
+  {
+    id: "windows",
+    label: "Interior Window Glass",
+    icon: "🪟",
+    duration: 0.5,
+    desc: "Internal panes & sills buffed",
+  },
+  {
+    id: "ironing",
+    label: "Ironing & Laundry",
+    icon: "🧺",
+    duration: 1.0,
+    desc: "Shirts, linens & folding",
+  },
+  {
+    id: "carpet",
+    label: "Carpet Stain Extraction",
+    icon: "🧹",
+    duration: 1.0,
+    desc: "Hot water shampoo machine",
+  },
+  {
+    id: "cupboards",
+    label: "Inside Kitchen Cabinets",
+    icon: "📦",
+    duration: 0.75,
+    desc: "Shelves wiped & sanitized",
+  },
 ];
 
 function formatDuration(hours: number) {
@@ -71,7 +107,17 @@ export default function BookingPage() {
   const [step, setStep] = useState<Step>(1);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
-  // Wecasa-Style Room & Extras State
+  // Wecasa-Style Dynamic Room & Extras State (Configurable from Admin)
+  const [availableExtras, setAvailableExtras] = useState(
+    DEFAULT_BOOKING_EXTRAS
+  );
+  const [multipliers, setMultipliers] = useState({
+    base: 2.0,
+    bed: 0.5,
+    bath: 0.5,
+    living: 0.5,
+  });
+
   const [propertyType, setPropertyType] = useState("House");
   const [bedrooms, setBedrooms] = useState(2);
   const [bathrooms, setBathrooms] = useState(1);
@@ -98,16 +144,18 @@ export default function BookingPage() {
     beds: number,
     baths: number,
     living: number,
-    extras: string[]
+    extras: string[],
+    mults = multipliers,
+    extList = availableExtras
   ) => {
-    let rec = 2.0; // Base 1 bed + 1 bath
-    if (beds > 1) rec += (beds - 1) * 0.5;
-    if (baths > 1) rec += (baths - 1) * 0.5;
-    if (living > 1) rec += (living - 1) * 0.5;
+    let rec = mults.base;
+    if (beds > 1) rec += (beds - 1) * mults.bed;
+    if (baths > 1) rec += (baths - 1) * mults.bath;
+    if (living > 1) rec += (living - 1) * mults.living;
 
     for (const extraId of extras) {
-      const found = AVAILABLE_EXTRAS.find((e) => e.id === extraId);
-      if (found) rec += found.duration;
+      const found = extList.find((e) => e.id === extraId);
+      if (found) rec += Number(found.duration) || 0.5;
     }
     return Math.max(
       MIN_DURATION_HOURS,
@@ -129,7 +177,9 @@ export default function BookingPage() {
       newBeds,
       newBaths,
       newLiving,
-      newExtras
+      newExtras,
+      multipliers,
+      availableExtras
     );
     setDurationHours(recommended);
   };
@@ -152,7 +202,6 @@ export default function BookingPage() {
   }, []);
 
   useEffect(() => {
-    // Also parse query params for postcode or service
     const searchParams = new URLSearchParams(window.location.search);
     const queryPostcode = searchParams.get("postcode");
     const queryCity = searchParams.get("city");
@@ -168,17 +217,53 @@ export default function BookingPage() {
         "discount_weekly",
         "discount_fortnightly",
         "discount_monthly",
+        "booking_extras",
+        "room_calc_base_hours",
+        "room_calc_bed_hours",
+        "room_calc_bath_hours",
+        "room_calc_living_hours",
       ])
       .then(({ data }) => {
         if (!data || data.length === 0) return;
-        const map: Record<string, number> = {};
-        for (const row of data) map[row.key] = Number(row.value) || 0;
+        const map: Record<string, any> = {};
+        for (const row of data) map[row.key] = row.value;
+
         setLiveDiscounts({
           none: 0,
           weekly: Number(map["discount_weekly"]) || 0,
           fortnightly: Number(map["discount_fortnightly"]) || 0,
           monthly: Number(map["discount_monthly"]) || 0,
         });
+
+        const newMults = {
+          base: Number(map["room_calc_base_hours"]) || 2.0,
+          bed: Number(map["room_calc_bed_hours"]) || 0.5,
+          bath: Number(map["room_calc_bath_hours"]) || 0.5,
+          living: Number(map["room_calc_living_hours"]) || 0.5,
+        };
+        setMultipliers(newMults);
+
+        let parsedExtras = DEFAULT_BOOKING_EXTRAS;
+        if (map["booking_extras"]) {
+          try {
+            const p = JSON.parse(map["booking_extras"]);
+            if (Array.isArray(p) && p.length > 0) {
+              parsedExtras = p;
+              setAvailableExtras(p);
+            }
+          } catch (_) {}
+        }
+
+        // Recompute initial duration with live admin settings
+        const initialRec = computeRecommendedHours(
+          bedrooms,
+          bathrooms,
+          livingRooms,
+          selectedExtras,
+          newMults,
+          parsedExtras
+        );
+        setDurationHours(initialRec);
       });
   }, []);
 
@@ -314,7 +399,8 @@ export default function BookingPage() {
             <div className="flex justify-between">
               <span className="text-gray-400">Layout:</span>
               <span className="font-bold">
-                {bedrooms} Bed · {bathrooms} Bath · {livingRooms} Living ({propertyType})
+                {bedrooms} Bed · {bathrooms} Bath · {livingRooms} Living (
+                {propertyType})
               </span>
             </div>
             {selectedExtras.length > 0 && (
@@ -329,7 +415,9 @@ export default function BookingPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Address:</span>
-              <span className="font-bold">{address}, {city} ({postcode})</span>
+              <span className="font-bold">
+                {address}, {city} ({postcode})
+              </span>
             </div>
             <div className="flex justify-between pt-2 border-t border-gray-200">
               <span className="text-gray-900 font-bold">Total:</span>
@@ -349,7 +437,9 @@ export default function BookingPage() {
               </button>
             )}
             <button
-              onClick={() => setLocation(bookingId ? `/bookings/${bookingId}` : "/bookings")}
+              onClick={() =>
+                setLocation(bookingId ? `/bookings/${bookingId}` : "/bookings")
+              }
               className="btn-secondary w-full py-3 text-xs"
             >
               View in My Bookings
@@ -481,79 +571,80 @@ export default function BookingPage() {
         )}
 
         {/* Step 2 — Wecasa Room Calculator & Booking Form */}
-        {step === 2 &&
-          selectedService && (
-            <div className="animate-fade-in space-y-6">
-              <button
-                onClick={() => setStep(1)}
-                className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-green-700 transition-colors"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" /> Choose a different service
-              </button>
+        {step === 2 && selectedService && (
+          <div className="animate-fade-in space-y-6">
+            <button
+              onClick={() => setStep(1)}
+              className="flex items-center gap-1.5 text-xs font-bold text-gray-500 hover:text-green-700 transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Choose a different service
+            </button>
 
-              {/* Service Summary Banner */}
-              <div className="bg-white p-5 rounded-2xl border border-green-200 bg-green-50/40 flex items-center justify-between gap-4 shadow-xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden border border-green-200 bg-white shrink-0">
-                    {selectedService.image_url ? (
-                      <img
-                        src={selectedService.image_url}
-                        alt={selectedService.name}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                        Clean
-                      </div>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 text-base">
-                      {selectedService.name}
-                    </h3>
-                    <p className="text-xs text-green-700 font-semibold">
-                      {formatCurrency(hourlyPrice)}/hr · Eco supplies included
-                    </p>
-                  </div>
+            {/* Service Summary Banner */}
+            <div className="bg-white p-5 rounded-2xl border border-green-200 bg-green-50/40 flex items-center justify-between gap-4 shadow-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl overflow-hidden border border-green-200 bg-white shrink-0">
+                  {selectedService.image_url ? (
+                    <img
+                      src={selectedService.image_url}
+                      alt={selectedService.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                      Clean
+                    </div>
+                  )}
                 </div>
-                <div className="text-right">
-                  <div className="text-xl font-black text-green-700">
-                    {formatCurrency(finalPrice)}
-                  </div>
-                  <div className="text-[11px] text-gray-500">
-                    for {formatDuration(durationHours)}
-                  </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">
+                    {selectedService.name}
+                  </h3>
+                  <p className="text-xs text-green-700 font-semibold">
+                    {formatCurrency(hourlyPrice)}/hr · Eco supplies included
+                  </p>
                 </div>
               </div>
-
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3 font-medium">
-                  {error}
+              <div className="text-right">
+                <div className="text-xl font-black text-green-700">
+                  {formatCurrency(finalPrice)}
                 </div>
-              )}
+                <div className="text-[11px] text-gray-500">
+                  for {formatDuration(durationHours)}
+                </div>
+              </div>
+            </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* ── 1. Wecasa-Style Room & Property Calculator ───────── */}
-                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-xs space-y-6">
-                  <div>
-                    <p className="section-eyebrow">
-                      <Home className="w-3.5 h-3.5" /> Step A · Property Layout
-                    </p>
-                    <h3 className="text-lg font-black text-gray-900">
-                      Tell us about your home
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                      We'll automatically calculate the optimal cleaning time based on room count.
-                    </p>
-                  </div>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3 font-medium">
+                {error}
+              </div>
+            )}
 
-                  {/* Property Type Selector */}
-                  <div>
-                    <label className="text-xs font-bold text-gray-700 block mb-2">
-                      Property Type
-                    </label>
-                    <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                      {["House", "Flat / Apartment", "Studio / HMO"].map((type) => (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* ── 1. Wecasa-Style Room & Property Calculator ───────── */}
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-xs space-y-6">
+                <div>
+                  <p className="section-eyebrow">
+                    <Home className="w-3.5 h-3.5" /> Step A · Property Layout
+                  </p>
+                  <h3 className="text-lg font-black text-gray-900">
+                    Tell us about your home
+                  </h3>
+                  <p className="text-xs text-gray-500">
+                    We'll automatically calculate the optimal cleaning time
+                    based on room count.
+                  </p>
+                </div>
+
+                {/* Property Type Selector */}
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-2">
+                    Property Type
+                  </label>
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                    {["House", "Flat / Apartment", "Studio / HMO"].map(
+                      (type) => (
                         <button
                           key={type}
                           type="button"
@@ -566,239 +657,150 @@ export default function BookingPage() {
                         >
                           {type}
                         </button>
-                      ))}
-                    </div>
+                      )
+                    )}
                   </div>
+                </div>
 
-                  {/* Room Counters Grid */}
-                  <div className="grid sm:grid-cols-3 gap-4 pt-2">
-                    {/* Bedrooms */}
-                    <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
-                      <div>
-                        <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                          <Bed className="w-3.5 h-3.5 text-green-600" /> Bedrooms
-                        </div>
-                        <div className="text-[10px] text-gray-400">Sleep & storage</div>
+                {/* Room Counters Grid */}
+                <div className="grid sm:grid-cols-3 gap-4 pt-2">
+                  {/* Bedrooms */}
+                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
+                        <Bed className="w-3.5 h-3.5 text-green-600" /> Bedrooms
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleRoomChange(
-                              Math.max(1, bedrooms - 1),
-                              bathrooms,
-                              livingRooms,
-                              selectedExtras
-                            )
-                          }
-                          disabled={bedrooms <= 1}
-                          className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="font-black text-sm w-4 text-center">
-                          {bedrooms}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleRoomChange(
-                              Math.min(8, bedrooms + 1),
-                              bathrooms,
-                              livingRooms,
-                              selectedExtras
-                            )
-                          }
-                          disabled={bedrooms >= 8}
-                          className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
+                      <div className="text-[10px] text-gray-400">
+                        Sleep & storage
                       </div>
                     </div>
-
-                    {/* Bathrooms */}
-                    <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
-                      <div>
-                        <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                          <Bath className="w-3.5 h-3.5 text-green-600" /> Bathrooms
-                        </div>
-                        <div className="text-[10px] text-gray-400">Shower & WC</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleRoomChange(
-                              bedrooms,
-                              Math.max(1, bathrooms - 1),
-                              livingRooms,
-                              selectedExtras
-                            )
-                          }
-                          disabled={bathrooms <= 1}
-                          className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="font-black text-sm w-4 text-center">
-                          {bathrooms}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleRoomChange(
-                              bedrooms,
-                              Math.min(6, bathrooms + 1),
-                              livingRooms,
-                              selectedExtras
-                            )
-                          }
-                          disabled={bathrooms >= 6}
-                          className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Living Rooms */}
-                    <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
-                      <div>
-                        <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                          <Layers className="w-3.5 h-3.5 text-green-600" /> Living Areas
-                        </div>
-                        <div className="text-[10px] text-gray-400">Lounge & dining</div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleRoomChange(
-                              bedrooms,
-                              bathrooms,
-                              Math.max(1, livingRooms - 1),
-                              selectedExtras
-                            )
-                          }
-                          disabled={livingRooms <= 1}
-                          className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="font-black text-sm w-4 text-center">
-                          {livingRooms}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleRoomChange(
-                              bedrooms,
-                              bathrooms,
-                              Math.min(5, livingRooms + 1),
-                              selectedExtras
-                            )
-                          }
-                          disabled={livingRooms >= 5}
-                          className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Optional Extras Tiles */}
-                  <div>
-                    <label className="text-xs font-bold text-gray-700 block mb-2.5">
-                      Specialist Extras (Optional)
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {AVAILABLE_EXTRAS.map((extra) => {
-                        const isSelected = selectedExtras.includes(extra.id);
-                        return (
-                          <button
-                            key={extra.id}
-                            type="button"
-                            onClick={() => toggleExtra(extra.id)}
-                            className={`p-3 rounded-2xl text-left border transition-all ${
-                              isSelected
-                                ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
-                                : "border-gray-200 bg-white hover:border-gray-300"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-lg">{extra.icon}</span>
-                              <span
-                                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
-                                  isSelected
-                                    ? "bg-green-600 text-white"
-                                    : "bg-gray-100 text-gray-500"
-                                }`}
-                              >
-                                +{extra.duration * 60}m
-                              </span>
-                            </div>
-                            <div className="font-bold text-xs text-gray-900">
-                              {extra.label}
-                            </div>
-                            <div className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">
-                              {extra.desc}
-                            </div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Recommendation & Manual Hour Adjuster */}
-                  <div className="p-4 rounded-2xl bg-green-50/60 border border-green-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-2.5">
-                      <Sparkles className="w-4 h-4 text-green-700 shrink-0" />
-                      <div className="text-xs text-gray-700">
-                        Recommended for <strong>{bedrooms} bed, {bathrooms} bath</strong>{" "}
-                        {selectedExtras.length > 0 && (
-                          <span>+ {selectedExtras.length} extras</span>
-                        )}
-                        : <strong>{formatDuration(computeRecommendedHours(bedrooms, bathrooms, livingRooms, selectedExtras))}</strong>
-                      </div>
-                    </div>
-
-                    {/* Manual Hours Adjuster */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className="text-xs text-gray-500 font-semibold mr-1">
-                        Hours:
-                      </span>
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={() =>
-                          setDurationHours((h) =>
-                            Math.max(
-                              MIN_DURATION_HOURS,
-                              h - DURATION_STEP_HOURS
-                            )
+                          handleRoomChange(
+                            Math.max(1, bedrooms - 1),
+                            bathrooms,
+                            livingRooms,
+                            selectedExtras
                           )
                         }
-                        disabled={durationHours <= MIN_DURATION_HOURS}
-                        className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-100"
+                        disabled={bedrooms <= 1}
+                        className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
-                      <span className="w-12 text-center text-sm font-black text-gray-900">
-                        {durationHours}h
+                      <span className="font-black text-sm w-4 text-center">
+                        {bedrooms}
                       </span>
                       <button
                         type="button"
                         onClick={() =>
-                          setDurationHours((h) =>
-                            Math.min(
-                              MAX_DURATION_HOURS,
-                              h + DURATION_STEP_HOURS
-                            )
+                          handleRoomChange(
+                            Math.min(8, bedrooms + 1),
+                            bathrooms,
+                            livingRooms,
+                            selectedExtras
                           )
                         }
-                        disabled={durationHours >= MAX_DURATION_HOURS}
-                        className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-100"
+                        disabled={bedrooms >= 8}
+                        className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bathrooms */}
+                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
+                        <Bath className="w-3.5 h-3.5 text-green-600" />{" "}
+                        Bathrooms
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        Shower & WC
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleRoomChange(
+                            bedrooms,
+                            Math.max(1, bathrooms - 1),
+                            livingRooms,
+                            selectedExtras
+                          )
+                        }
+                        disabled={bathrooms <= 1}
+                        className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="font-black text-sm w-4 text-center">
+                        {bathrooms}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleRoomChange(
+                            bedrooms,
+                            Math.min(6, bathrooms + 1),
+                            livingRooms,
+                            selectedExtras
+                          )
+                        }
+                        disabled={bathrooms >= 6}
+                        className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Living Rooms */}
+                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
+                        <Layers className="w-3.5 h-3.5 text-green-600" /> Living
+                        Areas
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        Lounge & dining
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleRoomChange(
+                            bedrooms,
+                            bathrooms,
+                            Math.max(1, livingRooms - 1),
+                            selectedExtras
+                          )
+                        }
+                        disabled={livingRooms <= 1}
+                        className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
+                      >
+                        <Minus className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="font-black text-sm w-4 text-center">
+                        {livingRooms}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleRoomChange(
+                            bedrooms,
+                            bathrooms,
+                            Math.min(5, livingRooms + 1),
+                            selectedExtras
+                          )
+                        }
+                        disabled={livingRooms >= 5}
+                        className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -806,208 +808,315 @@ export default function BookingPage() {
                   </div>
                 </div>
 
-                {/* ── 2. Date, Time & Frequency ───────────────────────── */}
-                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-xs space-y-5">
-                  <p className="section-eyebrow">
-                    <Calendar className="w-3.5 h-3.5" /> Step B · Schedule
-                  </p>
-
-                  <div className="grid sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-gray-700 block mb-1.5">
-                        Preferred Date
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        min={minDateStr}
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="input-field"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-gray-700 block mb-1.5">
-                        Start Time Slot
-                      </label>
-                      <select
-                        required
-                        value={startHour}
-                        onChange={(e) => setStartHour(e.target.value)}
-                        className="input-field"
-                      >
-                        {availableStartHours.map((h) => (
-                          <option key={h} value={h}>
-                            {h} (Finishes at {calcTimeSlot(h, durationHours).split(" – ")[1]})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {date && (
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 text-xs text-blue-800 flex items-center gap-2">
-                      <Clock className="w-3.5 h-3.5 shrink-0 text-blue-600" />
-                      <span>
-                        Clean scheduled: <strong>{date}</strong> from{" "}
-                        <strong>{timeSlot}</strong>
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Recurring schedule */}
-                  <div>
-                    <label className="text-xs font-bold text-gray-700 block mb-2">
-                      Repeat Clean (Save up to 15%)
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                      {(
-                        [
-                          "none",
-                          "monthly",
-                          "fortnightly",
-                          "weekly",
-                        ] as RecurringFreq[]
-                      ).map((value) => {
-                        const label =
-                          value === "none"
-                            ? "One-off"
-                            : value.charAt(0).toUpperCase() + value.slice(1);
-                        const discount = liveDiscounts[value] ?? 0;
-                        return (
-                          <button
-                            type="button"
-                            key={value}
-                            onClick={() => setRecurringFreq(value)}
-                            className={cn(
-                              "relative flex flex-col items-center justify-center py-2.5 px-2 rounded-xl border text-xs font-bold transition-all",
-                              recurringFreq === value
-                                ? "border-green-600 bg-green-50 text-green-800 shadow-xs"
-                                : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
-                            )}
-                          >
-                            {discount > 0 && (
-                              <span className="absolute -top-2 -right-1 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                                -{discount}%
-                              </span>
-                            )}
-                            {label}
-                          </button>
-                        );
-                      })}
-                    </div>
+                {/* Optional Extras Tiles */}
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-2.5">
+                    Specialist Extras (Optional)
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {AVAILABLE_EXTRAS.map((extra) => {
+                      const isSelected = selectedExtras.includes(extra.id);
+                      return (
+                        <button
+                          key={extra.id}
+                          type="button"
+                          onClick={() => toggleExtra(extra.id)}
+                          className={`p-3 rounded-2xl text-left border transition-all ${
+                            isSelected
+                              ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
+                              : "border-gray-200 bg-white hover:border-gray-300"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-lg">{extra.icon}</span>
+                            <span
+                              className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
+                                isSelected
+                                  ? "bg-green-600 text-white"
+                                  : "bg-gray-100 text-gray-500"
+                              }`}
+                            >
+                              +{extra.duration * 60}m
+                            </span>
+                          </div>
+                          <div className="font-bold text-xs text-gray-900">
+                            {extra.label}
+                          </div>
+                          <div className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">
+                            {extra.desc}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* ── 3. Address & Access Notes ───────────────────────── */}
-                <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-xs space-y-4">
-                  <p className="section-eyebrow">
-                    <MapPin className="w-3.5 h-3.5" /> Step C · Location & Keys
-                  </p>
-
-                  <div className="grid sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-xs font-bold text-gray-700 block mb-1.5">
-                        Postcode
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={postcode}
-                        onChange={(e) =>
-                          setPostcode(e.target.value.toUpperCase())
-                        }
-                        placeholder="CF10 1AB"
-                        className="input-field uppercase"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="text-xs font-bold text-gray-700 block mb-1.5">
-                        City / Town (Wales)
-                      </label>
-                      <select
-                        required
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        className="input-field"
-                      >
-                        <option value="">Select city/town</option>
-                        {citiesList.map((c) => (
-                          <option key={c} value={c}>
-                            {c}
-                          </option>
-                        ))}
-                      </select>
+                {/* Recommendation & Manual Hour Adjuster */}
+                <div className="p-4 rounded-2xl bg-green-50/60 border border-green-200/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="w-4 h-4 text-green-700 shrink-0" />
+                    <div className="text-xs text-gray-700">
+                      Recommended for{" "}
+                      <strong>
+                        {bedrooms} bed, {bathrooms} bath
+                      </strong>{" "}
+                      {selectedExtras.length > 0 && (
+                        <span>+ {selectedExtras.length} extras</span>
+                      )}
+                      :{" "}
+                      <strong>
+                        {formatDuration(
+                          computeRecommendedHours(
+                            bedrooms,
+                            bathrooms,
+                            livingRooms,
+                            selectedExtras
+                          )
+                        )}
+                      </strong>
                     </div>
                   </div>
 
+                  {/* Manual Hours Adjuster */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-gray-500 font-semibold mr-1">
+                      Hours:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDurationHours((h) =>
+                          Math.max(MIN_DURATION_HOURS, h - DURATION_STEP_HOURS)
+                        )
+                      }
+                      disabled={durationHours <= MIN_DURATION_HOURS}
+                      className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-100"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="w-12 text-center text-sm font-black text-gray-900">
+                      {durationHours}h
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDurationHours((h) =>
+                          Math.min(MAX_DURATION_HOURS, h + DURATION_STEP_HOURS)
+                        )
+                      }
+                      disabled={durationHours >= MAX_DURATION_HOURS}
+                      className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-100"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── 2. Date, Time & Frequency ───────────────────────── */}
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-xs space-y-5">
+                <p className="section-eyebrow">
+                  <Calendar className="w-3.5 h-3.5" /> Step B · Schedule
+                </p>
+
+                <div className="grid sm:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-bold text-gray-700 block mb-1.5">
-                      Street Address & Flat Number
+                      Preferred Date
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      min={minDateStr}
+                      value={date}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="input-field"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1.5">
+                      Start Time Slot
+                    </label>
+                    <select
+                      required
+                      value={startHour}
+                      onChange={(e) => setStartHour(e.target.value)}
+                      className="input-field"
+                    >
+                      {availableStartHours.map((h) => (
+                        <option key={h} value={h}>
+                          {h} (Finishes at{" "}
+                          {calcTimeSlot(h, durationHours).split(" – ")[1]})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {date && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-xl px-4 py-2.5 text-xs text-blue-800 flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 shrink-0 text-blue-600" />
+                    <span>
+                      Clean scheduled: <strong>{date}</strong> from{" "}
+                      <strong>{timeSlot}</strong>
+                    </span>
+                  </div>
+                )}
+
+                {/* Recurring schedule */}
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-2">
+                    Repeat Clean (Save up to 15%)
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {(
+                      [
+                        "none",
+                        "monthly",
+                        "fortnightly",
+                        "weekly",
+                      ] as RecurringFreq[]
+                    ).map((value) => {
+                      const label =
+                        value === "none"
+                          ? "One-off"
+                          : value.charAt(0).toUpperCase() + value.slice(1);
+                      const discount = liveDiscounts[value] ?? 0;
+                      return (
+                        <button
+                          type="button"
+                          key={value}
+                          onClick={() => setRecurringFreq(value)}
+                          className={cn(
+                            "relative flex flex-col items-center justify-center py-2.5 px-2 rounded-xl border text-xs font-bold transition-all",
+                            recurringFreq === value
+                              ? "border-green-600 bg-green-50 text-green-800 shadow-xs"
+                              : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                          )}
+                        >
+                          {discount > 0 && (
+                            <span className="absolute -top-2 -right-1 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                              -{discount}%
+                            </span>
+                          )}
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── 3. Address & Access Notes ───────────────────────── */}
+              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-xs space-y-4">
+                <p className="section-eyebrow">
+                  <MapPin className="w-3.5 h-3.5" /> Step C · Location & Keys
+                </p>
+
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1.5">
+                      Postcode
                     </label>
                     <input
                       type="text"
                       required
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="e.g. Flat 4, 12 Cathedral Road"
-                      className="input-field"
+                      value={postcode}
+                      onChange={(e) =>
+                        setPostcode(e.target.value.toUpperCase())
+                      }
+                      placeholder="CF10 1AB"
+                      className="input-field uppercase"
                     />
                   </div>
-
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="text-xs font-bold text-gray-700 block mb-1.5">
-                      Access Notes & Special Instructions (optional)
+                      City / Town (Wales)
                     </label>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={2}
-                      placeholder="E.g. key in lockbox code 1234, friendly dog in utility room, focus on kitchen tiles..."
-                      className="input-field resize-none text-xs"
-                    />
+                    <select
+                      required
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      className="input-field"
+                    >
+                      <option value="">Select city/town</option>
+                      {citiesList.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 
-                {/* ── 4. Submit Bar ──────────────────────────────────── */}
-                <div className="p-6 bg-white rounded-3xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-                  <div>
-                    <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">
-                      Total Payable
-                    </div>
-                    <div className="text-2xl font-black text-green-700">
-                      {formatCurrency(finalPrice)}{" "}
-                      <span className="text-xs font-normal text-gray-500">
-                        ({formatDuration(durationHours)} @ {formatCurrency(hourlyPrice)}/hr)
-                      </span>
-                    </div>
-                    {recurringPct > 0 && (
-                      <div className="text-[11px] font-semibold text-orange-600">
-                        Includes {recurringPct}% repeat booking discount!
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <button
-                      type="button"
-                      onClick={() => setStep(1)}
-                      className="btn-secondary py-3 px-5 text-xs w-1/3 sm:w-auto"
-                    >
-                      Back
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="btn-primary py-3 px-8 text-sm font-bold flex-1 sm:flex-none shadow-md shadow-green-600/20"
-                    >
-                      {submitting ? "Booking…" : "Confirm Booking"}
-                    </button>
-                  </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1.5">
+                    Street Address & Flat Number
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="e.g. Flat 4, 12 Cathedral Road"
+                    className="input-field"
+                  />
                 </div>
-              </form>
-            </div>
-          )}
+
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1.5">
+                    Access Notes & Special Instructions (optional)
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    placeholder="E.g. key in lockbox code 1234, friendly dog in utility room, focus on kitchen tiles..."
+                    className="input-field resize-none text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* ── 4. Submit Bar ──────────────────────────────────── */}
+              <div className="p-6 bg-white rounded-3xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div>
+                  <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+                    Total Payable
+                  </div>
+                  <div className="text-2xl font-black text-green-700">
+                    {formatCurrency(finalPrice)}{" "}
+                    <span className="text-xs font-normal text-gray-500">
+                      ({formatDuration(durationHours)} @{" "}
+                      {formatCurrency(hourlyPrice)}/hr)
+                    </span>
+                  </div>
+                  {recurringPct > 0 && (
+                    <div className="text-[11px] font-semibold text-orange-600">
+                      Includes {recurringPct}% repeat booking discount!
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="btn-secondary py-3 px-5 text-xs w-1/3 sm:w-auto"
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="btn-primary py-3 px-8 text-sm font-bold flex-1 sm:flex-none shadow-md shadow-green-600/20"
+                  >
+                    {submitting ? "Booking…" : "Confirm Booking"}
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </div>
   );

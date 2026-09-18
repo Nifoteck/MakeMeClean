@@ -10,6 +10,10 @@ import {
   Send,
   Bell,
   Trophy,
+  Sparkles,
+  Trash2,
+  Plus,
+  Home,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
@@ -245,6 +249,483 @@ function ReminderHoursSetting() {
         )}
         {saving ? "Saving…" : saved ? "Saved!" : "Save"}
       </button>
+    </div>
+  );
+}
+
+interface BookingExtraItem {
+  id: string;
+  label: string;
+  icon: string;
+  duration: number;
+  desc: string;
+}
+
+const DEFAULT_BOOKING_EXTRAS: BookingExtraItem[] = [
+  {
+    id: "oven",
+    label: "Inside Oven & Grill",
+    icon: "🍳",
+    duration: 0.75,
+    desc: "Deep degreasing & rack soaking",
+  },
+  {
+    id: "fridge",
+    label: "Inside Fridge / Freezer",
+    icon: "❄️",
+    duration: 0.5,
+    desc: "Shelves washed & sanitized",
+  },
+  {
+    id: "windows",
+    label: "Interior Window Glass",
+    icon: "🪟",
+    duration: 0.5,
+    desc: "Internal panes & sills buffed",
+  },
+  {
+    id: "ironing",
+    label: "Ironing & Laundry",
+    icon: "🧺",
+    duration: 1.0,
+    desc: "Shirts, linens & folding",
+  },
+  {
+    id: "carpet",
+    label: "Carpet Stain Extraction",
+    icon: "🧹",
+    duration: 1.0,
+    desc: "Hot water shampoo machine",
+  },
+  {
+    id: "cupboards",
+    label: "Inside Kitchen Cabinets",
+    icon: "📦",
+    duration: 0.75,
+    desc: "Shelves wiped & sanitized",
+  },
+];
+
+function BookingExtrasManager() {
+  const [extras, setExtras] = useState<BookingExtraItem[]>(
+    DEFAULT_BOOKING_EXTRAS
+  );
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const [newLabel, setNewLabel] = useState("");
+  const [newIcon, setNewIcon] = useState("✨");
+  const [newMinutes, setNewMinutes] = useState(45);
+  const [newDesc, setNewDesc] = useState("");
+
+  const fetchExtras = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "booking_extras")
+      .maybeSingle();
+
+    if (data?.value) {
+      try {
+        const parsed = JSON.parse(data.value);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setExtras(parsed);
+        }
+      } catch (_) {}
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchExtras();
+  }, []);
+
+  const saveExtras = async (updated: BookingExtraItem[]) => {
+    setSaving(true);
+    setExtras(updated);
+    await supabase.from("settings").upsert(
+      {
+        key: "booking_extras",
+        value: JSON.stringify(updated),
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "key" }
+    );
+    invalidateSettingsCache();
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleAddExtra = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newLabel.trim()) return;
+    const id = newLabel
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .slice(0, 32);
+    const durationHours = Math.max(
+      0.25,
+      Math.round((newMinutes / 60) * 100) / 100
+    );
+    const newItem: BookingExtraItem = {
+      id: `${id}-${Date.now().toString().slice(-4)}`,
+      label: newLabel.trim(),
+      icon: newIcon.trim() || "✨",
+      duration: durationHours,
+      desc: newDesc.trim() || "Specialist cleaning extra",
+    };
+    const updated = [...extras, newItem];
+    saveExtras(updated);
+    setNewLabel("");
+    setNewIcon("✨");
+    setNewMinutes(45);
+    setNewDesc("");
+  };
+
+  const handleDelete = (id: string) => {
+    const updated = extras.filter((e) => e.id !== id);
+    saveExtras(updated);
+  };
+
+  const handleResetDefaults = () => {
+    if (window.confirm("Reset all specialist extras to factory defaults?")) {
+      saveExtras(DEFAULT_BOOKING_EXTRAS);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-green-50 border border-green-100 rounded-xl flex items-center justify-center text-green-600 shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-sm font-black text-gray-900">
+              Specialist Booking Extras Checklist
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Customize add-ons, icons, descriptions, and duration added on the
+              booking page
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {saved && (
+            <span className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Saved Live!
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={handleResetDefaults}
+            className="text-xs text-gray-500 hover:text-gray-900 px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50"
+          >
+            Reset Defaults
+          </button>
+        </div>
+      </div>
+
+      <div className="p-6 space-y-6">
+        {loading ? (
+          <div className="py-6 flex justify-center">
+            <div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {extras.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/50 flex flex-col justify-between gap-2"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl">{item.icon}</span>
+                      <div>
+                        <p className="text-xs font-bold text-gray-900 leading-tight">
+                          {item.label}
+                        </p>
+                        <p className="text-[10px] text-green-700 font-bold mt-0.5">
+                          +{Math.round(item.duration * 60)} mins (
+                          {item.duration}h)
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item.id)}
+                      className="text-gray-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors"
+                      title="Delete extra"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-500 leading-relaxed line-clamp-2">
+                    {item.desc}
+                  </p>
+                </div>
+              ))}
+            </div>
+
+            <form
+              onSubmit={handleAddExtra}
+              className="p-4 bg-gray-50 rounded-xl border border-gray-200 space-y-3"
+            >
+              <p className="text-xs font-bold text-gray-900">
+                + Add New Specialist Extra
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">
+                    Emoji / Icon
+                  </label>
+                  <input
+                    type="text"
+                    value={newIcon}
+                    onChange={(e) => setNewIcon(e.target.value)}
+                    placeholder="🍳"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm text-center bg-white"
+                  />
+                </div>
+                <div className="sm:col-span-4">
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">
+                    Extra Title / Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={newLabel}
+                    onChange={(e) => setNewLabel(e.target.value)}
+                    placeholder="e.g. Balcony Pressure Wash"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs bg-white"
+                  />
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="text-[10px] font-bold text-gray-500 block mb-1">
+                    Time Added (Mins)
+                  </label>
+                  <input
+                    type="number"
+                    min="15"
+                    step="15"
+                    max="300"
+                    value={newMinutes}
+                    onChange={(e) => setNewMinutes(Number(e.target.value))}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs bg-white"
+                  />
+                </div>
+                <div className="sm:col-span-3 flex items-end">
+                  <button
+                    type="submit"
+                    disabled={saving || !newLabel.trim()}
+                    className="w-full py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50"
+                  >
+                    + Add Extra
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 block mb-1">
+                  Short Description
+                </label>
+                <input
+                  type="text"
+                  value={newDesc}
+                  onChange={(e) => setNewDesc(e.target.value)}
+                  placeholder="e.g. Jet washing floor tiles and clearing leaves"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-xs bg-white"
+                />
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RoomCalculatorSettings() {
+  const [baseHours, setBaseHours] = useState("2.0");
+  const [bedHours, setBedHours] = useState("0.5");
+  const [bathHours, setBathHours] = useState("0.5");
+  const [livingHours, setLivingHours] = useState("0.5");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("settings")
+      .select("key, value")
+      .in("key", [
+        "room_calc_base_hours",
+        "room_calc_bed_hours",
+        "room_calc_bath_hours",
+        "room_calc_living_hours",
+      ])
+      .then(({ data }) => {
+        if (data) {
+          for (const row of data) {
+            if (row.key === "room_calc_base_hours") setBaseHours(row.value);
+            if (row.key === "room_calc_bed_hours") setBedHours(row.value);
+            if (row.key === "room_calc_bath_hours") setBathHours(row.value);
+            if (row.key === "room_calc_living_hours") setLivingHours(row.value);
+          }
+        }
+        setLoading(false);
+      });
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    await supabase.from("settings").upsert(
+      [
+        {
+          key: "room_calc_base_hours",
+          value: baseHours,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          key: "room_calc_bed_hours",
+          value: bedHours,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          key: "room_calc_bath_hours",
+          value: bathHours,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          key: "room_calc_living_hours",
+          value: livingHours,
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      { onConflict: "key" }
+    );
+    invalidateSettingsCache();
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+  };
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-center text-blue-600 shrink-0">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-sm font-black text-gray-900">
+              Room Duration Calculator Multipliers
+            </h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Control how many hours are automatically recommended when
+              customers change room counters
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+        >
+          {saved ? (
+            <CheckCircle2 className="w-4 h-4" />
+          ) : (
+            <Save className="w-4 h-4" />
+          )}
+          {saving ? "Saving..." : saved ? "Saved!" : "Save Multipliers"}
+        </button>
+      </div>
+
+      <div className="p-6">
+        {loading ? (
+          <div className="py-4 flex justify-center">
+            <div className="w-5 h-5 border-2 border-green-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200">
+              <label className="text-xs font-bold text-gray-800 block mb-1">
+                Base Time (1 Bed + 1 Bath)
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  step="0.5"
+                  min="1"
+                  max="6"
+                  value={baseHours}
+                  onChange={(e) => setBaseHours(e.target.value)}
+                  className="w-20 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white font-bold"
+                />
+                <span className="text-xs text-gray-500">hours</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200">
+              <label className="text-xs font-bold text-gray-800 block mb-1">
+                Per Extra Bedroom
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  max="3"
+                  value={bedHours}
+                  onChange={(e) => setBedHours(e.target.value)}
+                  className="w-20 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white font-bold"
+                />
+                <span className="text-xs text-gray-500">hours</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200">
+              <label className="text-xs font-bold text-gray-800 block mb-1">
+                Per Extra Bathroom
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  max="3"
+                  value={bathHours}
+                  onChange={(e) => setBathHours(e.target.value)}
+                  className="w-20 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white font-bold"
+                />
+                <span className="text-xs text-gray-500">hours</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-200">
+              <label className="text-xs font-bold text-gray-800 block mb-1">
+                Per Extra Living Room
+              </label>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  step="0.25"
+                  min="0"
+                  max="3"
+                  value={livingHours}
+                  onChange={(e) => setLivingHours(e.target.value)}
+                  className="w-20 border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs bg-white font-bold"
+                />
+                <span className="text-xs text-gray-500">hours</span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -751,6 +1232,12 @@ export default function AdminSettings() {
 
           {/* Customer Loyalty Toggle */}
           <LoyaltyProgramToggle />
+
+          {/* Specialist Booking Extras Manager */}
+          <BookingExtrasManager />
+
+          {/* Room Calculator Multipliers */}
+          <RoomCalculatorSettings />
 
           {/* Service Cities Management */}
           <ServiceCitiesManagement />
