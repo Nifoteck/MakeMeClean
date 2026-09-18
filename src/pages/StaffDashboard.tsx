@@ -10,6 +10,8 @@ import {
   Banknote,
   Layers,
   XCircle,
+  Home,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useStaffRecord } from "@/hooks/useRole";
@@ -36,6 +38,13 @@ interface AssignedBooking {
   price: number;
   status: string;
   payment_status: string | null;
+  bedrooms?: number;
+  bathrooms?: number;
+  living_rooms?: number;
+  property_type?: string;
+  duration_hours?: number;
+  extras?: string[] | any;
+  notes?: string | null;
 }
 
 export default function StaffDashboard() {
@@ -66,7 +75,7 @@ export default function StaffDashboard() {
       supabase
         .from("booking_assignments")
         .select(
-          "id, acceptance_status, decline_reason, bookings(id, service_name, service_type, date, time_slot, address, city, postcode, price, status, payment_status)"
+          "id, acceptance_status, decline_reason, bookings(id, service_name, service_type, date, time_slot, address, city, postcode, price, status, payment_status, bedrooms, bathrooms, living_rooms, property_type, duration_hours, extras, notes)"
         )
         .eq("staff_id", staffId)
         .order("assigned_at", { ascending: false }),
@@ -114,13 +123,16 @@ export default function StaffDashboard() {
       .eq("id", assignmentId);
     setBookings((prev) =>
       prev.map((b) =>
-        b.id === bookingId ? { ...b, acceptanceStatus: "accepted" } : b
+        b.assignmentId === assignmentId
+          ? { ...b, acceptanceStatus: "accepted" }
+          : b
       )
     );
     setActionId(null);
   };
 
   const declineShift = async (assignmentId: string, bookingId: string) => {
+    if (!decliningId) return;
     setActionId(bookingId);
     await supabase
       .from("booking_assignments")
@@ -131,7 +143,7 @@ export default function StaffDashboard() {
       .eq("id", assignmentId);
     setBookings((prev) =>
       prev.map((b) =>
-        b.id === bookingId
+        b.assignmentId === assignmentId
           ? {
               ...b,
               acceptanceStatus: "declined",
@@ -145,28 +157,32 @@ export default function StaffDashboard() {
     setActionId(null);
   };
 
-  const statusColor = (s: string) =>
-    s === "upcoming"
-      ? "bg-green-50 text-green-700 border-green-100"
-      : s === "completed"
-      ? "bg-gray-100 text-gray-600 border-gray-200"
-      : s === "cancelled"
-      ? "bg-red-50 text-red-600 border-red-100"
-      : "bg-yellow-50 text-yellow-700 border-yellow-100";
+  const statusColor = (status: string) => {
+    switch (status) {
+      case "upcoming":
+        return "bg-green-50 text-green-700 border-green-200";
+      case "completed":
+        return "bg-emerald-50 text-emerald-700 border-emerald-200";
+      case "cancelled":
+        return "bg-red-50 text-red-700 border-red-200";
+      default:
+        return "bg-gray-50 text-gray-700 border-gray-200";
+    }
+  };
 
-  if (loading || staffLoading || fetching) {
+  if (loading || staffLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-3 border-green-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (!staff) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-10 max-w-md w-full text-center">
-          <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-5">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white border border-gray-100 rounded-3xl p-8 max-w-md w-full text-center shadow-sm">
+          <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <CalendarDays className="w-7 h-7 text-gray-400" />
           </div>
           <h1 className="text-xl font-black text-gray-900 mb-2">
@@ -250,14 +266,13 @@ export default function StaffDashboard() {
         <button
           onClick={() => setActiveTab("marketplace")}
           className={cn(
-            "px-5 py-3 text-sm font-black border-b-2 transition-all flex items-center gap-2",
+            "px-5 py-3 text-sm font-black border-b-2 transition-all",
             activeTab === "marketplace"
               ? "border-green-600 text-green-700 bg-green-50/50 rounded-t-xl"
               : "border-transparent text-gray-500 hover:text-gray-900"
           )}
         >
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          Open Shift Marketplace
+          Open Shifts Marketplace
         </button>
       </div>
 
@@ -268,34 +283,29 @@ export default function StaffDashboard() {
         />
       ) : (
         <>
-          {/* Upcoming shifts */}
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-bold text-gray-900">
-              Upcoming shifts
-            </h2>
-            <span className="text-xs font-semibold text-gray-400">
-              {upcoming.length} total
-            </span>
-          </div>
-
-          {upcoming.length === 0 ? (
-            <div className="bg-white border border-gray-100 rounded-2xl shadow-sm py-20 text-center">
-              <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                <CalendarDays className="w-6 h-6 text-gray-400" />
+          {fetching ? (
+            <div className="bg-white border border-gray-100 rounded-3xl p-12 text-center shadow-sm">
+              <div className="w-8 h-8 border-3 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm text-gray-400">Loading your shifts…</p>
+            </div>
+          ) : paginated.length === 0 ? (
+            <div className="bg-white border border-gray-100 rounded-3xl p-12 text-center shadow-sm">
+              <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="w-7 h-7 text-green-600" />
               </div>
-              <p className="text-sm font-semibold text-gray-500">
+              <h2 className="text-lg font-black text-gray-900 mb-1">
                 No upcoming shifts
-              </p>
-              <p className="text-xs text-gray-400 mt-1">
-                You'll see new jobs here when assigned.
+              </h2>
+              <p className="text-sm text-gray-400">
+                You're all clear! New assignments will appear here.
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {paginated.map((b) => (
                 <div
                   key={b.id}
-                  className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 hover:border-gray-200 transition-colors"
+                  className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:border-green-100 hover:shadow-md transition-all"
                 >
                   <div className="flex items-start gap-4">
                     {/* Service icon */}
@@ -373,12 +383,27 @@ export default function StaffDashboard() {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                           <Clock className="w-4 h-4 text-green-600 shrink-0" />
-                          {b.time_slot}
+                          {b.time_slot} ({b.duration_hours || 2} hours)
                         </div>
                         <div className="flex items-start gap-2 text-sm text-gray-500">
                           <MapPin className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                           {b.address}, {b.city}, {b.postcode}
                         </div>
+                        <div className="flex items-center gap-2 text-sm text-gray-700 pt-1 font-medium">
+                          <Home className="w-4 h-4 text-green-600 shrink-0" />
+                          {b.bedrooms || 1} Bed · {b.bathrooms || 1} Bath · {b.living_rooms || 1} Living ({b.property_type || "House/Flat"})
+                        </div>
+                        {Array.isArray(b.extras) && b.extras.length > 0 && (
+                          <div className="flex items-start gap-2 text-xs text-green-800 bg-green-50 p-2 rounded-lg border border-green-100 font-semibold mt-1">
+                            <Sparkles className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
+                            <span>Add-ons: {b.extras.join(", ")}</span>
+                          </div>
+                        )}
+                        {b.notes && (
+                          <p className="text-xs text-gray-500 italic bg-gray-50 p-2 rounded-lg border border-gray-100 mt-1">
+                            Note: "{b.notes}"
+                          </p>
+                        )}
                       </div>
 
                       {/* Accept / Decline */}

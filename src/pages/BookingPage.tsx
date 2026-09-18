@@ -814,7 +814,7 @@ export default function BookingPage() {
                     Specialist Extras (Optional)
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {AVAILABLE_EXTRAS.map((extra) => {
+                    {availableExtras.map((extra) => {
                       const isSelected = selectedExtras.includes(extra.id);
                       return (
                         <button

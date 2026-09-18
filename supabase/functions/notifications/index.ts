@@ -71,6 +71,26 @@ function buildEmail(event: NotificationEvent, booking: any) {
   const safePrice = formatGBP(Number(booking.price ?? 0));
   const invoiceNumber = escapeHtml(String(booking.invoice_number ?? booking.id));
 
+  // Property Layout & Specialist Add-Ons
+  const bedrooms = booking.bedrooms || 1;
+  const bathrooms = booking.bathrooms || 1;
+  const livingRooms = booking.living_rooms || 1;
+  const propertyType = escapeHtml(String(booking.property_type || "House/Flat"));
+  const layoutString = `${bedrooms} Bedroom${bedrooms > 1 ? "s" : ""}, ${bathrooms} Bathroom${bathrooms > 1 ? "s" : ""}, ${livingRooms} Living Area${livingRooms > 1 ? "s" : ""}`;
+  const durationString = `${booking.duration_hours || 2} Hours`;
+  
+  let extrasList: string[] = [];
+  if (Array.isArray(booking.extras)) {
+    extrasList = booking.extras.map((x: any) => String(x));
+  } else if (typeof booking.extras === "string") {
+    try {
+      const parsed = JSON.parse(booking.extras);
+      if (Array.isArray(parsed)) extrasList = parsed.map((x: any) => String(x));
+    } catch (_) {}
+  }
+  const extrasString = extrasList.length > 0 ? escapeHtml(extrasList.join(", ")) : "None selected";
+  const safeNotes = booking.notes ? escapeHtml(String(booking.notes)) : "";
+
   const font = "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif";
   const bg = "#f6f7fb";
   const border = "#e5e7eb";
@@ -128,7 +148,7 @@ function buildEmail(event: NotificationEvent, booking: any) {
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="${styles.card}">
                   <tr>
                     <td style="${styles.header}">
-                      <p style="${styles.brand}">MakeMeClean</p>
+                      <p style="${styles.brand}">MakeMe<span style="color:#16a34a">Clean</span></p>
                       <p style="${styles.meta}">${escapeHtml(args.heading)}</p>
                     </td>
                   </tr>
@@ -166,20 +186,26 @@ function buildEmail(event: NotificationEvent, booking: any) {
       html: emailShell({
         preheader: `Booking confirmed for ${safeDate} ${safeTime}`,
         heading: "Booking confirmation",
-        intro: "Thanks for booking with MakeMeClean. Your booking is confirmed and scheduled.",
-        panelTitle: "Booking details",
+        intro: "Thanks for booking with MakeMeClean. Your customized cleaning session is confirmed and scheduled.",
+        panelTitle: "Booking details & specifications",
         panelRows: [
           panelRow("Service", safeService),
           panelRow("Date", safeDate),
           panelRow("Time", safeTime),
+          panelRow("Property Type", propertyType),
+          panelRow("Property Layout", layoutString),
+          panelRow("Estimated Duration", durationString),
+          panelRow("Specialist Add-Ons", extrasString),
+          safeNotes ? panelRow("Special Instructions", safeNotes) : "",
           safeAddress ? panelRow("Address", safeAddress) : "",
           safeCity ? panelRow("City", safeCity) : "",
           safePostcode ? panelRow("Postcode", safePostcode) : "",
-          panelRow("Booking reference", escapeHtml(String(booking.id))),
+          panelRow("Total Amount", safePrice),
+          panelRow("Booking Reference", escapeHtml(String(booking.id))),
         ].join(""),
         ctaHref: bookingUrl || undefined,
         ctaLabel: "View booking",
-        helpText: `Need to change something? Do not reply to this email — contact us at aadeeniiyii@gmail.com.`,
+        helpText: `Need to amend your booking? Visit your dashboard or reach our team at ${supportEmail}.`,
       }),
     };
   }
@@ -190,16 +216,19 @@ function buildEmail(event: NotificationEvent, booking: any) {
       html: emailShell({
         preheader: `Receipt for invoice ${invoiceNumber}`,
         heading: "Payment receipt",
-        intro: "Thanks — we’ve received your payment. This email is your receipt.",
+        intro: "Thanks — we’ve received your payment. Here is the full breakdown of your clean and chosen options.",
         panelTitle: `Invoice • ${invoiceNumber}`,
         panelRows: [
           panelRow("Service", safeService),
           panelRow("Date", safeDate),
-          panelRow("Total paid", escapeHtml(safePrice)),
+          panelRow("Time", safeTime),
+          panelRow("Property Layout", layoutString),
+          panelRow("Specialist Add-Ons", extrasString),
+          panelRow("Total Paid", escapeHtml(safePrice)),
         ].join(""),
         ctaHref: bookingUrl || undefined,
         ctaLabel: "View booking",
-        helpText: `Questions about this invoice? Do not reply to this email — contact us at aadeeniiyii@gmail.com.`,
+        helpText: `Questions about this invoice? Contact our finance team at ${paymentsEmail}.`,
       }),
     };
   }
@@ -208,18 +237,18 @@ function buildEmail(event: NotificationEvent, booking: any) {
   return {
     subject: `Reminder: ${safeService} on ${safeDate}`,
     html: `
-      <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; line-height: 1.5">
-        <h2 style="margin:0 0 12px">Booking reminder</h2>
-        <p style="margin:0 0 12px">Just a reminder about your upcoming clean.</p>
-        <ul style="margin:0 0 16px; padding-left: 18px">
+      <div style="font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial; line-height: 1.5; padding: 16px; background: #f9fafb; border-radius: 12px; border: 1px solid #e5e7eb">
+        <h2 style="margin:0 0 12px; color: #111827">Booking reminder</h2>
+        <p style="margin:0 0 12px; color: #374151">Just a reminder about your upcoming clean with MakeMeClean.</p>
+        <ul style="margin:0 0 16px; padding-left: 18px; color: #374151">
           <li><b>Service:</b> ${safeService}</li>
-          <li><b>Date:</b> ${safeDate}</li>
-          <li><b>Time:</b> ${safeTime}</li>
-          ${safeAddress ? `<li><b>Address:</b> ${safeAddress}</li>` : ""}
-          ${safeCity ? `<li><b>City:</b> ${safeCity}</li>` : ""}
-          ${safePostcode ? `<li><b>Postcode:</b> ${safePostcode}</li>` : ""}
+          <li><b>Date & Time:</b> ${safeDate} at ${safeTime}</li>
+          <li><b>Property:</b> ${layoutString} (${propertyType})</li>
+          <li><b>Add-Ons:</b> ${extrasString}</li>
+          ${safeAddress ? `<li><b>Address:</b> ${safeAddress}, ${safeCity} ${safePostcode}</li>` : ""}
+          ${safeNotes ? `<li><b>Entry Notes:</b> ${safeNotes}</li>` : ""}
         </ul>
-        ${bookingUrl ? `<p style="margin:0 0 16px"><a href="${bookingUrl}">View booking</a></p>` : ""}
+        ${bookingUrl ? `<p style="margin:0 0 16px"><a href="${bookingUrl}" style="display:inline-block;background:#16a34a;color:#ffffff;text-decoration:none;font-weight:700;padding:10px 16px;border-radius:8px">View booking details</a></p>` : ""}
       </div>
     `.trim(),
   };
@@ -251,12 +280,19 @@ async function sendTelegram(event: NotificationEvent, booking: any, customerEmai
         ? "🧾 Booking confirmed (paid)"
         : "⏰ Booking reminder";
 
+  let extrasList: string[] = [];
+  if (Array.isArray(booking.extras)) extrasList = booking.extras.map((x: any) => String(x));
+  const extrasText = extrasList.length > 0 ? extrasList.join(", ") : "None";
+
   const lines = [
     `*${title}*`,
     "",
     `*Service:* ${booking.service_name ?? "Cleaning"}`,
     `*Date:* ${booking.date ?? ""}`,
     booking.time_slot ? `*Time:* ${booking.time_slot}` : null,
+    `*Property:* ${booking.bedrooms || 1} Bed · ${booking.bathrooms || 1} Bath (${booking.property_type || "House/Flat"})`,
+    `*Add-Ons:* ${extrasText}`,
+    `*Duration:* ${booking.duration_hours || 2}h`,
     booking.address ? `*Address:* ${booking.address}` : null,
     booking.city ? `*City:* ${booking.city}` : null,
     booking.postcode ? `*Postcode:* ${booking.postcode}` : null,
@@ -299,7 +335,7 @@ Deno.serve(async (req) => {
 
     const { data: booking, error } = await supabase
       .from("bookings")
-      .select("id, user_id, service_name, date, time_slot, address, city, postcode, price, invoice_number, payment_status")
+      .select("id, user_id, service_name, date, time_slot, address, city, postcode, price, invoice_number, payment_status, bedrooms, bathrooms, living_rooms, property_type, duration_hours, extras, notes")
       .eq("id", payload.bookingId)
       .single();
 
@@ -343,6 +379,6 @@ Deno.serve(async (req) => {
 
     return json(200, { ok: true });
   } catch (e) {
-    return json(500, { error: String(e?.message ?? e) });
+    return json(500, { error: String((e as Error)?.message ?? e) });
   }
 });

@@ -53,6 +53,9 @@ function buildAssignmentEmail(args: {
   city: string;
   postcode: string;
   customerName: string;
+  propertyLayout: string;
+  extras: string;
+  duration: string;
   notes: string | null;
   portalUrl: string;
 }) {
@@ -90,7 +93,7 @@ function buildAssignmentEmail(args: {
 
           <!-- Header -->
           <tr><td style="padding:22px 22px 16px;border-bottom:1px solid ${divider}">
-            <p style="margin:0;font-family:${font};font-weight:900;font-size:22px;color:#111827">MakeMeClean</p>
+            <p style="margin:0;font-family:${font};font-weight:900;font-size:22px;color:#111827">MakeMe<span style="color:#16a34a">Clean</span></p>
             <p style="margin:6px 0 0;font-family:${font};font-weight:600;font-size:12px;color:#6b7280">Shift assignment notification</p>
           </td></tr>
 
@@ -111,17 +114,20 @@ function buildAssignmentEmail(args: {
                    style="border:1px solid ${border};border-radius:16px;overflow:hidden">
               <tr>
                 <td colspan="2" style="background:#f9fafb;padding:12px 14px;font-family:${font};font-weight:800;font-size:12px;line-height:1.4;color:#111827;text-transform:uppercase;letter-spacing:.05em">
-                  Shift details
+                  Shift details & property specs
                 </td>
               </tr>
               ${row("Service", safe(args.serviceName))}
               ${row("Date", safe(formatDate(args.date)))}
               ${row("Time", safe(args.timeSlot))}
+              ${row("Duration", safe(args.duration))}
+              ${row("Property Layout", safe(args.propertyLayout))}
+              ${row("Specialist Add-Ons", safe(args.extras))}
               ${row("Address", safe(args.address))}
               ${row("City", safe(args.city))}
               ${row("Postcode", safe(args.postcode))}
               ${args.customerName ? row("Customer", safe(args.customerName)) : ""}
-              ${args.notes ? row("Notes", safe(args.notes)) : ""}
+              ${args.notes ? row("Entry Notes", safe(args.notes)) : ""}
             </table>
 
             <!-- Important notice -->
@@ -190,10 +196,10 @@ Deno.serve(async (req) => {
     const { bookingId, staffId } = (await req.json()) as { bookingId?: string; staffId?: string };
     if (!bookingId) return json(400, { ok: false, error: "Missing bookingId" });
 
-    // Fetch booking + customer name
+    // Fetch booking + customer name + property layout & extras
     const { data: booking, error: bErr } = await adminClient
       .from("bookings")
-      .select("id, service_name, date, time_slot, address, city, postcode, notes, user_id, profiles(full_name)")
+      .select("id, service_name, date, time_slot, address, city, postcode, notes, user_id, bedrooms, bathrooms, living_rooms, property_type, duration_hours, extras, profiles(full_name)")
       .eq("id", bookingId)
       .single();
     if (bErr || !booking) return json(404, { ok: false, error: "Booking not found" });
@@ -228,6 +234,11 @@ Deno.serve(async (req) => {
       const portalUrl = siteUrl ? `${siteUrl}/staff` : "/staff";
       const customerName = (booking.profiles as any)?.full_name ?? "";
 
+      let extrasList: string[] = [];
+      if (Array.isArray(booking.extras)) extrasList = booking.extras.map((x: any) => String(x));
+      const extrasStr = extrasList.length > 0 ? extrasList.join(", ") : "None";
+      const layoutStr = `${booking.bedrooms || 1} Bed · ${booking.bathrooms || 1} Bath · ${booking.living_rooms || 1} Living (${booking.property_type || "House/Flat"})`;
+
       const html = buildAssignmentEmail({
         staffFirstName: staffRow.first_name,
         serviceName: booking.service_name,
@@ -237,6 +248,9 @@ Deno.serve(async (req) => {
         city: booking.city,
         postcode: booking.postcode,
         customerName,
+        propertyLayout: layoutStr,
+        extras: extrasStr,
+        duration: `${booking.duration_hours || 2} Hours`,
         notes: booking.notes,
         portalUrl,
       });
@@ -257,17 +271,19 @@ Deno.serve(async (req) => {
           }),
         });
         if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          console.error(`[assign-staff] Brevo error ${res.status}: ${text}`);
+          const errText = await res.text().catch(() => "");
+          console.error(`[assign-staff] Brevo error (${res.status}): ${errText}`);
         }
       } catch (emailErr) {
-        console.error("[assign-staff] Email send failed:", emailErr);
-        // Non-fatal — assignment is already saved
+        console.error("[assign-staff] Failed to send email via Brevo:", emailErr);
       }
     }
 
-    return json(200, { ok: true, action: "assigned" });
+    return json(200, {
+      ok: true,
+      assignment: { bookingId, staffId, staffName: `${staffRow.first_name} ${staffRow.last_name}` },
+    });
   } catch (e) {
-    return json(500, { ok: false, error: String((e as any)?.message ?? e) });
+    return json(500, { ok: false, error: String((e as Error)?.message ?? e) });
   }
 });

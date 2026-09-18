@@ -10,6 +10,8 @@ import {
   CalendarCheck,
   ChevronRight,
   ShieldAlert,
+  Home,
+  Sparkles,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -26,6 +28,11 @@ interface OpenShift {
   time_slot: string;
   pay_amount: number;
   estimated_hours: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  living_rooms?: number;
+  property_type?: string;
+  extras?: string[];
   notes?: string;
 }
 
@@ -50,7 +57,7 @@ export default function StaffShiftMarketplace({
       const { data: bookings } = await supabase
         .from("bookings")
         .select(
-          "id, service_name, customer_name, address, city, postcode, date, time_slot, price, duration_hours, notes"
+          "id, service_name, customer_name, address, city, postcode, date, time_slot, price, duration_hours, notes, bedrooms, bathrooms, living_rooms, property_type, extras"
         )
         .is("assigned_staff_id", null)
         .neq("status", "cancelled")
@@ -72,11 +79,16 @@ export default function StaffShiftMarketplace({
             time_slot: b.time_slot || "09:00 AM",
             pay_amount: Number(b.price || 45) * 0.7, // 70% cleaner split
             estimated_hours: Number(b.duration_hours || 3),
+            bedrooms: b.bedrooms || 1,
+            bathrooms: b.bathrooms || 1,
+            living_rooms: b.living_rooms || 1,
+            property_type: b.property_type || "House/Flat",
+            extras: Array.isArray(b.extras) ? b.extras : [],
             notes: b.notes,
           }))
         );
       } else {
-        // Mock fallback slots
+        // Fallback slots
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const dayAfter = new Date();
@@ -95,6 +107,11 @@ export default function StaffShiftMarketplace({
             time_slot: "09:00 AM - 12:30 PM",
             pay_amount: 52.5,
             estimated_hours: 3.5,
+            bedrooms: 2,
+            bathrooms: 2,
+            living_rooms: 1,
+            property_type: "Flat / Apartment",
+            extras: ["Inside Oven & Grill", "Inside Fridge / Freezer"],
             notes: "Key is in lockbox by front door. Code: 4921",
           },
           {
@@ -109,6 +126,11 @@ export default function StaffShiftMarketplace({
             time_slot: "01:00 PM - 05:00 PM",
             pay_amount: 68.0,
             estimated_hours: 4.0,
+            bedrooms: 3,
+            bathrooms: 2,
+            living_rooms: 1,
+            property_type: "House",
+            extras: ["Inside Oven & Grill", "Interior Window Glass", "Inside Kitchen Cabinets"],
             notes: "Empty flat. Oven and interior windows included.",
           },
         ]);
@@ -138,12 +160,13 @@ export default function StaffShiftMarketplace({
         created_at: new Date().toISOString(),
       });
       setSuccessMsg("Shift claimed successfully! Awaiting admin confirmation.");
-      setModalShift(null);
-      setNoteText("");
-      fetchOpenShifts();
-      if (onClaimed) onClaimed();
+      setTimeout(() => {
+        setSuccessMsg("");
+        setModalShift(null);
+        if (onClaimed) onClaimed();
+      }, 2000);
     } catch (_) {
-      // Handled gracefully in UI
+      alert("Failed to claim shift. Please try again.");
     } finally {
       setClaimingId(null);
     }
@@ -151,42 +174,31 @@ export default function StaffShiftMarketplace({
 
   return (
     <div className="space-y-6">
-      {/* Banner */}
-      <div className="bg-gradient-to-r from-green-600 to-green-800 rounded-2xl p-6 text-white shadow-sm flex items-center justify-between flex-wrap gap-4">
+      {/* Header Banner */}
+      <div className="bg-gradient-to-r from-green-800 to-green-600 rounded-3xl p-6 text-white flex items-center justify-between shadow-lg">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <CalendarCheck className="w-5 h-5 text-green-200" />
-            <span className="text-xs font-black uppercase tracking-wider text-green-200">
-              UK Cleaner Shift Marketplace
-            </span>
-          </div>
-          <h2 className="text-xl font-black">Open Shift Pool</h2>
-          <p className="text-sm text-green-100 mt-1">
-            Browse available cleans across South Wales and claim slots to build
-            your weekly schedule.
+          <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+            Cleaner Marketplace
+          </span>
+          <h2 className="text-xl font-black mt-2">Available Customer Cleans</h2>
+          <p className="text-xs text-green-100 max-w-md mt-1">
+            Pick up flexible open cleaning slots in your area. Shifts are awarded instantly on a first-come basis.
           </p>
         </div>
-        <div className="bg-white/10 backdrop-blur-sm border border-white/20 px-4 py-3 rounded-xl text-center">
-          <p className="text-xs text-green-100 font-medium">Faster Payments</p>
-          <p className="text-lg font-black text-white">Every Friday</p>
+        <div className="hidden sm:flex w-12 h-12 bg-white/10 rounded-2xl items-center justify-center">
+          <CalendarCheck className="w-6 h-6 text-white" />
         </div>
       </div>
 
-      {successMsg && (
-        <div className="bg-green-50 border border-green-200 text-green-800 p-4 rounded-xl text-sm flex items-center gap-3">
-          <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-          <span>{successMsg}</span>
-        </div>
-      )}
-
-      {/* Shifts List */}
+      {/* Loading state */}
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
+        <div className="bg-white border border-gray-100 rounded-3xl p-12 text-center shadow-sm">
+          <div className="w-8 h-8 border-3 border-green-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-400">Loading open shifts…</p>
         </div>
       ) : shifts.length === 0 ? (
-        <div className="bg-white border border-gray-100 rounded-2xl p-12 text-center shadow-sm">
-          <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-3 text-gray-400">
+        <div className="bg-white border border-gray-100 rounded-3xl p-12 text-center shadow-sm">
+          <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-3 text-gray-400">
             <Clock className="w-6 h-6" />
           </div>
           <p className="text-base font-bold text-gray-900">
@@ -240,6 +252,18 @@ export default function StaffShiftMarketplace({
                       {s.city} ({s.postcode})
                     </span>
                   </div>
+                  <div className="flex items-center gap-2 font-medium text-gray-700">
+                    <Home className="w-4 h-4 text-green-600" />
+                    <span>
+                      {s.bedrooms || 1} Bed · {s.bathrooms || 1} Bath · {s.living_rooms || 1} Living ({s.property_type || "House/Flat"})
+                    </span>
+                  </div>
+                  {s.extras && s.extras.length > 0 && (
+                    <div className="flex items-start gap-2 text-green-800 bg-green-50/80 p-1.5 rounded-lg border border-green-100 font-semibold">
+                      <Sparkles className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
+                      <span>Add-ons: {s.extras.join(", ")}</span>
+                    </div>
+                  )}
                   {s.notes && (
                     <div className="flex items-start gap-2 pt-1 border-t border-gray-200/60 text-gray-500">
                       <Info className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
@@ -288,6 +312,14 @@ export default function StaffShiftMarketplace({
                 <strong>Schedule:</strong> {formatDate(modalShift.date)} at{" "}
                 {modalShift.time_slot}
               </p>
+              <p>
+                <strong>Property:</strong> {modalShift.bedrooms || 1} Bed · {modalShift.bathrooms || 1} Bath ({modalShift.property_type || "House/Flat"})
+              </p>
+              {modalShift.extras && modalShift.extras.length > 0 && (
+                <p className="text-green-800 font-semibold">
+                  <strong>Add-ons:</strong> {modalShift.extras.join(", ")}
+                </p>
+              )}
               <p className="text-green-700 font-bold text-sm">
                 <strong>Pay:</strong> {formatCurrency(modalShift.pay_amount)} (
                 {modalShift.estimated_hours} hrs)
@@ -299,25 +331,33 @@ export default function StaffShiftMarketplace({
                 Optional note to admin:
               </label>
               <textarea
+                rows={2}
                 value={noteText}
                 onChange={(e) => setNoteText(e.target.value)}
-                placeholder="e.g. I live nearby in Roath and have full equipment ready..."
-                rows={2}
-                className="w-full text-xs p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:outline-none"
+                placeholder="e.g. I live 5 mins away, ready to start promptly."
+                className="w-full text-xs border border-gray-200 rounded-xl p-2.5 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
               />
             </div>
 
-            <div className="flex gap-3">
+            {successMsg ? (
+              <div className="bg-green-50 border border-green-200 text-green-700 text-xs font-bold p-3 rounded-xl flex items-center gap-2 mb-4">
+                <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                {successMsg}
+              </div>
+            ) : null}
+
+            <div className="flex gap-2">
               <button
                 onClick={() => setModalShift(null)}
-                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                disabled={!!claimingId}
+                className="flex-1 py-2.5 border border-gray-200 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleClaim}
-                disabled={claimingId !== null}
-                className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-bold shadow-sm flex items-center justify-center gap-2"
+                disabled={!!claimingId}
+                className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
               >
                 {claimingId ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
