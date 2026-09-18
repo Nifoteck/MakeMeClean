@@ -68,6 +68,11 @@ export async function handleBookings(
         postcode,
         notes,
         recurringFreq = 'none',
+        bedrooms = 1,
+        bathrooms = 1,
+        livingRooms = 1,
+        extras = [],
+        propertyType = 'House/Flat',
       } = body;
 
       if (!serviceId || !date || !address || !postcode) {
@@ -144,6 +149,12 @@ export async function handleBookings(
         payment_status: 'pending',
         notes: notes ? String(notes).trim() : null,
         invoice_number: invoiceNumber,
+        bedrooms: Math.max(1, Number(bedrooms) || 1),
+        bathrooms: Math.max(1, Number(bathrooms) || 1),
+        living_rooms: Math.max(1, Number(livingRooms) || 1),
+        extras: Array.isArray(extras) ? extras : [],
+        property_type: String(propertyType || 'House/Flat').trim(),
+        duration_hours: durationHours,
       };
 
       const { data: booking, error: insertErr } = await supabase
@@ -153,7 +164,6 @@ export async function handleBookings(
         .single();
 
       if (insertErr || !booking) {
-        console.error('[Booking Insert Error]:', insertErr);
         return sendError(res, insertErr?.message || 'Failed to create booking', 500);
       }
 
@@ -174,6 +184,11 @@ export async function handleBookings(
             discount_percent: recurringDiscountPercent,
             status: 'active',
             notes: notes ? String(notes).trim() : null,
+            bedrooms: Math.max(1, Number(bedrooms) || 1),
+            bathrooms: Math.max(1, Number(bathrooms) || 1),
+            living_rooms: Math.max(1, Number(livingRooms) || 1),
+            extras: Array.isArray(extras) ? extras : [],
+            property_type: String(propertyType || 'House/Flat').trim(),
           });
           if (planErr) {
             console.error('[Recurring Plan Insert Warning]:', planErr);

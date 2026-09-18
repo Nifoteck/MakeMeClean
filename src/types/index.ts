@@ -23,6 +23,12 @@ export interface Booking {
   recurring_freq?: string | null;
   recurring_plan_id?: string | null;
   profiles?: { full_name: string | null; phone: string | null } | null;
+  bedrooms?: number | null;
+  bathrooms?: number | null;
+  living_rooms?: number | null;
+  extras?: string[] | null;
+  property_type?: string | null;
+  duration_hours?: number | null;
 }
 
 // ─── Applications ─────────────────────────────────────────────────────────────

@@ -50,6 +50,12 @@ export type Database = {
           notes: string | null;
           created_at: string;
           invoice_number: string | null;
+          bedrooms?: number | null;
+          bathrooms?: number | null;
+          living_rooms?: number | null;
+          extras?: any;
+          property_type?: string | null;
+          duration_hours?: number | null;
         };
         Insert: {
           user_id: string;
@@ -64,10 +70,22 @@ export type Database = {
           price: number;
           notes?: string | null;
           invoice_number?: string | null;
+          bedrooms?: number | null;
+          bathrooms?: number | null;
+          living_rooms?: number | null;
+          extras?: any;
+          property_type?: string | null;
+          duration_hours?: number | null;
         };
         Update: {
           status?: string;
           notes?: string | null;
+          bedrooms?: number | null;
+          bathrooms?: number | null;
+          living_rooms?: number | null;
+          extras?: any;
+          property_type?: string | null;
+          duration_hours?: number | null;
         };
       };
     };

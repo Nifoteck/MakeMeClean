@@ -212,6 +212,11 @@ export const api = {
     postcode: string;
     notes?: string;
     recurringFreq?: string;
+    bedrooms?: number;
+    bathrooms?: number;
+    livingRooms?: number;
+    extras?: string[];
+    propertyType?: string;
   }) => {
     return request<{ booking: any; invoiceNumber: string }>('/api/bookings', {
       method: 'POST',

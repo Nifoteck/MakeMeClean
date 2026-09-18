@@ -16,6 +16,8 @@ import {
   RefreshCw,
   Image as ImageIcon,
   DollarSign,
+  Home,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -305,6 +307,24 @@ export default function BookingDetail() {
                   </span>
                 }
               />
+              {(booking.bedrooms || booking.bathrooms) && (
+                <InfoRow
+                  icon={Home}
+                  label="Property Layout"
+                  value={`${booking.bedrooms || 1} Bed · ${
+                    booking.bathrooms || 1
+                  } Bath · ${booking.living_rooms || 1} Living (${
+                    booking.property_type || "House/Flat"
+                  })`}
+                />
+              )}
+              {Array.isArray(booking.extras) && booking.extras.length > 0 && (
+                <InfoRow
+                  icon={Sparkles}
+                  label="Specialist Extras"
+                  value={booking.extras.join(", ")}
+                />
+              )}
               {booking.notes && (
                 <InfoRow
                   icon={FileText}
