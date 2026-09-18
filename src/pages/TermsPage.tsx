@@ -35,9 +35,9 @@ const sections = [
     id: "cancellation",
     title: "4. Cancellation & Rescheduling",
     content: [
-      `You may cancel or reschedule a booking free of charge by giving us at least 24 hours' notice before the scheduled start time.`,
-      `Cancellations made with less than 24 hours' notice may incur a cancellation fee of up to 50% of the booked service price, to cover the cleaner's time and travel costs.`,
-      `Same-day cancellations (made on the day of the appointment) may incur a fee of up to 100% of the booked service price.`,
+      `You may cancel or reschedule a booking free of charge with at least 24 hours' notice before the scheduled start time for a full refund.`,
+      `Cancellations made between 3 and 24 hours before the service incur a 30% fee (70% refund) to cover cleaner schedule disruption and administration.`,
+      `Cancellations made less than 3 hours before the scheduled clean or no-shows are non-refundable as the cleaning professional has already been dispatched.`,
       `We reserve the right to cancel or reschedule appointments due to circumstances beyond our control (e.g. staff illness, extreme weather). In such cases, you will be offered an alternative appointment or a full refund.`,
     ],
   },
@@ -142,11 +142,16 @@ export default function TermsPage() {
             <div className="w-10 h-10 bg-green-600/20 border border-green-600/40 rounded-xl flex items-center justify-center">
               <FileText className="w-5 h-5 text-green-400" />
             </div>
-            <span className="text-xs font-bold text-green-400 uppercase tracking-widest">Legal</span>
+            <span className="text-xs font-bold text-green-400 uppercase tracking-widest">
+              Legal
+            </span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-3">Terms &amp; Conditions</h1>
+          <h1 className="text-3xl md:text-4xl font-black tracking-tight mb-3">
+            Terms &amp; Conditions
+          </h1>
           <p className="text-gray-400 text-sm">
-            Last updated: <span className="text-gray-300 font-semibold">{UPDATED}</span>
+            Last updated:{" "}
+            <span className="text-gray-300 font-semibold">{UPDATED}</span>
             <span className="mx-3 text-gray-700">·</span>
             Applies to all bookings made via makemeclean.co.uk
           </p>
@@ -155,15 +160,19 @@ export default function TermsPage() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
         <div className="flex flex-col lg:flex-row gap-8">
-
           {/* Sticky TOC */}
           <aside className="hidden lg:block w-56 shrink-0">
             <div className="sticky top-6 bg-white border border-gray-100 rounded-2xl shadow-sm p-4">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Contents</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">
+                Contents
+              </p>
               <nav className="space-y-0.5">
                 {sections.map((s) => (
-                  <a key={s.id} href={`#${s.id}`}
-                    className="block text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg px-3 py-1.5 transition-colors">
+                  <a
+                    key={s.id}
+                    href={`#${s.id}`}
+                    className="block text-xs text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg px-3 py-1.5 transition-colors"
+                  >
                     {s.title}
                   </a>
                 ))}
@@ -173,24 +182,39 @@ export default function TermsPage() {
 
           {/* Main content */}
           <div className="flex-1 min-w-0 space-y-8">
-
             {/* Intro box */}
             <div className="bg-green-50 border border-green-100 rounded-2xl p-5">
               <p className="text-sm text-green-900 leading-relaxed">
-                Please read these Terms and Conditions carefully before using our services. By booking a clean or using our website, you agree to these terms.
-                If you have any questions, email us at{" "}
-                <a href={`mailto:${settings.contact_email}`} className="font-semibold underline">
+                Please read these Terms and Conditions carefully before using
+                our services. By booking a clean or using our website, you agree
+                to these terms. If you have any questions, email us at{" "}
+                <a
+                  href={`mailto:${settings.contact_email}`}
+                  className="font-semibold underline"
+                >
                   {settings.contact_email}
-                </a>.
+                </a>
+                .
               </p>
             </div>
 
             {sections.map((s) => (
-              <div key={s.id} id={s.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 scroll-mt-20">
-                <h2 className="text-base font-black text-gray-900 mb-4">{s.title}</h2>
+              <div
+                key={s.id}
+                id={s.id}
+                className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 scroll-mt-20"
+              >
+                <h2 className="text-base font-black text-gray-900 mb-4">
+                  {s.title}
+                </h2>
                 <div className="space-y-3">
                   {s.content.map((para, i) => (
-                    <p key={i} className="text-sm text-gray-600 leading-relaxed">{para}</p>
+                    <p
+                      key={i}
+                      className="text-sm text-gray-600 leading-relaxed"
+                    >
+                      {para}
+                    </p>
                   ))}
                 </div>
               </div>
@@ -199,12 +223,33 @@ export default function TermsPage() {
             <div className="bg-gray-100 rounded-2xl p-5 text-sm text-gray-500">
               <p>
                 Questions about these Terms?{" "}
-                <a href={`mailto:${settings.contact_email}`} className="text-green-600 font-semibold hover:underline">
+                <a
+                  href={`mailto:${settings.contact_email}`}
+                  className="text-green-600 font-semibold hover:underline"
+                >
                   {settings.contact_email}
                 </a>
-                {settings.business_phone && <>{" "}or call{" "}<a href={`tel:${settings.business_phone.replace(/\s/g, "")}`} className="text-green-600 font-semibold hover:underline">{settings.business_phone}</a>.</>}
-                {" "}You may also wish to read our{" "}
-                <Link href="/privacy" className="text-green-600 font-semibold hover:underline">Privacy Policy</Link>.
+                {settings.business_phone && (
+                  <>
+                    {" "}
+                    or call{" "}
+                    <a
+                      href={`tel:${settings.business_phone.replace(/\s/g, "")}`}
+                      className="text-green-600 font-semibold hover:underline"
+                    >
+                      {settings.business_phone}
+                    </a>
+                    .
+                  </>
+                )}{" "}
+                You may also wish to read our{" "}
+                <Link
+                  href="/privacy"
+                  className="text-green-600 font-semibold hover:underline"
+                >
+                  Privacy Policy
+                </Link>
+                .
               </p>
             </div>
           </div>

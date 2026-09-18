@@ -732,18 +732,25 @@ function RoomCalculatorSettings() {
 
 function ServiceCitiesManagement() {
   const [cities, setCities] = useState<
-    { id: string; name: string; region: string; is_active: boolean }[]
+    {
+      id: string;
+      name: string;
+      region: string;
+      postcode_prefix?: string;
+      is_active: boolean;
+    }[]
   >([]);
   const [loading, setLoading] = useState(true);
   const [newCityName, setNewCityName] = useState("");
   const [newCityRegion, setNewCityRegion] = useState("South Wales");
+  const [newCityPrefix, setNewCityPrefix] = useState("");
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const fetchCities = async () => {
     setLoading(true);
     const { data } = await supabase
       .from("service_cities")
-      .select("id, name, region, is_active")
+      .select("id, name, region, postcode_prefix, is_active")
       .order("name", { ascending: true });
     if (data) setCities(data);
     setLoading(false);
@@ -765,6 +772,13 @@ function ServiceCitiesManagement() {
     setTogglingId(null);
   };
 
+  const deleteCity = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}" from coverage?`))
+      return;
+    await supabase.from("service_cities").delete().eq("id", id);
+    setCities((prev) => prev.filter((c) => c.id !== id));
+  };
+
   const addCity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCityName.trim()) return;
@@ -773,6 +787,7 @@ function ServiceCitiesManagement() {
       .insert({
         name: newCityName.trim(),
         region: newCityRegion,
+        postcode_prefix: newCityPrefix.trim() || undefined,
         is_active: true,
       })
       .select()
@@ -782,6 +797,7 @@ function ServiceCitiesManagement() {
         [...prev, data].sort((a, b) => a.name.localeCompare(b.name))
       );
       setNewCityName("");
+      setNewCityPrefix("");
     }
   };
 
@@ -790,10 +806,11 @@ function ServiceCitiesManagement() {
       <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-sm font-black text-gray-900">
-            Service Locations & Availability
+            Service Locations & Coverage (Wales)
           </h2>
           <p className="text-xs text-gray-400 mt-1">
-            Click any city to open or pause service coverage in real-time
+            Toggle locations on/off or add new areas. Changes immediately update
+            the website & booking flow.
           </p>
         </div>
         <span className="text-xs font-bold text-green-700 bg-green-50 px-3 py-1 rounded-full border border-green-200">
@@ -808,34 +825,61 @@ function ServiceCitiesManagement() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               {cities.map((city) => (
                 <div
                   key={city.id}
-                  onClick={() => toggleCity(city.id, city.is_active)}
-                  className={`p-3 rounded-xl border transition-all cursor-pointer select-none flex items-center justify-between gap-2 ${
+                  className={`p-3.5 rounded-xl border transition-all flex items-center justify-between gap-2.5 ${
                     city.is_active
-                      ? "bg-green-50/60 border-green-200 hover:border-green-300"
-                      : "bg-gray-50 border-gray-200 opacity-60 hover:opacity-80"
+                      ? "bg-green-50/60 border-green-200"
+                      : "bg-gray-50 border-gray-200 opacity-60"
                   }`}
                 >
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-gray-900 truncate">
-                      {city.name}
-                    </p>
-                    <p className="text-[10px] text-gray-400 truncate">
+                  <div
+                    onClick={() => toggleCity(city.id, city.is_active)}
+                    className="min-w-0 flex-1 cursor-pointer select-none"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-bold text-gray-900 truncate">
+                        {city.name}
+                      </p>
+                      {city.postcode_prefix && (
+                        <span className="text-[10px] bg-white px-1.5 py-0.5 rounded text-gray-500 border border-gray-200 font-mono">
+                          {city.postcode_prefix}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-gray-400 truncate mt-0.5">
                       {city.region}
                     </p>
                   </div>
-                  <span
-                    className={`w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black transition-colors shrink-0 ${
-                      city.is_active
-                        ? "bg-green-600 text-white"
-                        : "bg-gray-300 text-gray-600"
-                    }`}
-                  >
-                    {city.is_active ? "✓" : "✕"}
-                  </span>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => toggleCity(city.id, city.is_active)}
+                      className={`w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-black transition-colors ${
+                        city.is_active
+                          ? "bg-green-600 text-white"
+                          : "bg-gray-300 text-gray-600"
+                      }`}
+                      title={
+                        city.is_active
+                          ? "Active (Click to pause)"
+                          : "Paused (Click to activate)"
+                      }
+                    >
+                      {city.is_active ? "✓" : "✕"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteCity(city.id, city.name)}
+                      className="w-6 h-6 rounded-md flex items-center justify-center text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                      title="Delete Location"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -843,14 +887,21 @@ function ServiceCitiesManagement() {
             {/* Add Location form */}
             <form
               onSubmit={addCity}
-              className="flex gap-2 pt-3 border-t border-gray-100 flex-wrap sm:flex-nowrap"
+              className="flex gap-2 pt-4 border-t border-gray-100 flex-wrap sm:flex-nowrap"
             >
               <input
                 type="text"
-                placeholder="New City / Town name..."
+                placeholder="City/Town name (e.g. Caerphilly)..."
                 value={newCityName}
                 onChange={(e) => setNewCityName(e.target.value)}
-                className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:outline-none"
+                className="flex-1 min-w-[140px] border border-gray-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Postcode (e.g. CF83)..."
+                value={newCityPrefix}
+                onChange={(e) => setNewCityPrefix(e.target.value)}
+                className="w-32 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:ring-2 focus:ring-green-500 focus:outline-none uppercase"
               />
               <select
                 value={newCityRegion}
@@ -861,12 +912,15 @@ function ServiceCitiesManagement() {
                 <option value="Mid Wales">Mid Wales</option>
                 <option value="North Wales">North Wales</option>
                 <option value="West Wales">West Wales</option>
+                <option value="Vale of Glamorgan">Vale of Glamorgan</option>
+                <option value="Gwent">Gwent</option>
+                <option value="Rhondda Cynon Taf">Rhondda Cynon Taf</option>
               </select>
               <button
                 type="submit"
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0"
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 flex items-center gap-1.5 shadow-sm"
               >
-                + Add City
+                <Plus className="w-3.5 h-3.5" /> Add Location
               </button>
             </form>
           </div>

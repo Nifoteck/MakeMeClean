@@ -83,7 +83,7 @@ export default function Services() {
             </h1>
 
             <p className="text-gray-600 text-base sm:text-lg mb-8 leading-relaxed">
-              Every clean includes DBS-checked cleaners, £2M public liability
+              Every clean includes DBS-checked cleaners, full public liability
               insurance, eco-friendly supplies, and our 100% satisfaction
               re-clean guarantee.
             </p>
@@ -133,7 +133,7 @@ export default function Services() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-green-400" />
-            <span>£2,000,000 AXA Public Liability Insurance</span>
+            <span>Fully Insured & Public Liability Covered</span>
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-400" />
@@ -155,7 +155,9 @@ export default function Services() {
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3">
             <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-gray-400 font-medium">Loading verified services...</p>
+            <p className="text-xs text-gray-400 font-medium">
+              Loading verified services...
+            </p>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-gray-200 max-w-lg mx-auto p-8 shadow-xs">
@@ -163,7 +165,8 @@ export default function Services() {
               No cleaning services found matching "{search}"
             </p>
             <p className="text-xs text-gray-500 mb-4">
-              Try searching for "Regular", "Deep clean", or reset your category filters.
+              Try searching for "Regular", "Deep clean", or reset your category
+              filters.
             </p>
             <button
               onClick={() => {
@@ -196,7 +199,9 @@ export default function Services() {
                 What's included in every standard clean
               </h2>
               <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-                We believe in straightforward pricing with zero hidden fees. Every standard clean covers all main living areas, kitchen surfaces, bathrooms, and floor care.
+                We believe in straightforward pricing with zero hidden fees.
+                Every standard clean covers all main living areas, kitchen
+                surfaces, bathrooms, and floor care.
               </p>
 
               <div className="space-y-3">
@@ -209,7 +214,9 @@ export default function Services() {
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3">
                     <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                    <span className="text-xs sm:text-sm text-gray-700 font-medium">{item}</span>
+                    <span className="text-xs sm:text-sm text-gray-700 font-medium">
+                      {item}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -220,7 +227,8 @@ export default function Services() {
                 Popular Optional Extras
               </h3>
               <p className="text-xs text-gray-500 mb-5">
-                Add any of these specialist tasks directly inside our booking form:
+                Add any of these specialist tasks directly inside our booking
+                form:
               </p>
 
               <div className="grid grid-cols-2 gap-3">
@@ -232,9 +240,16 @@ export default function Services() {
                   { name: "Inside Kitchen Cabinets", time: "+ 45 mins" },
                   { name: "Ironing & Laundry Service", time: "+ 60 mins" },
                 ].map((extra, idx) => (
-                  <div key={idx} className="p-3 bg-white rounded-xl border border-gray-200/80">
-                    <div className="font-bold text-xs text-gray-900">{extra.name}</div>
-                    <div className="text-[10px] text-green-700 font-semibold">{extra.time}</div>
+                  <div
+                    key={idx}
+                    className="p-3 bg-white rounded-xl border border-gray-200/80"
+                  >
+                    <div className="font-bold text-xs text-gray-900">
+                      {extra.name}
+                    </div>
+                    <div className="text-[10px] text-green-700 font-semibold">
+                      {extra.time}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -250,7 +265,8 @@ export default function Services() {
             Covering Every Corner of Wales
           </h2>
           <p className="text-green-100 text-sm sm:text-base max-w-xl mx-auto mb-6">
-            Serving Cardiff, Newport, Swansea, Pontypridd, Bridgend, Barry, Penarth, Caerphilly, and surrounding areas 7 days a week.
+            Serving Cardiff, Newport, Swansea, Pontypridd, Bridgend, Barry,
+            Penarth, Caerphilly, and surrounding areas 7 days a week.
           </p>
           <Link
             href="/book"

@@ -27,6 +27,10 @@ import ServiceCard from "@/components/ServiceCard";
 import { useServices } from "@/hooks/useServices";
 import { useSettings } from "@/hooks/useSettings";
 import { supabase } from "@/lib/supabase";
+import {
+  fetchActiveServiceLocations,
+  ServiceCityLocation,
+} from "@/lib/services";
 
 interface Testimonial {
   name: string;
@@ -40,13 +44,13 @@ interface Testimonial {
 const trustBadges = [
   {
     icon: Shield,
-    title: "£2,000,000 Insured",
-    desc: "Comprehensive public liability protection on every clean.",
+    title: "Fully Insured",
+    desc: "Vetted cleaning professionals with full public liability protection.",
   },
   {
     icon: CheckCircle2,
     title: "100% DBS Vetted",
-    desc: "Strict ID & criminal background checks on all cleaning staff.",
+    desc: "Strict ID & background checks on all cleaning professionals.",
   },
   {
     icon: Lock,
@@ -189,25 +193,53 @@ const serviceMatrix = [
   },
 ];
 
-const coverageTowns = [
-  { name: "Cardiff", code: "CF10 - CF24", region: "Capital & South" },
-  { name: "Swansea", code: "SA1 - SA7", region: "South West" },
-  { name: "Newport", code: "NP10 - NP20", region: "Gwent" },
-  { name: "Pontypridd", code: "CF37 - CF38", region: "Rhondda Cynon Taf" },
-  { name: "Bridgend", code: "CF31 - CF35", region: "Bridgend County" },
-  { name: "Barry & Penarth", code: "CF62 - CF64", region: "Vale of Glamorgan" },
-  { name: "Caerphilly", code: "CF83", region: "Caerphilly County" },
-  { name: "Cwmbran", code: "NP44", region: "Torfaen" },
-  { name: "Llanelli", code: "SA14 - SA15", region: "Carmarthenshire" },
-  { name: "Merthyr Tydfil", code: "CF47 - CF48", region: "Merthyr Tydfil" },
-  { name: "Neath & Port Talbot", code: "SA10 - SA13", region: "West Glamorgan" },
-  { name: "Wrexham", code: "LL11 - LL14", region: "North East" },
+const defaultCoverageTowns: ServiceCityLocation[] = [
+  {
+    name: "Cardiff",
+    postcode_prefix: "CF10 - CF24",
+    region: "Capital & South",
+  },
+  { name: "Swansea", postcode_prefix: "SA1 - SA7", region: "South West" },
+  { name: "Newport", postcode_prefix: "NP10 - NP20", region: "Gwent" },
+  {
+    name: "Pontypridd",
+    postcode_prefix: "CF37 - CF38",
+    region: "Rhondda Cynon Taf",
+  },
+  {
+    name: "Bridgend",
+    postcode_prefix: "CF31 - CF35",
+    region: "Bridgend County",
+  },
+  {
+    name: "Barry",
+    postcode_prefix: "CF62 - CF64",
+    region: "Vale of Glamorgan",
+  },
+  { name: "Caerphilly", postcode_prefix: "CF83", region: "Caerphilly County" },
+  { name: "Cwmbran", postcode_prefix: "NP44", region: "Torfaen" },
+  {
+    name: "Llanelli",
+    postcode_prefix: "SA14 - SA15",
+    region: "Carmarthenshire",
+  },
+  {
+    name: "Merthyr Tydfil",
+    postcode_prefix: "CF47 - CF48",
+    region: "Merthyr Tydfil",
+  },
+  { name: "Neath", postcode_prefix: "SA10 - SA11", region: "West Glamorgan" },
+  {
+    name: "Port Talbot",
+    postcode_prefix: "SA12 - SA13",
+    region: "West Glamorgan",
+  },
 ];
 
 const faqs = [
   {
     q: "Do I need to be at home while the cleaner is working?",
-    a: "No, you don't have to be home! Many of our clients leave a key in a key safe, with a neighbour, or let the cleaner in before heading to work. All our cleaners are fully DBS-checked, vetted, and covered by our £2,000,000 public liability insurance.",
+    a: "No, you don't have to be home! Many of our clients leave a key in a key safe, with a neighbour, or let the cleaner in before heading to work. All our cleaners are fully DBS-checked, vetted, and covered by public liability insurance.",
   },
   {
     q: "Do the cleaners bring their own cleaning products and equipment?",
@@ -231,37 +263,6 @@ const faqs = [
   },
 ];
 
-const fallbackReviews: Testimonial[] = [
-  {
-    name: "Gareth D.",
-    city: "Cardiff Bay",
-    rating: 5,
-    text: "Outstanding service! Booked an end of tenancy clean and got our full deposit back with zero deductions. The oven looked brand new!",
-    service: "End of Tenancy Clean",
-  },
-  {
-    name: "Sian W.",
-    city: "Pontypridd",
-    rating: 5,
-    text: "Having a regular fortnightly cleaner has completely changed my weekends. Reliable, polite, and my house always smells so fresh.",
-    service: "Regular Domestic Clean",
-  },
-  {
-    name: "Huw T.",
-    city: "Swansea",
-    rating: 5,
-    text: "Booked a deep clean before hosting family for the weekend. The cleaner was punctual, thorough, and paid attention to every detail.",
-    service: "One-Off Deep Clean",
-  },
-  {
-    name: "Elen M.",
-    city: "Newport",
-    rating: 5,
-    text: "Super easy online booking, instant confirmation, and the cleaner arrived exactly on time with all eco-friendly supplies. 5 stars!",
-    service: "Eco Home Clean",
-  },
-];
-
 export default function Home() {
   const settings = useSettings();
   const [, setLocation] = useLocation();
@@ -273,8 +274,22 @@ export default function Home() {
   const [heroService, setHeroService] = useState("");
   const [heroPostcode, setHeroPostcode] = useState("");
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
+  const [reviewStats, setReviewStats] = useState<{
+    count: number;
+    avg: number;
+  } | null>(null);
+  const [coverageTowns, setCoverageTowns] =
+    useState<ServiceCityLocation[]>(defaultCoverageTowns);
 
   useEffect(() => {
+    // Fetch active service coverage locations dynamically from database
+    fetchActiveServiceLocations().then((cities) => {
+      if (cities && cities.length > 0) {
+        setCoverageTowns(cities);
+      }
+    });
+
+    // Fetch real customer reviews from Supabase
     supabase
       .from("reviews")
       .select(
@@ -288,17 +303,28 @@ export default function Home() {
       .order("created_at", { ascending: false })
       .limit(8)
       .then(({ data }) => {
-        if (data && data.length >= 3) {
-          const mapped: Testimonial[] = data.map((r: any) => ({
+        if (data && data.length > 0) {
+          const validReviews = data.filter(
+            (r: any) => r.comments && r.comments.trim().length > 0
+          );
+          const totalRating = data.reduce(
+            (acc: number, r: any) => acc + (r.overall_rating || 5),
+            0
+          );
+          const avg = Number((totalRating / data.length).toFixed(1));
+          setReviewStats({ count: data.length, avg });
+
+          const mapped: Testimonial[] = validReviews.map((r: any) => ({
             name: "Verified Customer",
             city: r.bookings?.city ?? "Wales",
             rating: r.overall_rating ?? 5,
-            text: r.comments || "Exceptional cleaning service. Highly recommended!",
+            text: r.comments,
             service: r.bookings?.service_name ?? "Domestic Clean",
           }));
           setTestimonials(mapped);
         } else {
-          setTestimonials(fallbackReviews);
+          setTestimonials([]);
+          setReviewStats(null);
         }
       });
   }, []);
@@ -320,15 +346,17 @@ export default function Home() {
   return (
     <div className="overflow-x-hidden">
       {/* ── 1. Hero with Instant Wecasa-Style Quick Booking Bar ─────── */}
-      <section className="relative bg-white pt-8 md:pt-14 pb-12 md:pb-18 border-b border-gray-100">
+      <section className="relative bg-white pt-8 md:pt-14 pb-12 md:pb-18 border-b border-gray-100 overflow-hidden">
         <div className="absolute inset-0 hero-gradient pointer-events-none" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Hero Content */}
-            <div className="lg:col-span-7">
+            <div className="lg:col-span-7 animate-fade-in-up">
               <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200/80 text-green-800 text-xs font-semibold px-3.5 py-1.5 rounded-full mb-5 tracking-wide shadow-xs">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                Rated 4.9/5 by Welsh homeowners · Available 7 Days
+                {reviewStats
+                  ? `${reviewStats.avg}/5 Customer Satisfaction · Available 7 Days`
+                  : "100% Satisfaction Guarantee · Available 7 Days"}
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 leading-[1.08] mb-5 tracking-tight">
@@ -338,14 +366,14 @@ export default function Home() {
 
               <p className="text-base sm:text-lg text-gray-600 leading-relaxed mb-8 max-w-xl">
                 Book vetted, DBS-checked domestic cleaners in under 2 minutes.
-                Fixed upfront rates, £2M insurance, and a 100% satisfaction
-                guarantee.
+                Fixed upfront rates, full insurance protection, and a 100%
+                satisfaction guarantee.
               </p>
 
               {/* Instant Postcode & Service Finder Bar */}
               <form
                 onSubmit={handleHeroSearch}
-                className="bg-white p-2.5 sm:p-3 rounded-2xl shadow-xl border border-gray-200/80 max-w-xl mb-6 flex flex-col sm:flex-row gap-2.5"
+                className="bg-white p-2.5 sm:p-3 rounded-2xl shadow-xl border border-gray-200/80 max-w-xl mb-6 flex flex-col sm:flex-row gap-2.5 transition-all hover:shadow-2xl"
               >
                 <div className="flex-1 relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
@@ -354,34 +382,33 @@ export default function Home() {
                   <select
                     value={heroService}
                     onChange={(e) => setHeroService(e.target.value)}
-                    className="w-full pl-9 pr-8 py-3 text-sm font-medium text-gray-900 bg-gray-50/80 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all cursor-pointer"
+                    className="w-full pl-9 pr-8 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-all appearance-none cursor-pointer"
                   >
-                    <option value="">Select a clean...</option>
-                    <option value="regular">Regular Domestic Clean</option>
-                    <option value="deep">One-Off Deep Clean</option>
-                    <option value="tenancy">End of Tenancy Clean</option>
-                    <option value="airbnb">Airbnb & Turnover Clean</option>
-                    <option value="carpet">Carpet & Upholstery Clean</option>
-                    <option value="oven">Oven & Appliance Clean</option>
+                    <option value="">Select a service...</option>
+                    {services.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                <div className="sm:w-44 relative">
+                <div className="relative w-full sm:w-44">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                     <MapPin className="w-4 h-4 text-green-600" />
                   </div>
                   <input
                     type="text"
+                    placeholder="e.g. CF10"
                     value={heroPostcode}
                     onChange={(e) => setHeroPostcode(e.target.value)}
-                    placeholder="Postcode (e.g. CF10)"
-                    className="w-full pl-9 pr-3 py-3 text-sm font-medium text-gray-900 bg-gray-50/80 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all uppercase placeholder:normal-case"
+                    className="w-full pl-9 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm font-semibold text-gray-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-all uppercase"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap shadow-md"
+                  className="btn-primary py-3 px-6 text-sm font-bold flex items-center justify-center gap-2 whitespace-nowrap shadow-md hover:scale-[1.02] active:scale-[0.98] transition-transform"
                 >
                   Find Cleaner <ArrowRight className="w-4 h-4" />
                 </button>
@@ -389,16 +416,28 @@ export default function Home() {
 
               {/* Social Proof / Badges */}
               <div className="flex flex-wrap items-center gap-y-3 gap-x-6 text-xs text-gray-600">
-                <div className="flex items-center gap-1.5">
-                  <div className="flex text-amber-400 text-sm">
-                    {"★".repeat(5)}
+                {reviewStats ? (
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex text-amber-400 text-sm">
+                      {"★".repeat(Math.round(reviewStats.avg))}
+                    </div>
+                    <span className="font-bold text-gray-900">
+                      {reviewStats.avg} / 5
+                    </span>
+                    <span className="text-gray-400">
+                      ({reviewStats.count}{" "}
+                      {reviewStats.count === 1 ? "review" : "reviews"})
+                    </span>
                   </div>
-                  <span className="font-bold text-gray-900">4.9 / 5</span>
-                  <span className="text-gray-400">(450+ reviews)</span>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-gray-700">
+                    <Award className="w-4 h-4 text-green-600" />
+                    <span>100% Satisfaction Re-clean</span>
+                  </div>
+                )}
                 <div className="flex items-center gap-1.5 text-gray-700">
                   <Shield className="w-4 h-4 text-green-600" />
-                  <span>£2M Insurance Cover</span>
+                  <span>Fully Insured Cover</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-gray-700">
                   <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -408,16 +447,16 @@ export default function Home() {
             </div>
 
             {/* Right Hero Image Card */}
-            <div className="lg:col-span-5">
-              <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-gray-100">
+            <div className="lg:col-span-5 animate-fade-in-scale">
+              <div className="relative rounded-3xl overflow-hidden shadow-2xl border-4 border-white bg-gray-100 group">
                 <img
                   src="/images/home-hero-before.jpg"
                   alt="Professional Welsh cleaner with eco-friendly supplies"
-                  className="w-full h-80 sm:h-96 lg:h-[460px] object-cover"
+                  className="w-full h-80 sm:h-96 lg:h-[460px] object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                 />
-                <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-gray-100 shadow-lg flex items-center justify-between">
+                <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-2xl border border-gray-100 shadow-lg flex items-center justify-between animate-float">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-black text-sm">
+                    <div className="w-10 h-10 rounded-full bg-green-100 text-green-700 flex items-center justify-center font-black text-sm shadow-xs">
                       ✓
                     </div>
                     <div>
@@ -431,7 +470,7 @@ export default function Home() {
                   </div>
                   <Link
                     href="/book"
-                    className="text-xs font-bold text-green-700 hover:text-green-800 bg-green-50 px-3 py-1.5 rounded-lg border border-green-200 flex items-center gap-1"
+                    className="text-xs font-bold text-green-700 hover:text-green-800 bg-green-50 hover:bg-green-100 px-3 py-1.5 rounded-lg border border-green-200 flex items-center gap-1 transition-colors"
                   >
                     Book now <ArrowRight className="w-3 h-3" />
                   </Link>
@@ -446,17 +485,21 @@ export default function Home() {
       <section className="bg-gray-900 text-white py-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {trustBadges.map(({ icon: Icon, title, desc }) => (
+            {trustBadges.map(({ icon: Icon, title, desc }, idx) => (
               <div
                 key={title}
-                className="flex items-start gap-4 p-4 rounded-xl bg-gray-800/60 border border-gray-700/60"
+                className={`flex items-start gap-4 p-4 rounded-xl bg-gray-800/60 border border-gray-700/60 hover:border-green-500/40 hover:bg-gray-800/90 transition-all duration-300 hover:-translate-y-1 stagger-${
+                  idx + 1
+                }`}
               >
                 <div className="w-11 h-11 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center shrink-0">
                   <Icon className="w-5 h-5 text-green-400" />
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-white mb-1">{title}</h3>
-                  <p className="text-xs text-gray-400 leading-relaxed">{desc}</p>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    {desc}
+                  </p>
                 </div>
               </div>
             ))}
@@ -483,8 +526,11 @@ export default function Home() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {popularServices.map((service) => (
-              <div key={service.id} className="animate-fade-in-up">
+            {popularServices.map((service, idx) => (
+              <div
+                key={service.id}
+                className={`animate-fade-in-up stagger-${(idx % 6) + 1}`}
+              >
                 <ServiceCard service={service} />
               </div>
             ))}
@@ -495,7 +541,8 @@ export default function Home() {
               href="/services"
               className="btn-secondary inline-flex items-center gap-2 px-8 py-3.5"
             >
-              Explore All 11 Services & Prices <ArrowRight className="w-4 h-4" />
+              Explore All 11 Services & Prices{" "}
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
@@ -585,7 +632,8 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-10 md:mb-14">
             <p className="section-eyebrow justify-center">
-              <SlidersHorizontal className="w-3.5 h-3.5" /> Transparent Comparison
+              <SlidersHorizontal className="w-3.5 h-3.5" /> Transparent
+              Comparison
             </p>
             <h2 className="text-3xl sm:text-4xl font-black text-gray-900 mb-3">
               Which Service Fits Your Needs?
@@ -727,15 +775,17 @@ export default function Home() {
                 title: "Relax & Pay Post-Clean",
                 desc: "Your DBS-vetted cleaner arrives on time with supplies. Your card is charged securely only after the clean is completed.",
               },
-            ].map(({ step, title, desc }) => (
+            ].map(({ step, title, desc }, idx) => (
               <div
                 key={step}
-                className="relative text-center bg-white p-6 sm:p-8 rounded-3xl border border-gray-200/80 shadow-sm"
+                className={`relative text-center bg-white p-6 sm:p-8 rounded-3xl border border-gray-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 group stagger-${
+                  idx + 1
+                }`}
               >
-                <div className="w-14 h-14 rounded-2xl bg-green-600 text-white flex items-center justify-center mx-auto mb-5 text-lg font-black shadow-md shadow-green-600/20 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-green-600 text-white flex items-center justify-center mx-auto mb-5 text-lg font-black shadow-md shadow-green-600/20 group-hover:scale-110 group-hover:bg-green-700 transition-all duration-300 relative z-10">
                   {step}
                 </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2.5">
+                <h3 className="text-lg font-bold text-gray-900 mb-2.5 group-hover:text-green-700 transition-colors">
                   {title}
                 </h3>
                 <p className="text-gray-500 text-xs sm:text-sm leading-relaxed">
@@ -744,20 +794,11 @@ export default function Home() {
               </div>
             ))}
           </div>
-
-          <div className="text-center mt-12">
-            <Link
-              href="/book"
-              className="btn-primary px-8 py-3.5 text-sm sm:text-base inline-flex items-center gap-2"
-            >
-              Book Your Cleaner in 2 Mins <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
         </div>
       </section>
 
-      {/* ── 7. Welsh Coverage Towns Hub ────────────────────────────── */}
-      <section className="py-14 md:py-20 bg-white border-t border-gray-100">
+      {/* ── 7. Wales Coverage Area Grid ────────────────────────────── */}
+      <section className="py-14 md:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl mb-10">
             <p className="section-eyebrow">
@@ -777,71 +818,84 @@ export default function Home() {
               <Link
                 key={town.name}
                 href={`/book?postcode=${encodeURIComponent(town.name)}`}
-                className="p-4 rounded-2xl border border-gray-200 hover:border-green-500 hover:bg-green-50/40 transition-all duration-150 group"
+                className="p-4 rounded-2xl border border-gray-200 hover:border-green-500 hover:bg-green-50/50 hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 group"
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="font-bold text-sm text-gray-900 group-hover:text-green-700">
+                  <span className="font-bold text-sm text-gray-900 group-hover:text-green-700 transition-colors">
                     {town.name}
                   </span>
-                  <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-green-600 group-hover:translate-x-1 transition-all" />
+                  <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-green-600 group-hover:translate-x-1.5 transition-all duration-200" />
                 </div>
-                <div className="text-[11px] text-gray-400">{town.code}</div>
-                <div className="text-[10px] font-semibold text-green-700 mt-1">
-                  {town.region}
-                </div>
+                {town.postcode_prefix && (
+                  <div className="text-[11px] text-gray-400 font-mono">
+                    {town.postcode_prefix}
+                  </div>
+                )}
+                {town.region && (
+                  <div className="text-[10px] font-semibold text-green-700 mt-1">
+                    {town.region}
+                  </div>
+                )}
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── 8. Customer Reviews & Social Proof ────────────────────── */}
-      <section className="py-14 md:py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 md:mb-12">
-            <div>
-              <p className="section-eyebrow">
-                <Star className="w-3.5 h-3.5" /> Customer Testimonials
-              </p>
-              <h2 className="text-3xl sm:text-4xl font-black text-gray-900 leading-tight">
-                Trusted by 100s of Welsh Households
-              </h2>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full">
-                4.9 / 5 Overall Rating
-              </span>
-            </div>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {testimonials.map((t, i) => (
-              <div
-                key={i}
-                className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex text-amber-400 text-sm mb-3">
-                    {"★".repeat(t.rating)}
-                  </div>
-                  <p className="text-xs sm:text-sm text-gray-700 leading-relaxed mb-5 italic">
-                    "{t.text}"
-                  </p>
-                </div>
-                <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-bold text-gray-900">{t.name}</p>
-                    <p className="text-[10px] text-gray-400">{t.city}</p>
-                  </div>
-                  <span className="text-[10px] font-semibold bg-green-50 text-green-700 px-2 py-0.5 rounded-md border border-green-100">
-                    {t.service}
+      {/* ── 8. Customer Reviews & Social Proof (Only shown when real reviews exist) ── */}
+      {testimonials.length > 0 && (
+        <section className="py-14 md:py-20 bg-gray-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10 md:mb-12">
+              <div>
+                <p className="section-eyebrow">
+                  <Star className="w-3.5 h-3.5" /> Customer Testimonials
+                </p>
+                <h2 className="text-3xl sm:text-4xl font-black text-gray-900 leading-tight">
+                  What Our Verified Customers Say
+                </h2>
+              </div>
+              {reviewStats && (
+                <div className="flex items-center gap-2">
+                  <span className="bg-green-100 text-green-800 text-xs font-bold px-3 py-1 rounded-full">
+                    {reviewStats.avg} / 5 ({reviewStats.count}{" "}
+                    {reviewStats.count === 1 ? "Review" : "Reviews"})
                   </span>
                 </div>
-              </div>
-            ))}
+              )}
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {testimonials.map((t, i) => (
+                <div
+                  key={i}
+                  className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex text-amber-400 text-sm mb-3">
+                      {"★".repeat(t.rating)}
+                    </div>
+                    <p className="text-xs sm:text-sm text-gray-700 leading-relaxed mb-5 italic">
+                      "{t.text}"
+                    </p>
+                  </div>
+                  <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <div>
+                      <p className="text-xs font-bold text-gray-900">
+                        {t.name}
+                      </p>
+                      <p className="text-[10px] text-gray-400">{t.city}</p>
+                    </div>
+                    <span className="text-[10px] font-semibold bg-green-50 text-green-700 px-2 py-0.5 rounded-md border border-green-100">
+                      {t.service}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── 9. Frequently Asked Questions (Accordion) ──────────────── */}
       <section className="py-14 md:py-20 bg-white border-t border-gray-100">

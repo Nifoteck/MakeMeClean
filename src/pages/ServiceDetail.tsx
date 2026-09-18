@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useParams, useLocation } from "wouter";
 import {
   Shield,
@@ -23,13 +23,22 @@ import { useServices } from "@/hooks/useServices";
 import { useSettings } from "@/hooks/useSettings";
 import { formatCurrency } from "@/lib/utils";
 import { getServiceDetailConfig } from "@/lib/serviceDetailsData";
-import { walesCities } from "@/lib/services";
+import { fetchActiveCities, walesCities } from "@/lib/services";
 
 export default function ServiceDetail() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const settings = useSettings();
   const { services, loading } = useServices();
+  const [activeCities, setActiveCities] = useState<string[]>(walesCities);
+
+  useEffect(() => {
+    fetchActiveCities().then((cities) => {
+      if (cities && cities.length > 0) {
+        setActiveCities(cities);
+      }
+    });
+  }, []);
 
   const service = useMemo(() => {
     if (!services || services.length === 0) return null;
@@ -133,18 +142,17 @@ export default function ServiceDetail() {
                 {service.description || config.tagline}
               </p>
 
-              {/* Rating & Reassurance Row */}
+              {/* Reassurance Row */}
               <div className="flex flex-wrap items-center gap-y-2 gap-x-5 text-xs text-gray-600 mb-8 pb-6 border-b border-gray-100">
-                <div className="flex items-center gap-1.5">
-                  <div className="flex text-amber-400 text-sm">
-                    {"★".repeat(5)}
-                  </div>
-                  <span className="font-bold text-gray-900">4.9 / 5</span>
-                  <span className="text-gray-400">(450+ reviews)</span>
+                <div className="flex items-center gap-1.5 text-gray-700">
+                  <Award className="w-4 h-4 text-green-600" />
+                  <span className="font-semibold text-gray-900">
+                    100% Satisfaction Guaranteed
+                  </span>
                 </div>
                 <div className="flex items-center gap-1 text-gray-700">
                   <Shield className="w-4 h-4 text-green-600" />
-                  <span>£2M AXA Insured</span>
+                  <span>Fully Insured</span>
                 </div>
                 <div className="flex items-center gap-1 text-gray-700">
                   <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -446,7 +454,7 @@ export default function ServiceDetail() {
             {service.name} available throughout:
           </p>
           <div className="flex flex-wrap justify-center gap-2">
-            {walesCities.map((city) => (
+            {activeCities.map((city) => (
               <Link
                 key={city}
                 href={`/book/${service.id}?city=${encodeURIComponent(city)}`}
@@ -467,7 +475,7 @@ export default function ServiceDetail() {
               {service.name}
             </div>
             <div className="text-xs text-green-700 font-bold">
-              {formatCurrency(hourlyRate)}/hr · £2M Insured · DBS Vetted
+              {formatCurrency(hourlyRate)}/hr · Fully Insured · DBS Vetted
             </div>
           </div>
           <Link

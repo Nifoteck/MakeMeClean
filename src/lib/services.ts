@@ -54,6 +54,13 @@ export function calcTimeSlot(startHour: string, durationHours: number): string {
   return `${startHour} – ${endStr}`;
 }
 
+export interface ServiceCityLocation {
+  id?: string;
+  name: string;
+  region?: string;
+  postcode_prefix?: string;
+}
+
 export const walesCities = [
   "Cardiff",
   "Swansea",
@@ -89,3 +96,23 @@ export async function fetchActiveCities(): Promise<string[]> {
   } catch (_) {}
   return walesCities;
 }
+
+export async function fetchActiveServiceLocations(): Promise<ServiceCityLocation[]> {
+  try {
+    const { supabase } = await import("./supabase");
+    const { data, error } = await supabase
+      .from("service_cities")
+      .select("id, name, region, postcode_prefix")
+      .eq("is_active", true)
+      .order("name", { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      return data;
+    }
+  } catch (_) {}
+  return walesCities.map((c) => ({
+    name: c,
+    region: "South Wales",
+  }));
+}
+

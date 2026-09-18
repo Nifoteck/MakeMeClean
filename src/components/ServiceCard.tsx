@@ -8,10 +8,18 @@ interface ServiceCardProps {
   compact?: boolean;
 }
 
-export default function ServiceCard({ service, compact = false }: ServiceCardProps) {
-  const discount = Math.max(0, Math.min(100, Number(service.discount_percent ?? 0)));
+export default function ServiceCard({
+  service,
+  compact = false,
+}: ServiceCardProps) {
+  const discount = Math.max(
+    0,
+    Math.min(100, Number(service.discount_percent ?? 0))
+  );
   const hasDiscount = discount > 0;
-  const discounted = hasDiscount ? service.price * (1 - discount / 100) : service.price;
+  const discounted = hasDiscount
+    ? service.price * (1 - discount / 100)
+    : service.price;
 
   return (
     <div
@@ -77,7 +85,7 @@ export default function ServiceCard({ service, compact = false }: ServiceCardPro
         <div className="space-y-1 mb-5 text-[11px] text-gray-600">
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
-            <span>£2M AXA Insurance · 100% DBS Vetted</span>
+            <span>Fully Insured · 100% DBS Vetted</span>
           </div>
           <div className="flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
