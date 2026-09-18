@@ -10,6 +10,7 @@ import { initializeAnalytics, trackPageView } from "@/lib/analytics";
 import { startPaymentConfirmationRetries } from "@/lib/paymentConfirmations";
 const Home = lazy(() => import("@/pages/Home"));
 const Services = lazy(() => import("@/pages/Services"));
+const ServiceDetail = lazy(() => import("@/pages/ServiceDetail"));
 const BookingPage = lazy(() => import("@/pages/BookingPage"));
 const Login = lazy(() => import("@/pages/Login"));
 const Register = lazy(() => import("@/pages/Register"));
@@ -122,6 +123,8 @@ function App() {
           <Switch>
             <Route path="/" component={Home} />
             <Route path="/services" component={Services} />
+            <Route path="/services/:id" component={ServiceDetail} />
+            <Route path="/service/:id" component={ServiceDetail} />
             <Route path="/book/:serviceId?" component={BookingPage} />
             <Route path="/login" component={Login} />
             <Route path="/register" component={Register} />
