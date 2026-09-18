@@ -360,7 +360,7 @@ export default function Home() {
               </div>
 
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-900 leading-[1.08] mb-5 tracking-tight">
-                Top-rated home cleaning across{" "}
+                Professional home cleaning across{" "}
                 <span className="text-gradient">Wales</span>, on your terms.
               </h1>
 
