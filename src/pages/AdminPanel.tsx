@@ -253,7 +253,9 @@ export default function AdminPanel() {
 
   const openAssign = async (booking: Booking) => {
     if (booking.payment_status !== "paid") {
-      alert("Payment has not been completed yet. Staff cannot be assigned until payment is confirmed.");
+      alert(
+        "Payment has not been completed yet. Staff cannot be assigned until payment is confirmed."
+      );
       return;
     }
     setAssignModal({ booking });
@@ -830,7 +832,6 @@ export default function AdminPanel() {
                       disabled={b.payment_status !== "paid"}
                       className={cn(
                         "flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-xl border transition-all w-full",
-                        assignedStaff
                         b.payment_status !== "paid"
                           ? "border-amber-200/80 bg-amber-50/60 text-amber-700 cursor-not-allowed opacity-90"
                           : assignedStaff
@@ -845,7 +846,6 @@ export default function AdminPanel() {
                     >
                       <UserCheck className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">
-                        {assignedStaff
                         {b.payment_status !== "paid"
                           ? "Awaiting payment"
                           : assignedStaff
