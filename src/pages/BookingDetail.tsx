@@ -34,6 +34,7 @@ import {
   isBookingStartTimePassed,
 } from "@/lib/constants";
 import { api } from "@/lib/apiClient";
+import { getServiceBookingConfig } from "@/lib/serviceBookingConfigs";
 
 const STATUS_STYLES = BOOKING_STATUS_STYLES;
 
@@ -330,12 +331,13 @@ export default function BookingDetail() {
                 booking.living_rooms != null) && (
                 <InfoRow
                   icon={Home}
-                  label="Property Layout"
-                  value={`${booking.bedrooms ?? 1} Bed · ${
-                    booking.bathrooms ?? 1
-                  } Bath · ${booking.living_rooms ?? 1} Living (${
-                    booking.property_type || "House/Flat"
-                  })`}
+                  label={getServiceBookingConfig(booking.service_type || booking.service_name).propertyTypeLabel}
+                  value={getServiceBookingConfig(booking.service_type || booking.service_name).formatLayout(
+                    booking.bedrooms,
+                    booking.bathrooms,
+                    booking.living_rooms,
+                    booking.property_type
+                  )}
                 />
               )}
               {Array.isArray(booking.extras) && booking.extras.length > 0 && (

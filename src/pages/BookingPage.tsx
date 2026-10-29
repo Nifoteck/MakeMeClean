@@ -50,6 +50,7 @@ import {
 import type { BookingDurationMultipliers, BookingExtra } from "@/lib/constants";
 import { useServices } from "@/hooks/useServices";
 import { api } from "@/lib/apiClient";
+import { getServiceBookingConfig } from "@/lib/serviceBookingConfigs";
 
 type Step = 1 | 2 | 3;
 type RecurringFreq = "none" | "weekly" | "fortnightly" | "monthly";
@@ -112,22 +113,59 @@ export default function BookingPage() {
   const [error, setError] = useState("");
   const [bookingId, setBookingId] = useState("");
 
-  // Keep the customer-facing and API estimate formula identical.
+  const bookingConfig = getServiceBookingConfig(selectedService?.id || selectedService?.name || "");
+
+  // Dynamic estimate calculation based on service category
   const computeRecommendedHours = (
-    beds: number,
-    baths: number,
-    living: number,
+    val1: number,
+    val2: number,
+    val3: number,
     extras: string[],
     mults = multipliers,
     extList = availableExtras
   ) => {
+    if (bookingConfig.category === "ironing") {
+      // Ironing: val1 = baskets (1h each), val2 = delicates (0.1h each), val3 = linen sets (0.35h each)
+      let hours = (val1 * bookingConfig.field1.unitMultiplier) +
+        (val2 * bookingConfig.field2.unitMultiplier) +
+        (val3 * bookingConfig.field3.unitMultiplier);
+      for (const extraId of new Set(extras)) {
+        const extra = bookingConfig.extras.find((item) => item.id === extraId);
+        if (extra) hours += extra.duration;
+      }
+      return Math.max(MIN_DURATION_HOURS, Math.round(hours * 2) / 2);
+    }
+
+    if (bookingConfig.category === "office") {
+      // Office: val1 = desks (0.1h each), val2 = washrooms (0.5h each), val3 = meeting rooms (0.5h each)
+      let hours = 1.0 + (val1 * bookingConfig.field1.unitMultiplier) +
+        (val2 * bookingConfig.field2.unitMultiplier) +
+        (val3 * bookingConfig.field3.unitMultiplier);
+      for (const extraId of new Set(extras)) {
+        const extra = bookingConfig.extras.find((item) => item.id === extraId);
+        if (extra) hours += extra.duration;
+      }
+      return Math.max(MIN_DURATION_HOURS, Math.round(hours * 2) / 2);
+    }
+
+    if (bookingConfig.category === "cleaning_ironing") {
+      // Cleaning + Ironing: val1 = beds, val2 = baths, val3 = ironing baskets
+      let hours = 1.5 + (val1 * 0.5) + (val2 * 0.5) + (val3 * 1.0);
+      for (const extraId of new Set(extras)) {
+        const extra = bookingConfig.extras.find((item) => item.id === extraId);
+        if (extra) hours += extra.duration;
+      }
+      return Math.max(MIN_DURATION_HOURS, Math.round(hours * 2) / 2);
+    }
+
+    // Standard Domestic or Airbnb
     return calculateRecommendedHours(
-      beds,
-      baths,
-      living,
+      val1,
+      val2,
+      val3,
       extras,
       mults,
-      extList
+      bookingConfig.category === "airbnb" ? bookingConfig.extras : extList
     );
   };
 
@@ -156,22 +194,19 @@ export default function BookingPage() {
     );
   };
 
-  const handlePropertyTypeChange = (
-    nextType: (typeof BOOKING_PROPERTY_TYPES)[number]
-  ) => {
+  const handlePropertyTypeChange = (nextType: string) => {
     setPropertyType(nextType);
-    if (nextType === "Studio") {
+    if (bookingConfig.category === "domestic" && nextType === "Studio") {
       // Studio: open-plan living/sleeping layout with 0 separate bedrooms
       handleRoomChange(0, Math.max(1, bathrooms || 1), 1, selectedExtras);
-    } else if (nextType === "HMO / Shared House") {
+    } else if (bookingConfig.category === "domestic" && nextType === "HMO / Shared House") {
       // HMO: 1 private bedroom, 1 shared bathroom, 0 separate living
       handleRoomChange(1, Math.max(1, bathrooms || 1), Math.min(1, livingRooms), selectedExtras);
     } else {
-      // Standard House / Flat default
       handleRoomChange(
-        Math.max(1, bedrooms || 2),
-        Math.max(1, bathrooms || 1),
-        Math.max(1, livingRooms || 1),
+        Math.max(bookingConfig.field1.min, bedrooms || bookingConfig.field1.default),
+        Math.max(bookingConfig.field2.min, bathrooms || bookingConfig.field2.default),
+        Math.max(bookingConfig.field3.min, livingRooms || bookingConfig.field3.default),
         selectedExtras
       );
     }
@@ -186,12 +221,14 @@ export default function BookingPage() {
   const requiresManualQuote = recommendedDurationHours > MAX_DURATION_HOURS;
   // Customers can adjust duration up to 30 mins below recommendation (floor: 1.5h)
   const allowedFloorHours = Math.max(MIN_DURATION_HOURS, recommendedDurationHours - DURATION_STEP_HOURS);
-  const bedroomLabel = "Bedrooms";
-  const bedroomHint = "Sleep & storage (or 0 for studio)";
-  const bathroomLabel = "Bathrooms";
-  const bathroomHint = "Shower, bath & WC";
-  const livingAreaLabel = "Living Areas";
-  const livingAreaHint = "Lounge & dining (or 0 if none)";
+  const bedroomLabel = bookingConfig.field1.label;
+  const bedroomHint = bookingConfig.field1.hint;
+  const bathroomLabel = bookingConfig.field2.label;
+  const bathroomHint = bookingConfig.field2.hint;
+  const livingAreaLabel = bookingConfig.field3.label;
+  const livingAreaHint = bookingConfig.field3.hint;
+
+  const currentAvailableExtras = bookingConfig.category === "domestic" ? availableExtras : bookingConfig.extras;
 
   const toggleExtra = (extraId: string) => {
     const updated = selectedExtras.includes(extraId)
@@ -294,6 +331,12 @@ export default function BookingPage() {
       const s = services.find((s) => s.id === params.serviceId);
       if (s) {
         setSelectedService(s);
+        const cfg = getServiceBookingConfig(s.id || s.name);
+        setPropertyType(cfg.defaultPropertyType);
+        setBedrooms(cfg.field1.default);
+        setBathrooms(cfg.field2.default);
+        setLivingRooms(cfg.field3.default);
+        setSelectedExtras([]);
         setStep(2);
       }
     }
@@ -448,8 +491,7 @@ export default function BookingPage() {
             <div className="flex justify-between">
               <span className="text-gray-400">Layout:</span>
               <span className="font-bold">
-                {bedrooms} Bed · {bathrooms} Bath · {livingRooms} Living (
-                {propertyType})
+                {bookingConfig.formatLayout(bedrooms, bathrooms, livingRooms, propertyType)}
               </span>
             </div>
             {selectedExtras.length > 0 && (
@@ -580,6 +622,12 @@ export default function BookingPage() {
                     key={s.id}
                     onClick={() => {
                       setSelectedService(s);
+                      const cfg = getServiceBookingConfig(s.id || s.name);
+                      setPropertyType(cfg.defaultPropertyType);
+                      setBedrooms(cfg.field1.default);
+                      setBathrooms(cfg.field2.default);
+                      setLivingRooms(cfg.field3.default);
+                      setSelectedExtras([]);
                       setStep(2);
                     }}
                     className={`text-left p-4 rounded-2xl border transition-all duration-150 group hover:border-green-500 hover:shadow-md ${
@@ -683,25 +731,23 @@ export default function BookingPage() {
               <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-xs space-y-6">
                 <div>
                   <p className="section-eyebrow">
-                    <Home className="w-3.5 h-3.5" /> Step A · Property Layout
+                    <Home className="w-3.5 h-3.5" /> Step A · {bookingConfig.propertyTypeLabel} & Scale
                   </p>
                   <h3 className="text-lg font-black text-gray-900">
-                    Tell us about your home
+                    {bookingConfig.stepATitle}
                   </h3>
                   <p className="text-xs text-gray-500">
-                    Set any room count to 0 if that room type is not part of the
-                    property. The estimate updates as you change rooms and
-                    extras.
+                    {bookingConfig.stepASubtitle}
                   </p>
                 </div>
 
                 {/* Property Type Selector */}
                 <div>
                   <label className="text-xs font-bold text-gray-700 block mb-2">
-                    Property Type
+                    {bookingConfig.propertyTypeLabel}
                   </label>
-                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    {BOOKING_PROPERTY_TYPES.map((type) => (
+                  <div className={`grid grid-cols-${bookingConfig.propertyTypes.length} gap-2 sm:gap-3`}>
+                    {bookingConfig.propertyTypes.map((type) => (
                       <button
                         key={type}
                         type="button"
@@ -721,11 +767,11 @@ export default function BookingPage() {
 
                 {/* Room Counters Grid */}
                 <div className="grid sm:grid-cols-3 gap-4 pt-2">
-                  {/* Bedrooms */}
+                  {/* Field 1 (Bedrooms / Baskets / Desks) */}
                   <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                        <Bed className="w-3.5 h-3.5 text-green-600" />{" "}
+                      <div className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                        <span className="text-base">{bookingConfig.field1.icon}</span>{" "}
                         {bedroomLabel}
                       </div>
                       <div className="text-[10px] text-gray-400">
@@ -737,13 +783,13 @@ export default function BookingPage() {
                         type="button"
                         onClick={() =>
                           handleRoomChange(
-                            Math.max(0, bedrooms - 1),
+                            Math.max(bookingConfig.field1.min, bedrooms - 1),
                             bathrooms,
                             livingRooms,
                             selectedExtras
                           )
                         }
-                        disabled={bedrooms <= 0}
+                        disabled={bedrooms <= bookingConfig.field1.min}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Minus className="w-3.5 h-3.5" />
@@ -755,13 +801,13 @@ export default function BookingPage() {
                         type="button"
                         onClick={() =>
                           handleRoomChange(
-                            Math.min(MAX_ROOM_COUNTS.bedrooms, bedrooms + 1),
+                            Math.min(bookingConfig.field1.max, bedrooms + 1),
                             bathrooms,
                             livingRooms,
                             selectedExtras
                           )
                         }
-                        disabled={bedrooms >= MAX_ROOM_COUNTS.bedrooms}
+                        disabled={bedrooms >= bookingConfig.field1.max}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -769,11 +815,11 @@ export default function BookingPage() {
                     </div>
                   </div>
 
-                  {/* Bathrooms */}
+                  {/* Field 2 (Bathrooms / Delicates / Washrooms) */}
                   <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                        <Bath className="w-3.5 h-3.5 text-green-600" />{" "}
+                      <div className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                        <span className="text-base">{bookingConfig.field2.icon}</span>{" "}
                         {bathroomLabel}
                       </div>
                       <div className="text-[10px] text-gray-400">
@@ -786,12 +832,12 @@ export default function BookingPage() {
                         onClick={() =>
                           handleRoomChange(
                             bedrooms,
-                            Math.max(0, bathrooms - 1),
+                            Math.max(bookingConfig.field2.min, bathrooms - 1),
                             livingRooms,
                             selectedExtras
                           )
                         }
-                        disabled={bathrooms <= 0}
+                        disabled={bathrooms <= bookingConfig.field2.min}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Minus className="w-3.5 h-3.5" />
@@ -804,12 +850,12 @@ export default function BookingPage() {
                         onClick={() =>
                           handleRoomChange(
                             bedrooms,
-                            Math.min(MAX_ROOM_COUNTS.bathrooms, bathrooms + 1),
+                            Math.min(bookingConfig.field2.max, bathrooms + 1),
                             livingRooms,
                             selectedExtras
                           )
                         }
-                        disabled={bathrooms >= MAX_ROOM_COUNTS.bathrooms}
+                        disabled={bathrooms >= bookingConfig.field2.max}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -817,11 +863,11 @@ export default function BookingPage() {
                     </div>
                   </div>
 
-                  {/* Living Rooms */}
+                  {/* Field 3 (Living Areas / Linen Sets / Meeting Rooms) */}
                   <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                        <Layers className="w-3.5 h-3.5 text-green-600" />{" "}
+                      <div className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                        <span className="text-base">{bookingConfig.field3.icon}</span>{" "}
                         {livingAreaLabel}
                       </div>
                       <div className="text-[10px] text-gray-400">
@@ -835,11 +881,11 @@ export default function BookingPage() {
                           handleRoomChange(
                             bedrooms,
                             bathrooms,
-                            Math.max(0, livingRooms - 1),
+                            Math.max(bookingConfig.field3.min, livingRooms - 1),
                             selectedExtras
                           )
                         }
-                        disabled={livingRooms <= 0}
+                        disabled={livingRooms <= bookingConfig.field3.min}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Minus className="w-3.5 h-3.5" />
@@ -853,14 +899,11 @@ export default function BookingPage() {
                           handleRoomChange(
                             bedrooms,
                             bathrooms,
-                            Math.min(
-                              MAX_ROOM_COUNTS.livingAreas,
-                              livingRooms + 1
-                            ),
+                            Math.min(bookingConfig.field3.max, livingRooms + 1),
                             selectedExtras
                           )
                         }
-                        disabled={livingRooms >= MAX_ROOM_COUNTS.livingAreas}
+                        disabled={livingRooms >= bookingConfig.field3.max}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -875,7 +918,7 @@ export default function BookingPage() {
                     Specialist Extras (Optional)
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {availableExtras.map((extra) => {
+                    {currentAvailableExtras.map((extra) => {
                       const isSelected = selectedExtras.includes(extra.id);
                       return (
                         <button
@@ -920,7 +963,7 @@ export default function BookingPage() {
                     <div className="text-xs text-gray-700">
                       Recommended for{" "}
                       <strong>
-                        {bedrooms} bed, {bathrooms} bath, {livingRooms} living
+                        {bookingConfig.formatLayout(bedrooms, bathrooms, livingRooms, propertyType)}
                       </strong>{" "}
                       {selectedExtras.length > 0 && (
                         <span>+ {selectedExtras.length} extras</span>
@@ -1144,25 +1187,35 @@ export default function BookingPage() {
 </div>
 <div>
   <label className="text-xs font-bold text-gray-700 block mb-2">
-    <Sparkles className="w-3.5 h-3.5 inline mr-1 text-green-600" /> Cleaning Products & Supplies
+    <Sparkles className="w-3.5 h-3.5 inline mr-1 text-green-600" /> {bookingConfig.suppliesPrompt}
   </label>
   <div className="grid sm:grid-cols-2 gap-2 mb-4">
-    {CLEANING_SUPPLIES_OPTIONS.map((opt) => (
-      <button
-        type="button"
-        key={opt.id}
-        onClick={() => setSuppliesOption(opt.id)}
-        className={cn(
-          "p-3 rounded-2xl border text-left transition-all",
-          suppliesOption === opt.id
-            ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
-            : "border-gray-200 bg-white hover:border-gray-300"
-        )}
-      >
-        <div className="font-bold text-xs text-gray-900">{opt.label}</div>
-        <div className="text-[10px] text-gray-500 mt-0.5">{opt.desc}</div>
-      </button>
-    ))}
+    <button
+      type="button"
+      onClick={() => setSuppliesOption("cleaner")}
+      className={cn(
+        "p-3 rounded-2xl border text-left transition-all",
+        suppliesOption === "cleaner"
+          ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
+          : "border-gray-200 bg-white hover:border-gray-300"
+      )}
+    >
+      <div className="font-bold text-xs text-gray-900">{bookingConfig.suppliesCleanerLabel}</div>
+      <div className="text-[10px] text-gray-500 mt-0.5">Eco sprays, cloths & equipment arranged</div>
+    </button>
+    <button
+      type="button"
+      onClick={() => setSuppliesOption("customer")}
+      className={cn(
+        "p-3 rounded-2xl border text-left transition-all",
+        suppliesOption === "customer"
+          ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
+          : "border-gray-200 bg-white hover:border-gray-300"
+      )}
+    >
+      <div className="font-bold text-xs text-gray-900">{bookingConfig.suppliesCustomerLabel}</div>
+      <div className="text-[10px] text-gray-500 mt-0.5">Cleaner uses items provided on site</div>
+    </button>
   </div>
 </div>
 <div className="grid sm:grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">

@@ -42,6 +42,7 @@ import {
   CLEANING_SUPPLIES_OPTIONS,
 } from "@/lib/constants";
 import Spinner from "@/components/Spinner";
+import { getServiceBookingConfig } from "@/lib/serviceBookingConfigs";
 
 type StatusFilter =
   | "all"
@@ -537,10 +538,12 @@ export default function AdminPanel() {
                 <div className="flex gap-2 text-gray-700 font-medium pt-2 border-t border-gray-200/60">
                   <Home className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                   <span>
-                    {assignModal.booking.bedrooms ?? 1} Bed ·{" "}
-                    {assignModal.booking.bathrooms ?? 1} Bath ·{" "}
-                    {assignModal.booking.living_rooms ?? 1} Living (
-                    {assignModal.booking.property_type || "House/Flat"})
+                    {getServiceBookingConfig(assignModal.booking.service_type || assignModal.booking.service_name).formatLayout(
+                      assignModal.booking.bedrooms,
+                      assignModal.booking.bathrooms,
+                      assignModal.booking.living_rooms,
+                      assignModal.booking.property_type
+                    )}
                   </span>
                 </div>
                 {Array.isArray(assignModal.booking.extras) &&
@@ -802,8 +805,12 @@ export default function AdminPanel() {
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                          {b.bedrooms ?? 1} Bed · {b.bathrooms ?? 1} Bath ·{" "}
-                          {b.duration_hours || 2}h
+                          {getServiceBookingConfig(b.service_type || b.service_name).formatLayout(
+                            b.bedrooms,
+                            b.bathrooms,
+                            b.living_rooms,
+                            b.property_type
+                          )} · {b.duration_hours || 2}h
                         </span>
                       </div>
                     </div>
@@ -976,19 +983,23 @@ export default function AdminPanel() {
                         <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
                           <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
                             <Home className="w-3.5 h-3.5 text-green-600" />
-                            <span>Property Configuration</span>
+                            <span>{getServiceBookingConfig(b.service_type || b.service_name).propertyTypeLabel} & Scale</span>
                           </div>
                           <p className="text-gray-600">
                             Type:{" "}
                             <span className="font-semibold text-gray-900">
-                              {b.property_type || "House / Flat"}
+                              {b.property_type || "Standard"}
                             </span>
                           </p>
                           <p className="text-gray-600">
-                            Layout:{" "}
+                            Scale:{" "}
                             <span className="font-semibold text-gray-900">
-                              {b.bedrooms ?? 0} Bed · {b.bathrooms ?? 1} Bath ·{" "}
-                              {b.living_rooms ?? 1} Living
+                              {getServiceBookingConfig(b.service_type || b.service_name).formatLayout(
+                                b.bedrooms,
+                                b.bathrooms,
+                                b.living_rooms,
+                                b.property_type
+                              )}
                             </span>
                           </p>
                           <p className="text-gray-600">
