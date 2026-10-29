@@ -13,6 +13,10 @@ import {
   Home,
   Sparkles,
   FileText,
+  Key,
+  ShieldCheck,
+  Car,
+  Dog,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -24,12 +28,105 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import Pagination from "@/components/Pagination";
 import { useScrollLock } from "@/hooks/useScrollLock";
 import { Booking, StaffMember } from "@/types";
-import { BOOKING_STATUS_STYLES, PAGE_SIZE } from "@/lib/constants";
+import {
+  BOOKING_STATUS_STYLES,
+  PAGE_SIZE,
+  DEFAULT_BOOKING_EXTRAS,
+  ACCESS_METHODS,
+  CLEANING_SUPPLIES_OPTIONS,
+} from "@/lib/constants";
 import Spinner from "@/components/Spinner";
 
 type StatusFilter = "all" | "upcoming" | "completed" | "cancelled";
 
 const STATUS_PILL = BOOKING_STATUS_STYLES;
+
+// Human-friendly lookup maps
+const ACCESS_METHOD_LABELS: Record<string, string> = {
+  home: "Customer will be at home",
+  key_safe: "Key safe / Lockbox",
+  concierge: "Concierge / Front desk",
+  hidden_key: "Hidden key on property",
+};
+
+const SUPPLIES_OPTION_LABELS: Record<string, string> = {
+  cleaner: "Cleaner brings eco supplies",
+  customer: "Customer provides supplies",
+};
+
+const PARKING_OPTION_LABELS: Record<string, string> = {
+  free: "Free on-street / driveway parking",
+  permit: "Visitor parking permit provided",
+  paid: "Paid meter / carpark nearby",
+  none: "No dedicated parking on-site",
+};
+
+const EXTRA_LABEL_MAP: Record<string, { label: string; icon: string }> = {
+  oven: { label: "Inside Oven & Grill", icon: "🍳" },
+  fridge: { label: "Inside Fridge / Freezer", icon: "❄️" },
+  windows: { label: "Interior Window Glass", icon: "🪟" },
+  ironing: { label: "Ironing & Laundry", icon: "🧺" },
+  carpet: { label: "Carpet Stain Extraction", icon: "🧹" },
+  cupboards: { label: "Inside Kitchen Cabinets", icon: "📦" },
+  bed_linen: { label: "Bed Linen Change & Laundry", icon: "🛏️" },
+};
+
+function formatExtraBadge(id: string): { label: string; icon: string } {
+  if (EXTRA_LABEL_MAP[id]) return EXTRA_LABEL_MAP[id];
+  // Format snake_case or kebab-case nicely if custom:
+  const formatted = id
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+  return { label: formatted, icon: "✨" };
+}
+
+function parseSpecialNotes(rawNotes?: string | null): {
+  parsedAccess?: string;
+  parsedSupplies?: string;
+  parsedParking?: string;
+  parsedPets?: boolean;
+  cleanNotes: string;
+} {
+  if (!rawNotes) return { cleanNotes: "" };
+
+  let text = rawNotes;
+  let parsedAccess: string | undefined;
+  let parsedSupplies: string | undefined;
+  let parsedParking: string | undefined;
+  let parsedPets: boolean | undefined;
+
+  const accessMatch = text.match(/\[Access:\s*([^\]]+)\]/i);
+  if (accessMatch) {
+    parsedAccess = accessMatch[1].trim();
+    text = text.replace(accessMatch[0], "");
+  }
+
+  const suppliesMatch = text.match(/\[Supplies:\s*([^\]]+)\]/i);
+  if (suppliesMatch) {
+    parsedSupplies = suppliesMatch[1].trim();
+    text = text.replace(suppliesMatch[0], "");
+  }
+
+  const parkingMatch = text.match(/\[Parking:\s*([^\]]+)\]/i);
+  if (parkingMatch) {
+    parsedParking = parkingMatch[1].trim();
+    text = text.replace(parkingMatch[0], "");
+  }
+
+  const petsMatch = text.match(/\[Pets:\s*([^\]]+)\]/i);
+  if (petsMatch) {
+    parsedPets = true;
+    text = text.replace(petsMatch[0], "");
+  }
+
+  return {
+    parsedAccess,
+    parsedSupplies,
+    parsedParking,
+    parsedPets,
+    cleanNotes: text.replace(/^[\s"\n]+|[\s"\n]+$/g, "").trim(),
+  };
+}
 
 export default function AdminPanel() {
   const { user, loading } = useAuth();
@@ -563,65 +660,118 @@ export default function AdminPanel() {
                   </div>
                 </div>
 
-                {/* Expanded Details Panel: Full Room Layout & Specialist Extras */}
-                {isExpanded && (
-                  <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/70 rounded-xl p-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs animate-fade-in">
-                    <div>
-                      <div className="flex items-center gap-1.5 font-bold text-gray-700 mb-1">
-                        <Home className="w-3.5 h-3.5 text-green-600" />
-                        <span>Property Configuration</span>
-                      </div>
-                      <p className="text-gray-600">
-                        Type: <span className="font-semibold text-gray-800">{b.property_type || "House/Flat"}</span>
-                      </p>
-                      <p className="text-gray-600">
-                        Layout:{" "}
-                        <span className="font-semibold text-gray-800">
-                          {b.bedrooms ?? 1} Bedrooms · {b.bathrooms ?? 1} Bathrooms · {b.living_rooms ?? 1} Living Area
-                        </span>
-                      </p>
-                      <p className="text-gray-600">
-                        Calculated Duration: <span className="font-semibold text-gray-800">{b.duration_hours || 2} Hours</span>
-                      </p>
-                    </div>
+                {/* Expanded Details Panel: Full Room Layout, Access, Supplies & Specialist Extras */}
+                {isExpanded && (() => {
+                  const parsed = parseSpecialNotes(b.notes);
+                  const accessDisplay =
+                    b.access_method
+                      ? ACCESS_METHOD_LABELS[b.access_method] || b.access_method
+                      : parsed.parsedAccess || "Customer at home";
+                  const suppliesDisplay =
+                    b.supplies_option
+                      ? SUPPLIES_OPTION_LABELS[b.supplies_option] || b.supplies_option
+                      : parsed.parsedSupplies || "Cleaner brings eco supplies";
+                  const parkingDisplay =
+                    b.parking_option
+                      ? PARKING_OPTION_LABELS[b.parking_option] || b.parking_option
+                      : parsed.parsedParking || "Free on-street/driveway";
+                  const hasPets = b.has_pets != null ? b.has_pets : Boolean(parsed.parsedPets);
 
-                    <div>
-                      <div className="flex items-center gap-1.5 font-bold text-gray-700 mb-1">
-                        <Sparkles className="w-3.5 h-3.5 text-green-600" />
-                        <span>Specialist Add-Ons</span>
-                      </div>
-                      {hasExtras ? (
-                        <div className="flex flex-wrap gap-1.5 mt-1">
-                          {(b.extras as string[]).map((extra, i) => (
-                            <span
-                              key={i}
-                              className="inline-flex items-center px-2 py-0.5 rounded-md bg-green-100/80 text-green-800 font-medium"
-                            >
-                              ✓ {extra}
-                            </span>
-                          ))}
+                  return (
+                    <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/70 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs animate-fade-in">
+                      {/* Col 1: Property Configuration */}
+                      <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
+                          <Home className="w-3.5 h-3.5 text-green-600" />
+                          <span>Property Configuration</span>
                         </div>
-                      ) : (
-                        <p className="text-gray-400 italic">No specialist add-ons selected</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-1.5 font-bold text-gray-700 mb-1">
-                        <FileText className="w-3.5 h-3.5 text-green-600" />
-                        <span>Client Instructions & Address</span>
-                      </div>
-                      <p className="text-gray-600">{b.address}, {b.city} {b.postcode}</p>
-                      {b.notes ? (
-                        <p className="mt-1 bg-white p-2 rounded border border-gray-200 text-gray-700">
-                          "{b.notes}"
+                        <p className="text-gray-600">
+                          Type: <span className="font-semibold text-gray-900">{b.property_type || "House / Flat"}</span>
                         </p>
-                      ) : (
-                        <p className="text-gray-400 italic mt-1">No special entry notes</p>
-                      )}
+                        <p className="text-gray-600">
+                          Layout:{" "}
+                          <span className="font-semibold text-gray-900">
+                            {b.bedrooms ?? 0} Bed · {b.bathrooms ?? 1} Bath · {b.living_rooms ?? 1} Living
+                          </span>
+                        </p>
+                        <p className="text-gray-600">
+                          Duration: <span className="font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded">{b.duration_hours || 2} Hours</span>
+                        </p>
+                      </div>
+
+                      {/* Col 2: Access & Key Logistics */}
+                      <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
+                          <Key className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Access & Entry</span>
+                        </div>
+                        <p className="text-gray-600">
+                          Method: <span className="font-semibold text-gray-900">{accessDisplay}</span>
+                        </p>
+                        <p className="text-gray-600 flex items-center gap-1">
+                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                          <span>Supplies: <strong className="text-gray-900 font-semibold">{suppliesDisplay}</strong></span>
+                        </p>
+                        <p className="text-gray-600 flex items-center gap-1">
+                          <Car className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span>Parking: <strong className="text-gray-900 font-semibold">{parkingDisplay}</strong></span>
+                        </p>
+                        {hasPets && (
+                          <p className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded font-medium flex items-center gap-1 w-fit">
+                            <Dog className="w-3.5 h-3.5" />
+                            <span>Pets on property</span>
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Col 3: Specialist Add-Ons */}
+                      <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
+                          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                          <span>Specialist Add-Ons</span>
+                          {hasExtras && <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-1.5 rounded-full ml-auto">{(b.extras as string[]).length}</span>}
+                        </div>
+                        {hasExtras ? (
+                          <div className="flex flex-wrap gap-1.5 pt-0.5">
+                            {(b.extras as string[]).map((extraId, i) => {
+                              const badge = formatExtraBadge(extraId);
+                              return (
+                                <span
+                                  key={i}
+                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 border border-purple-100 text-purple-900 font-medium text-[11px]"
+                                >
+                                  <span>{badge.icon}</span>
+                                  <span>{badge.label}</span>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-gray-400 italic pt-1">No specialist add-ons selected</p>
+                        )}
+                      </div>
+
+                      {/* Col 4: Client Instructions & Address */}
+                      <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
+                        <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
+                          <FileText className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Address & Notes</span>
+                        </div>
+                        <p className="text-gray-800 font-medium">
+                          {b.address}{b.city ? `, ${b.city}` : ""}{b.postcode ? ` ${b.postcode}` : ""}
+                        </p>
+                        {parsed.cleanNotes ? (
+                          <div className="mt-1 bg-amber-50/60 p-2 rounded-lg border border-amber-200/70 text-amber-950 font-sans">
+                            <span className="font-bold text-[10px] uppercase text-amber-800 block mb-0.5">Special Instructions:</span>
+                            "{parsed.cleanNotes}"
+                          </div>
+                        ) : (
+                          <p className="text-gray-400 italic mt-1">No additional instructions</p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             );
           })}

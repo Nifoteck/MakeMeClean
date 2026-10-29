@@ -29,6 +29,10 @@ export interface Booking {
   extras?: string[] | null;
   property_type?: string | null;
   duration_hours?: number | null;
+  access_method?: string | null;
+  supplies_option?: string | null;
+  parking_option?: string | null;
+  has_pets?: boolean | null;
 }
 
 // ─── Applications ─────────────────────────────────────────────────────────────
