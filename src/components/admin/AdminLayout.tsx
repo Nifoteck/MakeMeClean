@@ -13,7 +13,9 @@ import {
   Trophy,
   UsersRound,
 } from "lucide-react";
-import PortalLayout, { type PortalNavItem } from "@/components/layouts/PortalLayout";
+import PortalLayout, {
+  type PortalNavItem,
+} from "@/components/layouts/PortalLayout";
 
 const navigation: PortalNavItem[] = [
   { href: "/admin", label: "Bookings", icon: LayoutDashboard },
@@ -35,7 +37,11 @@ export default function AdminLayout({
   subtitle,
   actions,
   children,
-}: PropsWithChildren<{ title: string; subtitle?: string; actions?: ReactNode }>) {
+}: PropsWithChildren<{
+  title: string;
+  subtitle?: string;
+  actions?: ReactNode;
+}>) {
   return (
     <PortalLayout
       title={title}
@@ -47,7 +53,7 @@ export default function AdminLayout({
       homeHref="/"
       homeLabel="View site"
       items={navigation}
-      contentWidth="max-w-7xl"
+      contentWidth="max-w-[1600px]"
     >
       {children}
     </PortalLayout>

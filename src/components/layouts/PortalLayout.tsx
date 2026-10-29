@@ -28,7 +28,7 @@ interface PortalLayoutProps {
   homeHref: string;
   homeLabel: string;
   items: PortalNavItem[];
-  contentWidth: "max-w-5xl" | "max-w-7xl";
+  contentWidth: "max-w-5xl" | "max-w-7xl" | "max-w-[1600px]";
 }
 
 function isActiveRoute(current: string, href: string) {
@@ -101,14 +101,14 @@ export default function PortalLayout({
                 "flex min-h-11 w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2",
                 active
                   ? "bg-green-600 text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
               <Icon
                 aria-hidden="true"
                 className={cn(
                   "h-5 w-5 shrink-0",
-                  active ? "text-white" : "text-gray-400",
+                  active ? "text-white" : "text-gray-400"
                 )}
               />
               <span className="flex-1 text-left">{item.label}</span>
@@ -206,7 +206,7 @@ export default function PortalLayout({
         <main
           className={cn(
             "mx-auto w-full flex-1 p-4 sm:p-6 lg:p-8",
-            contentWidth,
+            contentWidth
           )}
         >
           <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-center sm:justify-between">
