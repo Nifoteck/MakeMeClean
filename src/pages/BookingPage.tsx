@@ -114,7 +114,9 @@ export default function BookingPage() {
   const [error, setError] = useState("");
   const [bookingId, setBookingId] = useState("");
 
-  const bookingConfig = getServiceBookingConfig(selectedService?.id || selectedService?.name || "");
+  const bookingConfig = getServiceBookingConfig(
+    selectedService?.id || selectedService?.name || ""
+  );
 
   // Dynamic estimate calculation based on service category
   const computeRecommendedHours = (
@@ -127,9 +129,10 @@ export default function BookingPage() {
   ) => {
     if (bookingConfig.category === "ironing") {
       // Ironing: val1 = baskets (1h each), val2 = delicates (0.1h each), val3 = linen sets (0.35h each)
-      let hours = (val1 * bookingConfig.field1.unitMultiplier) +
-        (val2 * bookingConfig.field2.unitMultiplier) +
-        (val3 * bookingConfig.field3.unitMultiplier);
+      let hours =
+        val1 * bookingConfig.field1.unitMultiplier +
+        val2 * bookingConfig.field2.unitMultiplier +
+        val3 * bookingConfig.field3.unitMultiplier;
       for (const extraId of new Set(extras)) {
         const extra = bookingConfig.extras.find((item) => item.id === extraId);
         if (extra) hours += extra.duration;
@@ -139,9 +142,11 @@ export default function BookingPage() {
 
     if (bookingConfig.category === "office") {
       // Office: val1 = desks (0.1h each), val2 = washrooms (0.5h each), val3 = meeting rooms (0.5h each)
-      let hours = 1.0 + (val1 * bookingConfig.field1.unitMultiplier) +
-        (val2 * bookingConfig.field2.unitMultiplier) +
-        (val3 * bookingConfig.field3.unitMultiplier);
+      let hours =
+        1.0 +
+        val1 * bookingConfig.field1.unitMultiplier +
+        val2 * bookingConfig.field2.unitMultiplier +
+        val3 * bookingConfig.field3.unitMultiplier;
       for (const extraId of new Set(extras)) {
         const extra = bookingConfig.extras.find((item) => item.id === extraId);
         if (extra) hours += extra.duration;
@@ -151,7 +156,7 @@ export default function BookingPage() {
 
     if (bookingConfig.category === "cleaning_ironing") {
       // Cleaning + Ironing: val1 = beds, val2 = baths, val3 = ironing baskets
-      let hours = 1.5 + (val1 * 0.5) + (val2 * 0.5) + (val3 * 1.0);
+      let hours = 1.5 + val1 * 0.5 + val2 * 0.5 + val3 * 1.0;
       for (const extraId of new Set(extras)) {
         const extra = bookingConfig.extras.find((item) => item.id === extraId);
         if (extra) hours += extra.duration;
@@ -189,7 +194,10 @@ export default function BookingPage() {
       availableExtras
     );
     // Allow going up to 30 minutes lower than recommended (down to MIN_DURATION_HOURS)
-    const allowedFloor = Math.max(MIN_DURATION_HOURS, recommended - DURATION_STEP_HOURS);
+    const allowedFloor = Math.max(
+      MIN_DURATION_HOURS,
+      recommended - DURATION_STEP_HOURS
+    );
     setDurationHours((current) =>
       Math.min(MAX_DURATION_HOURS, Math.max(allowedFloor, current))
     );
@@ -200,14 +208,31 @@ export default function BookingPage() {
     if (bookingConfig.category === "domestic" && nextType === "Studio") {
       // Studio: open-plan living/sleeping layout with 0 separate bedrooms
       handleRoomChange(0, Math.max(1, bathrooms || 1), 1, selectedExtras);
-    } else if (bookingConfig.category === "domestic" && nextType === "HMO / Shared House") {
+    } else if (
+      bookingConfig.category === "domestic" &&
+      nextType === "HMO / Shared House"
+    ) {
       // HMO: 1 private bedroom, 1 shared bathroom, 0 separate living
-      handleRoomChange(1, Math.max(1, bathrooms || 1), Math.min(1, livingRooms), selectedExtras);
+      handleRoomChange(
+        1,
+        Math.max(1, bathrooms || 1),
+        Math.min(1, livingRooms),
+        selectedExtras
+      );
     } else {
       handleRoomChange(
-        Math.max(bookingConfig.field1.min, bedrooms || bookingConfig.field1.default),
-        Math.max(bookingConfig.field2.min, bathrooms || bookingConfig.field2.default),
-        Math.max(bookingConfig.field3.min, livingRooms || bookingConfig.field3.default),
+        Math.max(
+          bookingConfig.field1.min,
+          bedrooms || bookingConfig.field1.default
+        ),
+        Math.max(
+          bookingConfig.field2.min,
+          bathrooms || bookingConfig.field2.default
+        ),
+        Math.max(
+          bookingConfig.field3.min,
+          livingRooms || bookingConfig.field3.default
+        ),
         selectedExtras
       );
     }
@@ -221,7 +246,10 @@ export default function BookingPage() {
   );
   const requiresManualQuote = recommendedDurationHours > MAX_DURATION_HOURS;
   // Customers can adjust duration up to 30 mins below recommendation (floor: 1.5h)
-  const allowedFloorHours = Math.max(MIN_DURATION_HOURS, recommendedDurationHours - DURATION_STEP_HOURS);
+  const allowedFloorHours = Math.max(
+    MIN_DURATION_HOURS,
+    recommendedDurationHours - DURATION_STEP_HOURS
+  );
   const bedroomLabel = bookingConfig.field1.label;
   const bedroomHint = bookingConfig.field1.hint;
   const bathroomLabel = bookingConfig.field2.label;
@@ -229,7 +257,10 @@ export default function BookingPage() {
   const livingAreaLabel = bookingConfig.field3.label;
   const livingAreaHint = bookingConfig.field3.hint;
 
-  const currentAvailableExtras = bookingConfig.category === "domestic" ? availableExtras : bookingConfig.extras;
+  const currentAvailableExtras =
+    bookingConfig.category === "domestic"
+      ? availableExtras
+      : bookingConfig.extras;
 
   const toggleExtra = (extraId: string) => {
     const updated = selectedExtras.includes(extraId)
@@ -253,16 +284,17 @@ export default function BookingPage() {
     const queryPostcode = searchParams.get("postcode");
     const queryCity = searchParams.get("city");
     if (queryPostcode) setPostcode(queryPostcode.toUpperCase());
-        if (queryCity) setCity(queryCity);
-        const qType = searchParams.get("propertyType");
-        const qBeds = searchParams.get("bedrooms");
-        const qBaths = searchParams.get("bathrooms");
-        const qLiving = searchParams.get("livingRooms");
-        if (qType) setPropertyType(qType);
-        if (qBeds != null && !isNaN(Number(qBeds))) setBedrooms(Number(qBeds));
-        if (qBaths != null && !isNaN(Number(qBaths))) setBathrooms(Number(qBaths));
-        if (qLiving != null && !isNaN(Number(qLiving))) setLivingRooms(Number(qLiving));
-      }, []);
+    if (queryCity) setCity(queryCity);
+    const qType = searchParams.get("propertyType");
+    const qBeds = searchParams.get("bedrooms");
+    const qBaths = searchParams.get("bathrooms");
+    const qLiving = searchParams.get("livingRooms");
+    if (qType) setPropertyType(qType);
+    if (qBeds != null && !isNaN(Number(qBeds))) setBedrooms(Number(qBeds));
+    if (qBaths != null && !isNaN(Number(qBaths))) setBathrooms(Number(qBaths));
+    if (qLiving != null && !isNaN(Number(qLiving)))
+      setLivingRooms(Number(qLiving));
+  }, []);
 
   useEffect(() => {
     supabase
@@ -426,7 +458,9 @@ export default function BookingPage() {
     }
     if (durationHours < allowedFloorHours) {
       setError(
-        `The rooms and extras selected require at least ${formatDuration(allowedFloorHours)} (30 minutes below recommendation).`
+        `The rooms and extras selected require at least ${formatDuration(
+          allowedFloorHours
+        )} (30 minutes below recommendation).`
       );
       return;
     }
@@ -492,7 +526,12 @@ export default function BookingPage() {
             <div className="flex justify-between">
               <span className="text-gray-400">Layout:</span>
               <span className="font-bold">
-                {bookingConfig.formatLayout(bedrooms, bathrooms, livingRooms, propertyType)}
+                {bookingConfig.formatLayout(
+                  bedrooms,
+                  bathrooms,
+                  livingRooms,
+                  propertyType
+                )}
               </span>
             </div>
             {selectedExtras.length > 0 && (
@@ -507,11 +546,18 @@ export default function BookingPage() {
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Supplies:</span>
-              <span className="font-bold">{suppliesOption === "cleaner" ? "Cleaner brings supplies" : "Customer provides"}</span>
+              <span className="font-bold">
+                {suppliesOption === "cleaner"
+                  ? "Cleaner brings supplies"
+                  : "Customer provides"}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Access:</span>
-              <span className="font-bold">{ACCESS_METHODS.find(m => m.id === accessMethod)?.label || accessMethod}</span>
+              <span className="font-bold">
+                {ACCESS_METHODS.find((m) => m.id === accessMethod)?.label ||
+                  accessMethod}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Address:</span>
@@ -614,7 +660,8 @@ export default function BookingPage() {
                   Choose your cleaning service
                 </h2>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Filter by service category to find the exact clean for your needs.
+                  Filter by service category to find the exact clean for your
+                  needs.
                 </p>
               </div>
 
@@ -675,65 +722,65 @@ export default function BookingPage() {
                   return true;
                 })
                 .map((s) => {
-                const sd = Math.max(
-                  0,
-                  Math.min(100, Number(s.discount_percent ?? 0))
-                );
-                const sp = sd > 0 ? s.price * (1 - sd / 100) : s.price;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => {
-                      setSelectedService(s);
-                      const cfg = getServiceBookingConfig(s.id || s.name);
-                      setPropertyType(cfg.defaultPropertyType);
-                      setBedrooms(cfg.field1.default);
-                      setBathrooms(cfg.field2.default);
-                      setLivingRooms(cfg.field3.default);
-                      setSelectedExtras([]);
-                      setStep(2);
-                    }}
-                    className={`text-left p-4 rounded-2xl border transition-all duration-150 group hover:border-green-500 hover:shadow-md ${
-                      selectedService?.id === s.id
-                        ? "border-green-600 bg-green-50/50 ring-2 ring-green-500/20"
-                        : "border-gray-200 bg-white"
-                    }`}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shrink-0">
-                        {s.image_url ? (
-                          <img
-                            src={s.image_url}
-                            alt={s.name}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">
-                            Clean
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-gray-900 text-sm group-hover:text-green-700">
-                          {s.name}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                          {s.description}
-                        </div>
-                        <div className="mt-2 text-green-700 font-black text-sm">
-                          {formatCurrency(sp)}/hr
-                          {sd > 0 && (
-                            <span className="text-xs text-gray-400 line-through font-normal ml-1.5">
-                              {formatCurrency(s.price)}/hr
-                            </span>
+                  const sd = Math.max(
+                    0,
+                    Math.min(100, Number(s.discount_percent ?? 0))
+                  );
+                  const sp = sd > 0 ? s.price * (1 - sd / 100) : s.price;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        setSelectedService(s);
+                        const cfg = getServiceBookingConfig(s.id || s.name);
+                        setPropertyType(cfg.defaultPropertyType);
+                        setBedrooms(cfg.field1.default);
+                        setBathrooms(cfg.field2.default);
+                        setLivingRooms(cfg.field3.default);
+                        setSelectedExtras([]);
+                        setStep(2);
+                      }}
+                      className={`text-left p-4 rounded-2xl border transition-all duration-150 group hover:border-green-500 hover:shadow-md ${
+                        selectedService?.id === s.id
+                          ? "border-green-600 bg-green-50/50 ring-2 ring-green-500/20"
+                          : "border-gray-200 bg-white"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shrink-0">
+                          {s.image_url ? (
+                            <img
+                              src={s.image_url}
+                              alt={s.name}
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">
+                              Clean
+                            </div>
                           )}
                         </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-gray-900 text-sm group-hover:text-green-700">
+                            {s.name}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                            {s.description}
+                          </div>
+                          <div className="mt-2 text-green-700 font-black text-sm">
+                            {formatCurrency(sp)}/hr
+                            {sd > 0 && (
+                              <span className="text-xs text-gray-400 line-through font-normal ml-1.5">
+                                {formatCurrency(s.price)}/hr
+                              </span>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                })}
             </div>
           </div>
         )}
@@ -794,7 +841,8 @@ export default function BookingPage() {
               <div className="bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-xs space-y-6">
                 <div>
                   <p className="section-eyebrow">
-                    <Home className="w-3.5 h-3.5" /> Step A · {bookingConfig.propertyTypeLabel} & Scale
+                    <Home className="w-3.5 h-3.5" /> Step A ·{" "}
+                    {bookingConfig.propertyTypeLabel} & Scale
                   </p>
                   <h3 className="text-lg font-black text-gray-900">
                     {bookingConfig.stepATitle}
@@ -809,7 +857,9 @@ export default function BookingPage() {
                   <label className="text-xs font-bold text-gray-700 block mb-2">
                     {bookingConfig.propertyTypeLabel}
                   </label>
-                  <div className={`grid grid-cols-${bookingConfig.propertyTypes.length} gap-2 sm:gap-3`}>
+                  <div
+                    className={`grid grid-cols-${bookingConfig.propertyTypes.length} gap-2 sm:gap-3`}
+                  >
                     {bookingConfig.propertyTypes.map((type) => (
                       <button
                         key={type}
@@ -834,7 +884,9 @@ export default function BookingPage() {
                   <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
                     <div>
                       <div className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                        <span className="text-base">{bookingConfig.field1.icon}</span>{" "}
+                        <span className="text-base">
+                          {bookingConfig.field1.icon}
+                        </span>{" "}
                         {bedroomLabel}
                       </div>
                       <div className="text-[10px] text-gray-400">
@@ -882,7 +934,9 @@ export default function BookingPage() {
                   <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
                     <div>
                       <div className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                        <span className="text-base">{bookingConfig.field2.icon}</span>{" "}
+                        <span className="text-base">
+                          {bookingConfig.field2.icon}
+                        </span>{" "}
                         {bathroomLabel}
                       </div>
                       <div className="text-[10px] text-gray-400">
@@ -930,7 +984,9 @@ export default function BookingPage() {
                   <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
                     <div>
                       <div className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
-                        <span className="text-base">{bookingConfig.field3.icon}</span>{" "}
+                        <span className="text-base">
+                          {bookingConfig.field3.icon}
+                        </span>{" "}
                         {livingAreaLabel}
                       </div>
                       <div className="text-[10px] text-gray-400">
@@ -1026,7 +1082,12 @@ export default function BookingPage() {
                     <div className="text-xs text-gray-700">
                       Recommended for{" "}
                       <strong>
-                        {bookingConfig.formatLayout(bedrooms, bathrooms, livingRooms, propertyType)}
+                        {bookingConfig.formatLayout(
+                          bedrooms,
+                          bathrooms,
+                          livingRooms,
+                          propertyType
+                        )}
                       </strong>{" "}
                       {selectedExtras.length > 0 && (
                         <span>+ {selectedExtras.length} extras</span>
@@ -1052,7 +1113,9 @@ export default function BookingPage() {
                       }
                       title={
                         durationHours <= allowedFloorHours
-                          ? `Minimum allowed duration for your selection is ${formatDuration(allowedFloorHours)}`
+                          ? `Minimum allowed duration for your selection is ${formatDuration(
+                              allowedFloorHours
+                            )}`
                           : "Decrease duration by 30 mins"
                       }
                       disabled={durationHours <= allowedFloorHours}
@@ -1080,7 +1143,10 @@ export default function BookingPage() {
                 </div>
                 {durationHours < recommendedDurationHours && (
                   <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200/80 rounded-xl px-3 py-2">
-                    ⚡ You have chosen {formatDuration(durationHours)} (30 mins less than our recommended {formatDuration(recommendedDurationHours)}). Our cleaners will focus on your top priorities within this booking time.
+                    ⚡ You have chosen {formatDuration(durationHours)} (30 mins
+                    less than our recommended{" "}
+                    {formatDuration(recommendedDurationHours)}). Our cleaners
+                    will focus on your top priorities within this booking time.
                   </p>
                 )}
                 {requiresManualQuote && (
@@ -1149,7 +1215,8 @@ export default function BookingPage() {
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                      <Repeat className="w-3.5 h-3.5 text-green-600" /> Cleaning Frequency
+                      <Repeat className="w-3.5 h-3.5 text-green-600" /> Cleaning
+                      Frequency
                     </label>
                     <span className="text-[11px] font-semibold text-green-700 bg-green-50 border border-green-200/80 px-2 py-0.5 rounded-full">
                       Lock in your regular cleaner
@@ -1159,19 +1226,42 @@ export default function BookingPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {(
                       [
-                        { id: "weekly", label: "Weekly", sub: "Most popular", discountKey: "weekly" },
-                        { id: "fortnightly", label: "Fortnightly", sub: "Every 2 weeks", discountKey: "fortnightly" },
-                        { id: "monthly", label: "Monthly", sub: "Every 4 weeks", discountKey: "monthly" },
-                        { id: "none", label: "One-off", sub: "Single visit", discountKey: "none" },
+                        {
+                          id: "weekly",
+                          label: "Weekly",
+                          sub: "Most popular",
+                          discountKey: "weekly",
+                        },
+                        {
+                          id: "fortnightly",
+                          label: "Fortnightly",
+                          sub: "Every 2 weeks",
+                          discountKey: "fortnightly",
+                        },
+                        {
+                          id: "monthly",
+                          label: "Monthly",
+                          sub: "Every 4 weeks",
+                          discountKey: "monthly",
+                        },
+                        {
+                          id: "none",
+                          label: "One-off",
+                          sub: "Single visit",
+                          discountKey: "none",
+                        },
                       ] as const
                     ).map((freq) => {
                       const isSelected = recurringFreq === freq.id;
-                      const discount = liveDiscounts[freq.discountKey as RecurringFreq] ?? 0;
+                      const discount =
+                        liveDiscounts[freq.discountKey as RecurringFreq] ?? 0;
                       return (
                         <button
                           type="button"
                           key={freq.id}
-                          onClick={() => setRecurringFreq(freq.id as RecurringFreq)}
+                          onClick={() =>
+                            setRecurringFreq(freq.id as RecurringFreq)
+                          }
                           className={cn(
                             "relative flex flex-col items-start p-3 rounded-2xl border text-left transition-all",
                             isSelected
@@ -1184,8 +1274,12 @@ export default function BookingPage() {
                               SAVE {discount}%
                             </span>
                           )}
-                          <span className="font-black text-xs">{freq.label}</span>
-                          <span className="text-[10px] text-gray-400 font-normal mt-0.5">{freq.sub}</span>
+                          <span className="font-black text-xs">
+                            {freq.label}
+                          </span>
+                          <span className="text-[10px] text-gray-400 font-normal mt-0.5">
+                            {freq.sub}
+                          </span>
                         </button>
                       );
                     })}
@@ -1201,19 +1295,40 @@ export default function BookingPage() {
                       <p className="text-[11px] text-emerald-700/90 leading-relaxed">
                         {date ? (
                           <>
-                            Your clean will recur <strong>{recurringFreq === "weekly" ? "every week" : recurringFreq === "fortnightly" ? "every 2 weeks" : "every 4 weeks"}</strong> on <strong>{new Date(date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long" })}s</strong> at <strong>{startHour}</strong>.
+                            Your clean will recur{" "}
+                            <strong>
+                              {recurringFreq === "weekly"
+                                ? "every week"
+                                : recurringFreq === "fortnightly"
+                                ? "every 2 weeks"
+                                : "every 4 weeks"}
+                            </strong>{" "}
+                            on{" "}
+                            <strong>
+                              {new Date(date + "T12:00:00").toLocaleDateString(
+                                "en-GB",
+                                { weekday: "long" }
+                              )}
+                              s
+                            </strong>{" "}
+                            at <strong>{startHour}</strong>.
                           </>
                         ) : (
                           <>
-                            Selecting a start date will anchor your recurring slot for the same weekday and time.
+                            Selecting a start date will anchor your recurring
+                            slot for the same weekday and time.
                           </>
-                        )}
-                        {" "}You can skip weeks, pause for holidays, or cancel anytime online with zero cancellation fee.
+                        )}{" "}
+                        You can skip weeks, pause for holidays, or cancel
+                        anytime online with zero cancellation fee.
                       </p>
                     </div>
                   ) : (
                     <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3 text-[11px] text-gray-500 flex items-center justify-between">
-                      <span>Tip: Choose Weekly or Fortnightly to save up to 15% and get the same cleaner on every visit.</span>
+                      <span>
+                        Tip: Choose Weekly or Fortnightly to save up to 15% and
+                        get the same cleaner on every visit.
+                      </span>
                     </div>
                   )}
                 </div>
@@ -1226,95 +1341,124 @@ export default function BookingPage() {
                 </p>
 
                 <div>
-  <label className="text-xs font-bold text-gray-700 block mb-2">
-    <Key className="w-3.5 h-3.5 inline mr-1 text-green-600" /> How should our cleaner access your property?
-  </label>
-  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-    {ACCESS_METHODS.map((method) => (
-      <button
-        type="button"
-        key={method.id}
-        onClick={() => setAccessMethod(method.id)}
-        className={cn(
-          "p-3 rounded-2xl border text-left transition-all",
-          accessMethod === method.id
-            ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
-            : "border-gray-200 bg-white hover:border-gray-300"
-        )}
-      >
-        <div className="font-bold text-xs text-gray-900">{method.label}</div>
-        <div className="text-[10px] text-gray-500 mt-0.5 line-clamp-2">{method.desc}</div>
-      </button>
-    ))}
-  </div>
-</div>
-<div>
-  <label className="text-xs font-bold text-gray-700 block mb-2">
-    <Sparkles className="w-3.5 h-3.5 inline mr-1 text-green-600" /> {bookingConfig.suppliesPrompt}
-  </label>
-  <div className="grid sm:grid-cols-2 gap-2 mb-4">
-    <button
-      type="button"
-      onClick={() => setSuppliesOption("cleaner")}
-      className={cn(
-        "p-3 rounded-2xl border text-left transition-all",
-        suppliesOption === "cleaner"
-          ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
-          : "border-gray-200 bg-white hover:border-gray-300"
-      )}
-    >
-      <div className="font-bold text-xs text-gray-900">{bookingConfig.suppliesCleanerLabel}</div>
-      <div className="text-[10px] text-gray-500 mt-0.5">Eco sprays, cloths & equipment arranged</div>
-    </button>
-    <button
-      type="button"
-      onClick={() => setSuppliesOption("customer")}
-      className={cn(
-        "p-3 rounded-2xl border text-left transition-all",
-        suppliesOption === "customer"
-          ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
-          : "border-gray-200 bg-white hover:border-gray-300"
-      )}
-    >
-      <div className="font-bold text-xs text-gray-900">{bookingConfig.suppliesCustomerLabel}</div>
-      <div className="text-[10px] text-gray-500 mt-0.5">Cleaner uses items provided on site</div>
-    </button>
-  </div>
-</div>
-<div className="grid sm:grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-  <div>
-    <label className="text-xs font-bold text-gray-700 block mb-1 flex items-center gap-1">
-      <Car className="w-3.5 h-3.5 text-gray-500" /> Parking arrangements
-    </label>
-    <select
-      value={parkingOption}
-      onChange={(e) => setParkingOption(e.target.value)}
-      className="input-field text-xs bg-white"
-    >
-      <option value="free">Free on-street / driveway parking</option>
-      <option value="permit">Visitor permit provided on arrival</option>
-      <option value="paid">Paid parking meter nearby</option>
-      <option value="none">No parking available (public transport only)</option>
-    </select>
-  </div>
-  <div>
-    <label className="text-xs font-bold text-gray-700 block mb-1 flex items-center gap-1">
-      <Dog className="w-3.5 h-3.5 text-gray-500" /> Pets at home
-    </label>
-    <button
-      type="button"
-      onClick={() => setHasPets(!hasPets)}
-      className={cn(
-        "w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-between transition-all bg-white",
-        hasPets ? "border-green-600 bg-green-50/50 text-green-800" : "border-gray-200 text-gray-600"
-      )}
-    >
-      <span>{hasPets ? "🐾 Yes, pets at property" : "No pets at property"}</span>
-      <span className="text-[10px] text-gray-400 font-normal">Click to toggle</span>
-    </button>
-  </div>
-</div>
-<div className="grid sm:grid-cols-3 gap-4">
+                  <label className="text-xs font-bold text-gray-700 block mb-2">
+                    <Key className="w-3.5 h-3.5 inline mr-1 text-green-600" />{" "}
+                    How should our cleaner access your property?
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+                    {ACCESS_METHODS.map((method) => (
+                      <button
+                        type="button"
+                        key={method.id}
+                        onClick={() => setAccessMethod(method.id)}
+                        className={cn(
+                          "p-3 rounded-2xl border text-left transition-all",
+                          accessMethod === method.id
+                            ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
+                            : "border-gray-200 bg-white hover:border-gray-300"
+                        )}
+                      >
+                        <div className="font-bold text-xs text-gray-900">
+                          {method.label}
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-0.5 line-clamp-2">
+                          {method.desc}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-2">
+                    <Sparkles className="w-3.5 h-3.5 inline mr-1 text-green-600" />{" "}
+                    {bookingConfig.suppliesPrompt}
+                  </label>
+                  <div className="grid sm:grid-cols-2 gap-2 mb-4">
+                    <button
+                      type="button"
+                      onClick={() => setSuppliesOption("cleaner")}
+                      className={cn(
+                        "p-3 rounded-2xl border text-left transition-all",
+                        suppliesOption === "cleaner"
+                          ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      )}
+                    >
+                      <div className="font-bold text-xs text-gray-900">
+                        {bookingConfig.suppliesCleanerLabel}
+                      </div>
+                      <div className="text-[10px] text-gray-500 mt-0.5">
+                        Eco sprays, cloths & equipment arranged
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSuppliesOption("customer")}
+                      className={cn(
+                        "p-3 rounded-2xl border text-left transition-all",
+                        suppliesOption === "customer"
+                          ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
+                          : "border-gray-200 bg-white hover:border-gray-300"
+                      )}
+                    >
+                      <div className="font-bold text-xs text-gray-900">
+                        {bookingConfig.suppliesCustomerLabel}
+                      </div>
+                      <div className="text-[10px] text-gray-500 mt-0.5">
+                        Cleaner uses items provided on site
+                      </div>
+                    </button>
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1 flex items-center gap-1">
+                      <Car className="w-3.5 h-3.5 text-gray-500" /> Parking
+                      arrangements
+                    </label>
+                    <select
+                      value={parkingOption}
+                      onChange={(e) => setParkingOption(e.target.value)}
+                      className="input-field text-xs bg-white"
+                    >
+                      <option value="free">
+                        Free on-street / driveway parking
+                      </option>
+                      <option value="permit">
+                        Visitor permit provided on arrival
+                      </option>
+                      <option value="paid">Paid parking meter nearby</option>
+                      <option value="none">
+                        No parking available (public transport only)
+                      </option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1 flex items-center gap-1">
+                      <Dog className="w-3.5 h-3.5 text-gray-500" /> Pets at home
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setHasPets(!hasPets)}
+                      className={cn(
+                        "w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-between transition-all bg-white",
+                        hasPets
+                          ? "border-green-600 bg-green-50/50 text-green-800"
+                          : "border-gray-200 text-gray-600"
+                      )}
+                    >
+                      <span>
+                        {hasPets
+                          ? "🐾 Yes, pets at property"
+                          : "No pets at property"}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-normal">
+                        Click to toggle
+                      </span>
+                    </button>
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-3 gap-4">
                   <div>
                     <label className="text-xs font-bold text-gray-700 block mb-1.5">
                       Postcode
