@@ -10,19 +10,19 @@
 -- 1. SEED DATA — Services
 -- ─────────────────────────────────────────────────────────────
 
-INSERT INTO public.services (id, name, description, price, image_url, discount_percent, popular, active)
+INSERT INTO public.services (id, name, description, price, image_url, discount_percent, popular, active, category, badge, tagline, icon, sort_order)
 VALUES
-  ('standard-cleaning',   'Standard cleaning',    'A thorough clean for everyday freshness.',                              20.00, '/images/service-standard-clean.jpg', 0, true,  true),
-  ('regular-cleaning',    'Regular cleaning',     'Recurring cleaning to keep your home consistently tidy.',              20.00, '/images/service-regular-cleaning.jpg', 0, true,  true),
-  ('one-off-cleaning',    'One-off cleaning',     'A single clean session for when you need it most.',                    20.00, '/images/service-one-off-cleaning.jpg', 0, false, true),
-  ('deep-cleaning',       'Deep cleaning',        'A detailed deep clean focusing on built-up dirt and grime.',           20.00, '/images/service-deep-cleaning.jpg', 0, true,  true),
-  ('spring-cleaning',     'Spring cleaning',      'A seasonal refresh to get your home spotless.',                        20.00, '/images/service-spring-cleaning.jpg', 0, false, true),
-  ('same-day-cleaning',   'Same day cleaning',    'Fast turnaround cleaning subject to availability.',                    20.00, '/images/service-same-day-cleaning.jpg', 0, false, true),
-  ('airbnb-cleaning',     'Airbnb cleaning',      'Turnover cleaning for short lets, with attention to detail.',          20.00, '/images/service-airbnb-cleaning.jpg', 0, false, true),
-  ('ironing-service',     'Ironing service',      'Professional ironing and folding at your convenience.',                20.00, '/images/service-ironing-service.jpg', 0, false, true),
-  ('cleaning-and-ironing','Cleaning and ironing', 'Combined cleaning plus ironing in one visit.',                         20.00, '/images/service-cleaning-and-ironing.jpg', 0, false, true),
-  ('housekeeping',        'Housekeeping',         'Ongoing housekeeping support to help you stay on top of chores.',      20.00, '/images/service-housekeeping.jpg', 0, false, true),
-  ('office-cleaning',     'Office cleaning',      'Professional cleaning for office spaces and commercial buildings.',    20.00, '/images/service-office-cleaning.jpg', 0, false, true)
+  ('standard-cleaning',   'Classic Domestic Cleaning',   'Day-to-day routine housekeeping & maintenance. Dusting surfaces, vacuuming & mopping floors, sanitising bathrooms & kitchens, making beds, and emptying bins.', 20.00, '/images/service-standard-clean.jpg', 0, true,  true, 'domestic', 'Most Popular', 'Day-to-day routine housekeeping & maintenance', '🧹', 1),
+  ('regular-cleaning',    'Regular cleaning',            'Recurring cleaning to keep your home consistently tidy.',              20.00, '/images/service-regular-cleaning.jpg', 0, false, true, 'domestic', 'Recurring', 'Keep your home consistently tidy', '🧹', 1),
+  ('one-off-cleaning',    'One-off cleaning',            'A single clean session for when you need it most.',                    20.00, '/images/service-one-off-cleaning.jpg', 0, false, true, 'domestic', 'Single Visit', 'Single visit cleaning session', '🧹', 1),
+  ('deep-cleaning',       'Deep Cleaning & Spring Reset','Detailed top-to-bottom scrub for built-up grime, limescale, grout, skirting boards, sockets, and behind furniture.', 20.00, '/images/service-deep-cleaning.jpg', 0, true,  true, 'deep', 'Intensive Scrub', 'Thorough top-to-bottom scrub for built-up grime', '✨', 2),
+  ('spring-cleaning',     'Spring cleaning',             'A seasonal refresh to get your home spotless.',                        20.00, '/images/service-spring-cleaning.jpg', 0, false, true, 'deep', 'Seasonal', 'A seasonal refresh to get your home spotless', '✨', 2),
+  ('same-day-cleaning',   'Same day cleaning',           'Fast turnaround cleaning subject to availability.',                    20.00, '/images/service-same-day-cleaning.jpg', 0, false, true, 'domestic', 'Fast Priority', 'Fast turnaround cleaning subject to availability', '🧹', 1),
+  ('airbnb-cleaning',     'Holiday Rental & Airbnb',     'Fast guest turnovers & staging between stays. Linen strip & fresh bed dressing, guest amenities check, bathroom shine, kitchen inventory and photo check-in.', 20.00, '/images/service-airbnb-cleaning.jpg', 0, false, true, 'airbnb', 'Host Special', 'Fast guest turnovers & staging between stays', '🏨', 3),
+  ('ironing-service',     'Ironing & Laundry Service',   'Professional steam pressing, folding & wardrobe care. Shirts, trousers, delicates, and bedsheet pressing neatly done in your home.', 20.00, '/images/service-ironing-service.jpg', 0, false, true, 'ironing', 'Garment Care', 'Professional steam pressing, folding & wardrobe care', '🧺', 4),
+  ('cleaning-and-ironing','Cleaning and ironing',        'Combined cleaning plus ironing in one visit.',                         20.00, '/images/service-cleaning-and-ironing.jpg', 0, false, true, 'ironing', 'Combined Care', 'Combined cleaning plus ironing in one visit', '🧺', 4),
+  ('housekeeping',        'Housekeeping',                'Ongoing housekeeping support to help you stay on top of chores.',      20.00, '/images/service-housekeeping.jpg', 0, false, true, 'domestic', 'Routine Chores', 'Ongoing housekeeping support', '🧹', 1),
+  ('office-cleaning',     'Office & Commercial Cleaning','Desks wiped, bin collection & recycling, washrooms sanitised, kitchenettes & meeting room glass buffed for workplaces and commercial buildings.', 20.00, '/images/service-office-cleaning.jpg', 0, false, true, 'commercial', 'Business', 'Professional cleanliness for workplaces and offices', '🏢', 5)
 ON CONFLICT (id) DO UPDATE SET
   name             = excluded.name,
   description      = excluded.description,
@@ -31,6 +31,11 @@ ON CONFLICT (id) DO UPDATE SET
   discount_percent = excluded.discount_percent,
   popular          = excluded.popular,
   active           = excluded.active,
+  category         = excluded.category,
+  badge            = excluded.badge,
+  tagline          = excluded.tagline,
+  icon             = excluded.icon,
+  sort_order       = excluded.sort_order,
   updated_at       = NOW();
 
 

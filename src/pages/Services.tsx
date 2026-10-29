@@ -12,15 +12,21 @@ import {
   Home as HomeIcon,
   Building,
   Key,
+  Check,
+  Star,
+  Award,
 } from "lucide-react";
 import { useServices } from "@/hooks/useServices";
-import ServiceCard from "@/components/ServiceCard";
+import { buildServiceCatalogFromDb } from "@/lib/serviceCatalog";
+import { formatCurrency } from "@/lib/utils";
 
-const CATEGORIES = [
-  { id: "all", label: "All Services", icon: Layers },
-  { id: "domestic", label: "Domestic & Deep Clean", icon: HomeIcon },
-  { id: "moving", label: "End of Tenancy & Moving", icon: Key },
-  { id: "commercial", label: "Commercial & Airbnb", icon: Building },
+const CATEGORY_TABS = [
+  { id: "all", label: "All Services" },
+  { id: "domestic", label: "Domestic" },
+  { id: "deep", label: "Deep Clean" },
+  { id: "airbnb", label: "Holiday Let / Airbnb" },
+  { id: "ironing", label: "Ironing & Laundry" },
+  { id: "commercial", label: "Commercial / Office" },
 ];
 
 export default function Services() {
@@ -28,43 +34,22 @@ export default function Services() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const { services, loading } = useServices();
 
-  const filtered = useMemo(() => {
-    return services.filter((s) => {
+  const catalogCards = useMemo(() => {
+    return buildServiceCatalogFromDb(services);
+  }, [services]);
+
+  const filteredCards = useMemo(() => {
+    return catalogCards.filter((card) => {
       const matchesSearch =
-        s.name.toLowerCase().includes(search.toLowerCase()) ||
-        s.description.toLowerCase().includes(search.toLowerCase());
+        card.name.toLowerCase().includes(search.toLowerCase()) ||
+        card.tagline.toLowerCase().includes(search.toLowerCase()) ||
+        card.description.toLowerCase().includes(search.toLowerCase());
 
       if (!matchesSearch) return false;
-
       if (selectedCategory === "all") return true;
-      if (selectedCategory === "domestic") {
-        return (
-          s.name.toLowerCase().includes("domestic") ||
-          s.name.toLowerCase().includes("regular") ||
-          s.name.toLowerCase().includes("deep") ||
-          s.name.toLowerCase().includes("spring") ||
-          s.name.toLowerCase().includes("eco")
-        );
-      }
-      if (selectedCategory === "moving") {
-        return (
-          s.name.toLowerCase().includes("tenancy") ||
-          s.name.toLowerCase().includes("move") ||
-          s.name.toLowerCase().includes("carpet") ||
-          s.name.toLowerCase().includes("after builders")
-        );
-      }
-      if (selectedCategory === "commercial") {
-        return (
-          s.name.toLowerCase().includes("office") ||
-          s.name.toLowerCase().includes("commercial") ||
-          s.name.toLowerCase().includes("airbnb") ||
-          s.name.toLowerCase().includes("holiday")
-        );
-      }
-      return true;
+      return card.id === selectedCategory;
     });
-  }, [services, search, selectedCategory]);
+  }, [catalogCards, search, selectedCategory]);
 
   return (
     <div className="min-h-screen bg-gray-50/70">
@@ -75,17 +60,15 @@ export default function Services() {
           <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200/80 text-green-800 text-xs font-semibold px-3 py-1 rounded-full mb-4">
               <Sparkles className="w-3.5 h-3.5 text-green-600" />
-              Tailored Cleaning Solutions Across Wales
+              Transparent, Professional Cleaning Across Wales
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-4 tracking-tight">
-              Our Professional Cleaning Services
+              Our Cleaning Services & Rates
             </h1>
 
             <p className="text-gray-600 text-base sm:text-lg mb-8 leading-relaxed">
-              Every clean includes DBS-checked cleaners, full public liability
-              insurance, eco-friendly supplies, and our 100% satisfaction
-              re-clean guarantee.
+              Clear, transparent hourly pricing with no surprise charges. Every booking includes DBS-checked cleaners, full public liability insurance, eco supplies, and our 100% satisfaction re-clean guarantee.
             </p>
 
             {/* Search Input & Category Filters */}
@@ -94,7 +77,7 @@ export default function Services() {
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
-                  placeholder="Search cleaning services (e.g. Tenancy, Deep, Carpet)..."
+                  placeholder="Search by category, ironing, deep clean..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all"
@@ -102,22 +85,20 @@ export default function Services() {
                 />
               </div>
 
-              {/* Category Pills */}
+              {/* Category Filter Chips */}
               <div className="flex items-center gap-2 flex-wrap pt-2">
-                {CATEGORIES.map((cat) => {
-                  const CatIcon = cat.icon;
+                {CATEGORY_TABS.map((cat) => {
                   const isActive = selectedCategory === cat.id;
                   return (
                     <button
                       key={cat.id}
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                         isActive
                           ? "bg-green-600 text-white shadow-sm"
                           : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
                       }`}
                     >
-                      <CatIcon className="w-3.5 h-3.5" />
                       {cat.label}
                     </button>
                   );
@@ -137,36 +118,35 @@ export default function Services() {
           </div>
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-4 h-4 text-green-400" />
-            <span>100% DBS-Checked Staff</span>
+            <span>100% DBS-Checked Cleaners</span>
           </div>
           <div className="flex items-center gap-2">
             <Leaf className="w-4 h-4 text-green-400" />
-            <span>Non-Toxic Eco-Friendly Products</span>
+            <span>Non-Toxic Eco-Friendly Products Included</span>
           </div>
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-green-400" />
-            <span>Same-Day Availability 7 Days/Week</span>
+            <span>Available 7 Days a Week Across Wales</span>
           </div>
         </div>
       </div>
 
-      {/* ── Services Grid ─────────────────────────────────────────── */}
+      {/* ── Clean Category Cards Grid ─────────────────────────────── */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
         {loading ? (
           <div className="py-20 flex flex-col items-center justify-center gap-3">
             <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin" />
             <p className="text-xs text-gray-400 font-medium">
-              Loading verified services...
+              Loading service catalog...
             </p>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filteredCards.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-3xl border border-gray-200 max-w-lg mx-auto p-8 shadow-xs">
             <p className="text-base font-bold text-gray-900 mb-1">
-              No cleaning services found matching "{search}"
+              No services found matching "{search}"
             </p>
             <p className="text-xs text-gray-500 mb-4">
-              Try searching for "Regular", "Deep clean", or reset your category
-              filters.
+              Try searching for "Domestic", "Ironing", or clear your filter.
             </p>
             <button
               onClick={() => {
@@ -179,15 +159,65 @@ export default function Services() {
             </button>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filtered.map((service) => (
-              <ServiceCard key={service.id} service={service} />
-            ))}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredCards.map((card) => {
+              return (
+                <div
+                  key={card.id}
+                  className="bg-white border border-gray-200 rounded-2xl p-6 sm:p-7 shadow-xs hover:shadow-md hover:border-green-300 transition-all flex flex-col justify-between group"
+                >
+                  <div>
+                    {/* Header: Icon, Badge, Price */}
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="w-14 h-14 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                        {card.icon}
+                      </div>
+                      <div className="text-right">
+                        {card.badge && (
+                          <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full mb-1">
+                            {card.badge}
+                          </span>
+                        )}
+                        <p className="text-xl font-black text-gray-900">
+                          {card.hourlyRateRange}
+                        </p>
+                      </div>
+                    </div>
+
+                    <h2 className="text-xl font-black text-gray-900 mb-1 group-hover:text-green-700 transition-colors">
+                      {card.name}
+                    </h2>
+                    <p className="text-xs font-semibold text-green-700 mb-3">
+                      {card.tagline}
+                    </p>
+                    <p className="text-xs text-gray-600 leading-relaxed mb-6">
+                      {card.description}
+                    </p>
+                  </div>
+
+                  {/* Actions: View Details + Book Now */}
+                  <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-2">
+                    <Link
+                      href={`/services/${card.primaryServiceId}`}
+                      className="text-xs font-bold text-gray-600 hover:text-green-700 transition-colors inline-flex items-center gap-1"
+                    >
+                      Learn more
+                    </Link>
+                    <Link
+                      href={`/book?service=${card.primaryServiceId}`}
+                      className="btn-primary text-xs font-bold py-2 px-4 flex items-center gap-1.5 shadow-xs"
+                    >
+                      Book this clean <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* ── Standard vs Custom Extras Section ──────────────────────── */}
+      {/* ── Standard Inclusions & Extras Transparency Section ────────── */}
       <div className="bg-white border-t border-gray-200 py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-10 items-center">

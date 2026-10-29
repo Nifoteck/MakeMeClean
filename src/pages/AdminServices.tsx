@@ -31,7 +31,7 @@ export default function AdminServices() {
   const fetchServices = async () => {
     setFetching(true); setError("");
     const { data, error: err } = await supabase.from("services")
-      .select("id, name, description, price, image_url, discount_percent, popular, active")
+      .select("id, name, description, price, image_url, discount_percent, popular, active, category, badge, tagline, icon, sort_order")
       .order("name", { ascending: true });
     if (err) { setError(err.message); setServices([]); }
     else setServices((data as DbService[]) ?? []);
@@ -42,7 +42,7 @@ export default function AdminServices() {
 
   const openEdit = (s?: DbService) => {
     setEditingId(s?.id ?? "__new__");
-    setDraft(s ? { ...s } : { name:"", description:"", price:0, image_url:null, discount_percent:0, popular:false, active:true });
+    setDraft(s ? { ...s } : { name:"", description:"", price:0, image_url:null, discount_percent:0, popular:false, active:true, category:"domestic", badge:"", tagline:"", icon:"🧹", sort_order:0 });
     setError("");
   };
 
@@ -62,6 +62,11 @@ export default function AdminServices() {
       discount_percent: Number(String(draft.discount_percent ?? "").replace(/[^\d.]/g, "")) || 0,
       popular: Boolean(draft.popular),
       active: Boolean(draft.active),
+      category: String(draft.category || "domestic"),
+      badge: draft.badge ? String(draft.badge).trim() : null,
+      tagline: draft.tagline ? String(draft.tagline).trim() : null,
+      icon: String(draft.icon || "🧹"),
+      sort_order: Number(draft.sort_order ?? 0) || 0,
     };
     const { error: err } = await supabase.from("services").upsert(payload, { onConflict: "id" });
     if (err) { setError(err.message); setSaving(false); return; }
@@ -136,6 +141,62 @@ export default function AdminServices() {
                     value={draft.price === undefined || draft.price === null ? "" : String(draft.price)}
                     onChange={(e) => { const raw = e.target.value; if (raw.trim() === "") { setDraft((p) => ({ ...p, price: "" as unknown as number })); return; } setDraft((p) => ({ ...p, price: raw.replace(/[^\d.]/g,"") as unknown as number })); }}
                     onBlur={() => { const n = Number(String(draft.price ?? "").replace(/[^\d.]/g,"")); setDraft((p) => ({ ...p, price: Number.isFinite(n) ? n : 0 })); }} />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
+                  <select
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 bg-white"
+                    value={draft.category ?? "domestic"}
+                    onChange={(e) => setDraft((p) => ({ ...p, category: e.target.value }))}
+                  >
+                    <option value="domestic">Classic Domestic Cleaning</option>
+                    <option value="deep">Deep Cleaning & Spring Reset</option>
+                    <option value="airbnb">Holiday Rental & Airbnb</option>
+                    <option value="ironing">Ironing & Laundry Service</option>
+                    <option value="commercial">Office & Commercial</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Tagline / Short Hook</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Day-to-day routine housekeeping & maintenance"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    value={draft.tagline ?? ""}
+                    onChange={(e) => setDraft((p) => ({ ...p, tagline: e.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Badge (Optional)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Most Popular, Host Special, Intensive"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    value={draft.badge ?? ""}
+                    onChange={(e) => setDraft((p) => ({ ...p, badge: e.target.value }))}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Icon / Emoji</label>
+                    <input
+                      type="text"
+                      placeholder="🧹, ✨, 🏨, 🧺, 🏢"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      value={draft.icon ?? "🧹"}
+                      onChange={(e) => setDraft((p) => ({ ...p, icon: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">Sort Order</label>
+                    <input
+                      type="number"
+                      placeholder="1"
+                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                      value={draft.sort_order ?? 0}
+                      onChange={(e) => setDraft((p) => ({ ...p, sort_order: parseInt(e.target.value, 10) || 0 }))}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Discount (%)</label>

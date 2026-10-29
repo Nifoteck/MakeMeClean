@@ -17,7 +17,7 @@ export function useServices() {
       setError("");
       const { data, error: err } = await supabase
         .from("services")
-        .select("id, name, description, price, image_url, discount_percent, popular, active")
+        .select("id, name, description, price, image_url, discount_percent, popular, active, category, badge, tagline, icon, sort_order")
         .eq("active", true)
         .order("name", { ascending: true });
 

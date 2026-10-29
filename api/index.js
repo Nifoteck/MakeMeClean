@@ -22465,6 +22465,11 @@ async function handleServices(req, res) {
       discount_percent: Number(s.discount_percent || 0),
       popular: Boolean(s.popular),
       active: Boolean(s.active),
+      category: s.category || "domestic",
+      badge: s.badge || null,
+      tagline: s.tagline || null,
+      icon: s.icon || "\u{1F9F9}",
+      sort_order: Number(s.sort_order || 0),
       image_url: resolveServiceImageUrl(s.id, s.image_url),
       raw_image_url: s.image_url
     }));

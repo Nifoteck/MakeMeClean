@@ -43,7 +43,10 @@ import type { BookingDurationMultipliers, BookingExtra } from "@/lib/constants";
 import { useServices } from "@/hooks/useServices";
 import { api } from "@/lib/apiClient";
 import { getServiceBookingConfig } from "@/lib/serviceBookingConfigs";
-import { CORE_SERVICE_CATEGORIES } from "@/lib/serviceCatalog";
+import {
+  CORE_SERVICE_CATEGORIES,
+  buildServiceCatalogFromDb,
+} from "@/lib/serviceCatalog";
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6; // 1: Service, 2: Frequency & Schedule, 3: Scale & Hours, 4: Location & Access, 5: Review Summary, 6: Confirmed
 type RecurringFreq = "none" | "weekly" | "fortnightly" | "monthly";
@@ -679,7 +682,7 @@ export default function BookingPage() {
             </div>
 
             <div className="grid md:grid-cols-2 gap-4">
-              {CORE_SERVICE_CATEGORIES.map((group) => {
+              {buildServiceCatalogFromDb(services).map((group) => {
                 const matchedDbService =
                   services.find((s) => s.id === group.primaryServiceId) ||
                   services.find((s) =>

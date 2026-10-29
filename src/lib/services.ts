@@ -9,6 +9,10 @@ export interface DbService {
   discount_percent: number | string | null;
   popular: boolean | null;
   active: boolean | null;
+  category?: string | null;
+  badge?: string | null;
+  tagline?: string | null;
+  icon?: string | null;
   sort_order?: number | null;
   created_at?: string;
   updated_at?: string;
@@ -22,6 +26,11 @@ export interface Service {
   image_url?: string | null;
   discount_percent?: number;
   popular?: boolean;
+  category?: string;
+  badge?: string;
+  tagline?: string;
+  icon?: string;
+  sort_order?: number;
 }
 
 export function mapDbService(s: DbService): Service {
@@ -34,6 +43,11 @@ export function mapDbService(s: DbService): Service {
     image_url: s.image_url ?? null,
     discount_percent: Number.isFinite(discount) ? discount : 0,
     popular: Boolean(s.popular),
+    category: s.category || 'domestic',
+    badge: s.badge || undefined,
+    tagline: s.tagline || undefined,
+    icon: s.icon || '🧹',
+    sort_order: typeof s.sort_order === 'number' ? s.sort_order : 0,
   };
 }
 
