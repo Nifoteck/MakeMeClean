@@ -152,7 +152,7 @@ export default function AdminPanel() {
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [fetching, setFetching] = useState(false);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("upcoming");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [expandedBookingIds, setExpandedBookingIds] = useState<
@@ -692,12 +692,12 @@ export default function AdminPanel() {
         <div className="flex flex-wrap gap-2">
           {(
             [
-              { id: "all", label: "All" },
               { id: "upcoming", label: "Upcoming (Paid)" },
               { id: "pending_completion", label: "Pending Completion" },
               { id: "pending_payment", label: "Pending Payment" },
               { id: "completed", label: "Completed" },
               { id: "cancelled", label: "Cancelled / Expired" },
+              { id: "all", label: "All" },
             ] as { id: StatusFilter; label: string }[]
           ).map((tab) => (
             <button
