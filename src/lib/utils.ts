@@ -86,3 +86,18 @@ export function generateInvoiceNumber(): string {
   const random = Math.floor(Math.random() * 90000) + 10000;
   return `MMC-${year}-${random}`;
 }
+
+/**
+ * Extracts clean user notes by stripping legacy bracketed metadata tags like
+ * [Access: ...], [Supplies: ...], [Parking: ...], [Pets: ...].
+ */
+export function sanitizeCleanNotes(rawNotes?: string | null): string {
+  if (!rawNotes) return "";
+  return rawNotes
+    .replace(/\[Access:\s*[^\]]+\]/gi, "")
+    .replace(/\[Supplies:\s*[^\]]+\]/gi, "")
+    .replace(/\[Parking:\s*[^\]]+\]/gi, "")
+    .replace(/\[Pets:\s*[^\]]+\]/gi, "")
+    .replace(/^[\s"\n]+|[\s"\n]+$/g, "")
+    .trim();
+}

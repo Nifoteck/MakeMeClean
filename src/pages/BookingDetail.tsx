@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { cn, formatDate, formatCurrency } from "@/lib/utils";
+import { cn, formatDate, formatCurrency, sanitizeCleanNotes } from "@/lib/utils";
 import { START_HOURS } from "@/lib/services";
 import { Booking, RescheduleRequest } from "@/types";
 import { BOOKING_STATUS_STYLES } from "@/lib/constants";
@@ -327,11 +327,11 @@ export default function BookingDetail() {
                   value={booking.extras.join(", ")}
                 />
               )}
-              {booking.notes && (
+              {sanitizeCleanNotes(booking.notes) && (
                 <InfoRow
                   icon={FileText}
                   label="Special Instructions"
-                  value={booking.notes}
+                  value={sanitizeCleanNotes(booking.notes)}
                 />
               )}
             </div>

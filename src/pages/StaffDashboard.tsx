@@ -16,7 +16,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useStaffRecord } from "@/hooks/useRole";
 import { supabase } from "@/lib/supabase";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, sanitizeCleanNotes } from "@/lib/utils";
 import StaffLayout from "@/components/staff/StaffLayout";
 import StaffShiftMarketplace from "@/components/staff/StaffShiftMarketplace";
 import Pagination from "@/components/Pagination";
@@ -399,9 +399,9 @@ export default function StaffDashboard() {
                             <span>Add-ons: {b.extras.join(", ")}</span>
                           </div>
                         )}
-                        {b.notes && (
+                        {sanitizeCleanNotes(b.notes) && (
                           <p className="text-xs text-gray-500 italic bg-gray-50 p-2 rounded-lg border border-gray-100 mt-1">
-                            Note: "{b.notes}"
+                            Note: "{sanitizeCleanNotes(b.notes)}"
                           </p>
                         )}
                       </div>
