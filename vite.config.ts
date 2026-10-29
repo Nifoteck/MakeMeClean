@@ -16,14 +16,23 @@ function apiDevServerPlugin(): Plugin {
         const parsed = url.parse(reqUrl, true);
         const pathname = parsed.pathname || reqUrl;
         const queryParams: Record<string, any> = { ...(parsed.query as Record<string, any>) };
-        const modulePath = path.resolve(__dirname, "./api/index.ts");
+
+        const modulePath = path.resolve(__dirname, "./server/index.ts");
 
         try {
           // Read request body if present
           let body: any = {};
           if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE") {
             const buffers: Buffer[] = [];
+            let bodyBytes = 0;
             for await (const chunk of req) {
+              bodyBytes += Buffer.byteLength(chunk);
+              if (bodyBytes > 1024 * 1024) {
+                res.statusCode = 413;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ ok: false, error: "Request body is too large" }));
+                return;
+              }
               buffers.push(chunk);
             }
             const rawBody = Buffer.concat(buffers).toString();

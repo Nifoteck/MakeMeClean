@@ -13,7 +13,7 @@ MakeMeClean is a modern, full-featured booking system designed for domestic and 
 - **Backend:** Supabase (PostgreSQL, Auth, Edge Functions, Storage)
 - **Email:** Brevo API (transactional emails via Edge Functions)
 - **AI:** Groq API (customer chat widget)
-- **Package Manager:** pnpm
+- **Package Manager:** npm
 
 ## Key Features
 
@@ -48,8 +48,8 @@ MakeMeClean is a modern, full-featured booking system designed for domestic and 
 ## Getting Started
 
 ### Prerequisites
-- Node.js (v16+)
-- pnpm
+- Node.js (v18+)
+- npm
 - Supabase account
 
 ### Installation
@@ -57,7 +57,7 @@ MakeMeClean is a modern, full-featured booking system designed for domestic and 
 ```bash
 git clone https://github.com/yourusername/makemeclean.git
 cd makemeclean
-pnpm install
+npm ci
 ```
 
 ### Environment Setup
@@ -82,7 +82,7 @@ supabase secrets set SITE_URL=https://your-domain.com
 ### Development
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 The app will be available at `http://localhost:5000`
@@ -90,8 +90,8 @@ The app will be available at `http://localhost:5000`
 ### Production
 
 ```bash
-pnpm build
-pnpm preview
+npm run build
+npm run preview
 ```
 
 ## Deployment
@@ -99,8 +99,9 @@ pnpm preview
 ### Database & Auth
 1. Create a Supabase project
 2. Apply the database migration from `supabase/migrations/20260811000000_init.sql`
-3. Configure authentication providers (Email, Google, etc.)
-4. Optionally load sample data from `supabase/seed.sql`
+3. Apply `supabase/migrations/20261007000000_private_applicant_data.sql` to restrict customer profiles and recruitment documents
+4. Configure authentication providers (Email, Google, etc.)
+5. Optionally load sample data from `supabase/seed.sql`
 
 ### Edge Functions
 Deploy the following Edge Functions:
@@ -120,6 +121,8 @@ supabase functions deploy ai-chat
 supabase functions deploy send-newsletter
 ```
 
+The `send-booking-reminders` function is a scheduled, privileged operation. Invoke it from a trusted scheduler using an `Authorization: Bearer <service-role-key>` header; never expose that key in browser code or a public URL.
+
 In the Stripe dashboard, add a webhook endpoint for `checkout.session.completed` (and `checkout.session.async_payment_succeeded` if you want it) that points to:
 
 ```text
@@ -132,9 +135,19 @@ If you are using the Supabase CLI, run `supabase db push` to apply the migration
 Deploy to Vercel, Netlify, or any static host:
 
 ```bash
-pnpm build
+npm run build
 # Deploy the `dist/` folder
 ```
+
+## Project structure
+
+- `src/pages` contains route-level screens; reusable interface elements live in `src/components`.
+- `src/hooks` holds React state and lifecycle hooks.
+- `src/lib` contains browser-facing data access and domain utilities.
+- `shared` contains business rules used by both the browser and server.
+- `server/_handlers` and `server/_lib` contain the Vercel API routes and shared server utilities.
+- `supabase/functions` contains independently deployed Supabase Edge Functions.
+- `supabase/migrations` contains ordered SQL changes. Review and apply database changes separately from application deployment.
 
 ## Configuration
 

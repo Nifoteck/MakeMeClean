@@ -6,7 +6,7 @@ export async function handleLoyalty(req: VercelRequest, res: VercelResponse) {
   }
 
   const { user, supabase, error: authError } = await verifyAuth(req);
-  if (authError || !user) {
+  if (authError || !user || !supabase) {
     return sendError(res, authError || 'Unauthorized', 401);
   }
 

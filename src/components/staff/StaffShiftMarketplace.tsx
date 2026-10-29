@@ -79,9 +79,9 @@ export default function StaffShiftMarketplace({
             time_slot: b.time_slot || "09:00 AM",
             pay_amount: Number(b.price || 45) * 0.7, // 70% cleaner split
             estimated_hours: Number(b.duration_hours || 3),
-            bedrooms: b.bedrooms || 1,
-            bathrooms: b.bathrooms || 1,
-            living_rooms: b.living_rooms || 1,
+            bedrooms: b.bedrooms ?? 1,
+            bathrooms: b.bathrooms ?? 1,
+            living_rooms: b.living_rooms ?? 1,
             property_type: b.property_type || "House/Flat",
             extras: Array.isArray(b.extras) ? b.extras : [],
             notes: b.notes,
@@ -255,7 +255,7 @@ export default function StaffShiftMarketplace({
                   <div className="flex items-center gap-2 font-medium text-gray-700">
                     <Home className="w-4 h-4 text-green-600" />
                     <span>
-                      {s.bedrooms || 1} Bed · {s.bathrooms || 1} Bath · {s.living_rooms || 1} Living ({s.property_type || "House/Flat"})
+                      {s.bedrooms ?? 1} Bed · {s.bathrooms ?? 1} Bath · {s.living_rooms ?? 1} Living ({s.property_type || "House/Flat"})
                     </span>
                   </div>
                   {s.extras && s.extras.length > 0 && (
@@ -313,7 +313,7 @@ export default function StaffShiftMarketplace({
                 {modalShift.time_slot}
               </p>
               <p>
-                <strong>Property:</strong> {modalShift.bedrooms || 1} Bed · {modalShift.bathrooms || 1} Bath ({modalShift.property_type || "House/Flat"})
+                <strong>Property:</strong> {modalShift.bedrooms ?? 1} Bed · {modalShift.bathrooms ?? 1} Bath ({modalShift.property_type || "House/Flat"})
               </p>
               {modalShift.extras && modalShift.extras.length > 0 && (
                 <p className="text-green-800 font-semibold">

@@ -1,7 +1,6 @@
 import {
   VercelRequest,
   VercelResponse,
-  createSupabaseServerClient,
   verifyAuth,
   sendSuccess,
   sendError,
@@ -10,7 +9,34 @@ import {
   generateInvoiceNumber,
   resolveServiceImageUrl,
   getEnv,
+  BOOKING_PROPERTY_TYPES,
+  calculateRecommendedHours,
+  MAX_ROOM_COUNTS,
+  MAX_DURATION_HOURS,
+  MIN_DURATION_HOURS,
+  parseBookingExtras,
+  parseDurationMultipliers,
 } from '../_lib/server';
+
+const ACCEPTED_PROPERTY_TYPES: readonly string[] = [
+  ...BOOKING_PROPERTY_TYPES,
+  'House/Flat',
+  'Studio / HMO',
+];
+
+function parseRoomCount(value: unknown, maximum: number): number | null {
+  if (
+    (typeof value !== 'number' && typeof value !== 'string') ||
+    (typeof value === 'string' && !value.trim())
+  ) {
+    return null;
+  }
+
+  const count = Number(value);
+  return Number.isInteger(count) && count >= 0 && count <= maximum
+    ? count
+    : null;
+}
 
 export async function handleBookings(
   req: VercelRequest,
@@ -20,11 +46,12 @@ export async function handleBookings(
 ) {
   const method = (req.method || 'GET').toUpperCase();
   const auth = await verifyAuth(req);
-  if (!auth) {
+  if (!auth.user || !auth.supabase) {
     return sendError(res, 'Authentication required', 401);
   }
 
   const { supabase, user } = auth;
+  if (!supabase || !user) return sendError(res, 'Authentication required', 401);
   const segments = subPath.split('/').filter(Boolean);
 
   // ─── 1. /api/bookings (List & Create) ──────────────────────────────────────
@@ -68,15 +95,78 @@ export async function handleBookings(
         postcode,
         notes,
         recurringFreq = 'none',
-        bedrooms = 1,
+        bedrooms = 2,
         bathrooms = 1,
         livingRooms = 1,
         extras = [],
-        propertyType = 'House/Flat',
+        propertyType = 'House',
       } = body;
 
       if (!serviceId || !date || !address || !postcode) {
         return sendError(res, 'Missing required booking fields (serviceId, date, address, postcode).', 400);
+      }
+      if (
+        typeof date !== 'string' ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+        Number.isNaN(Date.parse(`${date}T00:00:00.000Z`)) ||
+        new Date(`${date}T00:00:00.000Z`).toISOString().slice(0, 10) !== date
+      ) {
+        return sendError(res, 'A valid booking date is required.', 400);
+      }
+      if (
+        typeof address !== 'string' ||
+        !address.trim() ||
+        address.trim().length > 500 ||
+        typeof postcode !== 'string' ||
+        !postcode.trim() ||
+        postcode.trim().length > 24 ||
+        (city != null && (typeof city !== 'string' || city.trim().length > 160)) ||
+        (notes != null && (typeof notes !== 'string' || notes.length > 2000))
+      ) {
+        return sendError(res, 'One or more booking fields are invalid.', 400);
+      }
+      if (
+        recurringFreq &&
+        !['none', 'one_off', 'weekly', 'biweekly', 'fortnightly', 'monthly'].includes(recurringFreq)
+      ) {
+        return sendError(res, 'Invalid recurring booking frequency.', 400);
+      }
+      const parsedBedrooms = parseRoomCount(bedrooms, MAX_ROOM_COUNTS.bedrooms);
+      const parsedBathrooms = parseRoomCount(bathrooms, MAX_ROOM_COUNTS.bathrooms);
+      const parsedLivingRooms = parseRoomCount(
+        livingRooms,
+        MAX_ROOM_COUNTS.livingAreas,
+      );
+      if (
+        parsedBedrooms == null ||
+        parsedBathrooms == null ||
+        parsedLivingRooms == null
+      ) {
+        return sendError(
+          res,
+          'Room counts must be whole numbers within the allowed range, including zero when a room type is absent.',
+          400,
+        );
+      }
+      if (
+        typeof propertyType !== 'string' ||
+        !ACCEPTED_PROPERTY_TYPES.includes(propertyType.trim())
+      ) {
+        return sendError(res, 'Select a valid property type.', 400);
+      }
+      const normalizedPropertyType = propertyType.trim();
+      if (
+        !Array.isArray(extras) ||
+        extras.length > 20 ||
+        extras.some((extra: unknown) => typeof extra !== 'string')
+      ) {
+        return sendError(res, 'Selected extras are invalid.', 400);
+      }
+      const selectedExtraIds = [
+        ...new Set((extras as string[]).map((extra) => extra.trim())),
+      ];
+      if (selectedExtraIds.some((extraId) => !extraId)) {
+        return sendError(res, 'Selected extras are invalid.', 400);
       }
 
       const { data: service, error: svcErr } = await supabase
@@ -90,18 +180,105 @@ export async function handleBookings(
         return sendError(res, 'Selected service is unavailable.', 400);
       }
 
-      let durationHours = typeof rawDuration === 'number' ? rawDuration : 2.0;
+      const bookingSettingKeys = [
+        'booking_extras',
+        'room_calc_base_hours',
+        'room_calc_bed_hours',
+        'room_calc_bath_hours',
+        'room_calc_living_hours',
+        'discount_weekly',
+        'discount_biweekly',
+        'discount_monthly',
+      ];
+      const { data: settingsData, error: settingsError } = await supabase
+        .from('settings')
+        .select('key, value')
+        .in('key', bookingSettingKeys);
+      if (settingsError) {
+        return sendError(
+          res,
+          'Unable to verify the cleaning estimate. Please try again.',
+          503,
+        );
+      }
+
+      const settingsMap: Record<string, unknown> = {};
+      for (const setting of settingsData || []) {
+        settingsMap[setting.key] = setting.value;
+      }
+      const estimateMultipliers = parseDurationMultipliers(settingsMap);
+      const configuredExtras = parseBookingExtras(settingsMap['booking_extras']);
+      if (!estimateMultipliers || !configuredExtras) {
+        return sendError(
+          res,
+          'The cleaning estimate settings are invalid. Please contact us.',
+          503,
+        );
+      }
+
+      const configuredExtraIds = new Set(configuredExtras.map((extra) => extra.id));
+      const unknownExtra = selectedExtraIds.find(
+        (extraId) => !configuredExtraIds.has(extraId),
+      );
+      if (unknownExtra) {
+        return sendError(res, 'One or more selected extras are unavailable.', 400);
+      }
+
+      const minimumDurationHours = calculateRecommendedHours(
+        parsedBedrooms,
+        parsedBathrooms,
+        parsedLivingRooms,
+        selectedExtraIds,
+        estimateMultipliers,
+        configuredExtras,
+      );
+      if (minimumDurationHours > MAX_DURATION_HOURS) {
+        return sendError(
+          res,
+          `This property needs at least ${minimumDurationHours} hours, which is over the ${MAX_DURATION_HOURS}-hour online booking limit. Please contact us for a tailored quote.`,
+          400,
+          { minimumDurationHours },
+        );
+      }
+
+      let durationHours = rawDuration == null ? 2 : Number(rawDuration);
       let timeSlot = rawTimeSlot;
+      if (!Number.isFinite(durationHours)) {
+        return sendError(res, 'Booking duration must be a valid number.', 400);
+      }
+      if (startHour != null && (typeof startHour !== 'string' || !/^(0[7-9]|1[0-7]):(00|30)$/.test(startHour))) {
+        return sendError(res, 'Booking start time is invalid.', 400);
+      }
       if (!timeSlot && startHour) {
         timeSlot = calcTimeSlot(startHour, durationHours);
       } else if (timeSlot) {
+        if (
+          typeof timeSlot !== 'string' ||
+          !/^(0[7-9]|1[0-7]):(00|30)\s*[-–]\s*(0\d|1\d|2[0-9]):(00|30)$/.test(timeSlot)
+        ) {
+          return sendError(res, 'Booking time slot is invalid.', 400);
+        }
         durationHours = calculateDurationHours(timeSlot);
       } else {
         timeSlot = '09:00 - 11:00';
         durationHours = 2.0;
       }
 
-      durationHours = Math.max(1.5, Math.min(12, durationHours));
+      if (durationHours < MIN_DURATION_HOURS || durationHours > MAX_DURATION_HOURS) {
+        return sendError(
+          res,
+          `Booking duration must be between ${MIN_DURATION_HOURS} and ${MAX_DURATION_HOURS} hours.`,
+          400,
+        );
+      }
+      if (durationHours < minimumDurationHours) {
+        return sendError(
+          res,
+          `The selected rooms and extras require at least ${minimumDurationHours} hours.`,
+          400,
+          { minimumDurationHours },
+        );
+      }
       const baseHourlyRate = Number(service.price) || 20.0;
       const basePrice = baseHourlyRate * durationHours;
 
@@ -109,19 +286,9 @@ export async function handleBookings(
       let recurringDiscountPercent = 0;
 
       if (recurringFreq && recurringFreq !== 'none' && recurringFreq !== 'one_off') {
-        const { data: settingsData } = await supabase
-          .from('settings')
-          .select('key, value')
-          .in('key', ['discount_weekly', 'discount_biweekly', 'discount_monthly']);
-
-        const settingsMap: Record<string, number> = {};
-        for (const s of settingsData || []) {
-          settingsMap[s.key] = Number(s.value) || 0;
-        }
-
-        if (recurringFreq === 'weekly') recurringDiscountPercent = settingsMap['discount_weekly'] || 15;
-        else if (recurringFreq === 'biweekly' || recurringFreq === 'fortnightly') recurringDiscountPercent = settingsMap['discount_biweekly'] || 10;
-        else if (recurringFreq === 'monthly') recurringDiscountPercent = settingsMap['discount_monthly'] || 5;
+        if (recurringFreq === 'weekly') recurringDiscountPercent = Number(settingsMap['discount_weekly']) || 15;
+        else if (recurringFreq === 'biweekly' || recurringFreq === 'fortnightly') recurringDiscountPercent = Number(settingsMap['discount_biweekly']) || 10;
+        else if (recurringFreq === 'monthly') recurringDiscountPercent = Number(settingsMap['discount_monthly']) || 5;
       }
 
       const totalDiscountPercent = Math.min(50, discountPercent + recurringDiscountPercent);
@@ -149,11 +316,11 @@ export async function handleBookings(
         payment_status: 'pending',
         notes: notes ? String(notes).trim() : null,
         invoice_number: invoiceNumber,
-        bedrooms: Math.max(1, Number(bedrooms) || 1),
-        bathrooms: Math.max(1, Number(bathrooms) || 1),
-        living_rooms: Math.max(1, Number(livingRooms) || 1),
-        extras: Array.isArray(extras) ? extras : [],
-        property_type: String(propertyType || 'House/Flat').trim(),
+        bedrooms: parsedBedrooms,
+        bathrooms: parsedBathrooms,
+        living_rooms: parsedLivingRooms,
+        extras: selectedExtraIds,
+        property_type: normalizedPropertyType,
         duration_hours: durationHours,
       };
 
@@ -184,11 +351,11 @@ export async function handleBookings(
             discount_percent: recurringDiscountPercent,
             status: 'active',
             notes: notes ? String(notes).trim() : null,
-            bedrooms: Math.max(1, Number(bedrooms) || 1),
-            bathrooms: Math.max(1, Number(bathrooms) || 1),
-            living_rooms: Math.max(1, Number(livingRooms) || 1),
-            extras: Array.isArray(extras) ? extras : [],
-            property_type: String(propertyType || 'House/Flat').trim(),
+            bedrooms: parsedBedrooms,
+            bathrooms: parsedBathrooms,
+            living_rooms: parsedLivingRooms,
+            extras: selectedExtraIds,
+            property_type: normalizedPropertyType,
           });
           if (planErr) {
             console.error('[Recurring Plan Insert Warning]:', planErr);
@@ -221,6 +388,19 @@ export async function handleBookings(
   }
 
   const action = segments[1] || '';
+
+  if (action === 'reschedule' || action === 'photos') {
+    const { data: ownedBooking, error: ownedBookingError } = await supabase
+      .from('bookings')
+      .select('id')
+      .eq('id', bookingId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (ownedBookingError || !ownedBooking) {
+      return sendError(res, 'Booking not found', 404);
+    }
+  }
 
   // ─── 2. /api/bookings/:id/cancel ───────────────────────────────────────────
   if (action === 'cancel') {
@@ -448,7 +628,14 @@ export async function handleBookings(
     if (fetchErr || !booking) return sendError(res, 'Booking not found', 404);
     if (booking.user_id !== user.id) return sendError(res, 'Unauthorized', 403);
 
-    const refundAmount = typeof amount === 'number' ? amount : booking.price;
+    const refundAmount = amount === undefined ? Number(booking.price) : Number(amount);
+    if (
+      !Number.isFinite(refundAmount) ||
+      refundAmount <= 0 ||
+      refundAmount > Number(booking.price)
+    ) {
+      return sendError(res, 'Refund amount must be greater than zero and no more than the booking total.', 400);
+    }
 
     const { data, error } = await supabase
       .from('refund_requests')

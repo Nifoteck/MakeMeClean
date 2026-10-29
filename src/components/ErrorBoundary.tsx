@@ -21,9 +21,8 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // In production, errors are safely absorbed without leaking sensitive stack traces
-    if (process.env.NODE_ENV !== "production") {
-      // Dev diagnostics only
+    if (import.meta.env.DEV) {
+      console.error("Application render error:", error, errorInfo);
     }
   }
 

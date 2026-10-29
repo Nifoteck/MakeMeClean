@@ -1,5 +1,24 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+export {
+  BOOKING_PROPERTY_TYPES,
+  calculateRecommendedHours,
+  calculateDurationHours,
+  calcTimeSlot,
+  DEFAULT_BOOKING_EXTRAS,
+  DEFAULT_DURATION_MULTIPLIERS,
+  DURATION_STEP_HOURS,
+  MAX_DURATION_HOURS,
+  MAX_ROOM_COUNTS,
+  MIN_DURATION_HOURS,
+  parseDurationMultipliers,
+  parseBookingExtras,
+  START_HOURS,
+} from '../../shared/booking.js';
+export type {
+  BookingDurationMultipliers,
+  BookingExtra,
+} from '../../shared/booking.js';
 
 export interface AuthenticatedUser {
   id: string;
@@ -68,8 +87,45 @@ export function getServerSupabase(token?: string): SupabaseClient {
 
 // ─── CORS & Response Utilities ──────────────────────────────────────────────
 export function handleCors(req: VercelRequest, res: VercelResponse): boolean {
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const requestOrigin = req.headers.origin;
+  const configuredOrigins = [
+    getEnv('SITE_URL'),
+    ...getEnv('CORS_ALLOWED_ORIGINS').split(','),
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
+    process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : '',
+    ...getEnv('REPLIT_DOMAINS').split(',').map((domain) => `https://${domain.trim()}`),
+    'http://localhost:5000',
+    'http://127.0.0.1:5000',
+  ];
+  const allowedOrigins = new Set(
+    configuredOrigins.flatMap((value) => {
+      try {
+        return value.trim() ? [new URL(value.trim()).origin] : [];
+      } catch {
+        return [];
+      }
+    }),
+  );
+
+  if (requestOrigin) {
+    let normalizedOrigin: string;
+    try {
+      normalizedOrigin = new URL(requestOrigin).origin;
+    } catch {
+      res.status(403).end();
+      return true;
+    }
+
+    if (!allowedOrigins.has(normalizedOrigin)) {
+      res.status(403).end();
+      return true;
+    }
+
+    res.setHeader('Access-Control-Allow-Origin', normalizedOrigin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   res.setHeader(
     'Access-Control-Allow-Headers',
@@ -105,16 +161,16 @@ export function extractBearerToken(req: VercelRequest): string | null {
 
 export async function verifyAuth(req: VercelRequest): Promise<{
   user: AuthenticatedUser | null;
-  supabase: SupabaseClient;
+  supabase: SupabaseClient | null;
   error?: string;
 }> {
   const token = extractBearerToken(req);
   if (!token) {
-    return { user: null, supabase: getServerSupabase(), error: 'Missing or invalid Authorization header' };
+    return { user: null, supabase: null, error: 'Missing or invalid Authorization header' };
   }
 
-  const supabase = getServerSupabase(token);
   try {
+    const supabase = getServerSupabase(token);
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data?.user) {
       return { user: null, supabase, error: error?.message || 'Unauthorized' };
@@ -128,43 +184,12 @@ export async function verifyAuth(req: VercelRequest): Promise<{
       },
       supabase,
     };
-  } catch (err: any) {
-    return { user: null, supabase, error: err?.message || 'Authentication error' };
+  } catch {
+    return { user: null, supabase: null, error: 'Authentication failed' };
   }
 }
 
 // ─── Business Rules & Pricing Calculations ──────────────────────────────────
-export const START_HOURS = [
-  '07:00', '08:00', '09:00', '10:00', '11:00',
-  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00',
-];
-
-export const MIN_DURATION_HOURS = 1.5;
-export const MAX_DURATION_HOURS = 12.0;
-export const DURATION_STEP_HOURS = 0.5;
-
-export function calcTimeSlot(startHour: string, durationHours: number): string {
-  const [h, m] = startHour.split(':').map(Number);
-  const startMins = (h || 0) * 60 + (m || 0);
-  const endMins = startMins + Math.round(durationHours * 60);
-  const endH = Math.floor(endMins / 60);
-  const endM = endMins % 60;
-  const endStr = `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
-  return `${startHour} – ${endStr}`;
-}
-
-export function calculateDurationHours(timeSlot: string): number {
-  if (!timeSlot) return 2.0;
-  const parts = timeSlot.split(/[-–]/).map((s) => s.trim());
-  if (parts.length < 2) return 2.0;
-  const [startH, startM] = (parts[0] || '09:00').split(':').map(Number);
-  const [endH, endM] = (parts[1] || '11:00').split(':').map(Number);
-  const startMins = (startH || 0) * 60 + (startM || 0);
-  const endMins = (endH || 0) * 60 + (endM || 0);
-  const diff = (endMins - startMins) / 60;
-  return diff > 0 ? diff : 2.0;
-}
-
 export function generateInvoiceNumber(): string {
   const now = new Date();
   const year = now.getFullYear();

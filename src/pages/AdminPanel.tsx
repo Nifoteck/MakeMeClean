@@ -150,7 +150,7 @@ export default function AdminPanel() {
         const sid = assignments[b.id];
         const s = sid ? staff.find((x) => x.id === sid) : null;
         const extrasStr = Array.isArray(b.extras) ? b.extras.join(", ") : "";
-        const layoutStr = `${b.bedrooms || 1} Bed, ${b.bathrooms || 1} Bath, ${b.living_rooms || 1} Living`;
+        const layoutStr = `${b.bedrooms ?? 1} Bed, ${b.bathrooms ?? 1} Bath, ${b.living_rooms ?? 1} Living`;
         return [
           b.invoice_number ?? "",
           b.service_name,
@@ -255,8 +255,8 @@ export default function AdminPanel() {
                 <div className="flex gap-2 text-gray-700 font-medium pt-2 border-t border-gray-200/60">
                   <Home className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                   <span>
-                    {assignModal.booking.bedrooms || 1} Bed · {assignModal.booking.bathrooms || 1} Bath ·{" "}
-                    {assignModal.booking.living_rooms || 1} Living ({assignModal.booking.property_type || "House/Flat"})
+                    {assignModal.booking.bedrooms ?? 1} Bed · {assignModal.booking.bathrooms ?? 1} Bath ·{" "}
+                    {assignModal.booking.living_rooms ?? 1} Living ({assignModal.booking.property_type || "House/Flat"})
                   </span>
                 </div>
                 {Array.isArray(assignModal.booking.extras) && assignModal.booking.extras.length > 0 && (
@@ -464,7 +464,7 @@ export default function AdminPanel() {
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                          {b.bedrooms || 1} Bed · {b.bathrooms || 1} Bath · {b.duration_hours || 2}h
+                          {b.bedrooms ?? 1} Bed · {b.bathrooms ?? 1} Bath · {b.duration_hours || 2}h
                         </span>
                       </div>
                     </div>
@@ -577,7 +577,7 @@ export default function AdminPanel() {
                       <p className="text-gray-600">
                         Layout:{" "}
                         <span className="font-semibold text-gray-800">
-                          {b.bedrooms || 1} Bedrooms · {b.bathrooms || 1} Bathrooms · {b.living_rooms || 1} Living Area
+                          {b.bedrooms ?? 1} Bedrooms · {b.bathrooms ?? 1} Bathrooms · {b.living_rooms ?? 1} Living Area
                         </span>
                       </p>
                       <p className="text-gray-600">

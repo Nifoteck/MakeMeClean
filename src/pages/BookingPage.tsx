@@ -29,10 +29,18 @@ import {
 import { cn, formatCurrency } from "@/lib/utils";
 import {
   FREQ_LABELS,
-  MIN_DURATION_HOURS,
-  MAX_DURATION_HOURS,
+  BOOKING_PROPERTY_TYPES,
+  calculateRecommendedHours,
+  DEFAULT_BOOKING_EXTRAS,
+  DEFAULT_DURATION_MULTIPLIERS,
   DURATION_STEP_HOURS,
+  MAX_DURATION_HOURS,
+  MAX_ROOM_COUNTS,
+  MIN_DURATION_HOURS,
+  parseBookingExtras,
+  parseDurationMultipliers,
 } from "@/lib/constants";
+import type { BookingDurationMultipliers, BookingExtra } from "@/lib/constants";
 import { useServices } from "@/hooks/useServices";
 import { api } from "@/lib/apiClient";
 
@@ -45,51 +53,6 @@ const EMPTY_DISCOUNTS: Record<RecurringFreq, number> = {
   fortnightly: 0,
   monthly: 0,
 };
-
-const DEFAULT_BOOKING_EXTRAS = [
-  {
-    id: "oven",
-    label: "Inside Oven & Grill",
-    icon: "🍳",
-    duration: 0.75,
-    desc: "Deep degreasing & rack soaking",
-  },
-  {
-    id: "fridge",
-    label: "Inside Fridge / Freezer",
-    icon: "❄️",
-    duration: 0.5,
-    desc: "Shelves washed & sanitized",
-  },
-  {
-    id: "windows",
-    label: "Interior Window Glass",
-    icon: "🪟",
-    duration: 0.5,
-    desc: "Internal panes & sills buffed",
-  },
-  {
-    id: "ironing",
-    label: "Ironing & Laundry",
-    icon: "🧺",
-    duration: 1.0,
-    desc: "Shirts, linens & folding",
-  },
-  {
-    id: "carpet",
-    label: "Carpet Stain Extraction",
-    icon: "🧹",
-    duration: 1.0,
-    desc: "Hot water shampoo machine",
-  },
-  {
-    id: "cupboards",
-    label: "Inside Kitchen Cabinets",
-    icon: "📦",
-    duration: 0.75,
-    desc: "Shelves wiped & sanitized",
-  },
-];
 
 function formatDuration(hours: number) {
   if (hours === 0.5) return "30 minutes";
@@ -108,15 +71,12 @@ export default function BookingPage() {
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   // Wecasa-Style Dynamic Room & Extras State (Configurable from Admin)
-  const [availableExtras, setAvailableExtras] = useState(
+  const [availableExtras, setAvailableExtras] = useState<BookingExtra[]>(
     DEFAULT_BOOKING_EXTRAS
   );
-  const [multipliers, setMultipliers] = useState({
-    base: 2.0,
-    bed: 0.5,
-    bath: 0.5,
-    living: 0.5,
-  });
+  const [multipliers, setMultipliers] = useState<BookingDurationMultipliers>(
+    DEFAULT_DURATION_MULTIPLIERS
+  );
 
   const [propertyType, setPropertyType] = useState("House");
   const [bedrooms, setBedrooms] = useState(2);
@@ -126,7 +86,9 @@ export default function BookingPage() {
 
   const [date, setDate] = useState("");
   const [startHour, setStartHour] = useState("09:00");
-  const [durationHours, setDurationHours] = useState(3);
+  const [durationHours, setDurationHours] = useState(() =>
+    calculateRecommendedHours(2, 1, 1, [])
+  );
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [citiesList, setCitiesList] = useState<string[]>(walesCities);
@@ -139,7 +101,7 @@ export default function BookingPage() {
   const [error, setError] = useState("");
   const [bookingId, setBookingId] = useState("");
 
-  // Recalculate recommended duration when rooms or extras change
+  // Keep the customer-facing and API estimate formula identical.
   const computeRecommendedHours = (
     beds: number,
     baths: number,
@@ -148,18 +110,13 @@ export default function BookingPage() {
     mults = multipliers,
     extList = availableExtras
   ) => {
-    let rec = mults.base;
-    if (beds > 1) rec += (beds - 1) * mults.bed;
-    if (baths > 1) rec += (baths - 1) * mults.bath;
-    if (living > 1) rec += (living - 1) * mults.living;
-
-    for (const extraId of extras) {
-      const found = extList.find((e) => e.id === extraId);
-      if (found) rec += Number(found.duration) || 0.5;
-    }
-    return Math.max(
-      MIN_DURATION_HOURS,
-      Math.min(MAX_DURATION_HOURS, Math.round(rec * 2) / 2)
+    return calculateRecommendedHours(
+      beds,
+      baths,
+      living,
+      extras,
+      mults,
+      extList
     );
   };
 
@@ -181,8 +138,77 @@ export default function BookingPage() {
       multipliers,
       availableExtras
     );
-    setDurationHours(recommended);
+    // Automatically clamp or expand duration to at least the recommended hours to prevent under-booking
+    setDurationHours((current) =>
+      Math.min(MAX_DURATION_HOURS, Math.max(recommended, current))
+    );
   };
+
+  const handlePropertyTypeChange = (
+    nextType: (typeof BOOKING_PROPERTY_TYPES)[number]
+  ) => {
+    setPropertyType(nextType);
+    if (nextType === "Studio") {
+      // Studio is an open-plan living/sleeping layout: 0 separate bedrooms, 1 bath, 1 living area
+      handleRoomChange(0, Math.max(1, bathrooms), 1, selectedExtras);
+    } else if (nextType === "Flat / Apartment") {
+      // Flat typical default: 1 bed, 1 bath, 1 living
+      handleRoomChange(
+        Math.max(1, bedrooms || 1),
+        Math.max(1, bathrooms || 1),
+        Math.max(1, livingRooms || 1),
+        selectedExtras
+      );
+    } else if (nextType === "House") {
+      // House typical default: 2 bed, 1 bath, 1 living
+      handleRoomChange(
+        Math.max(2, bedrooms || 2),
+        Math.max(1, bathrooms || 1),
+        Math.max(1, livingRooms || 1),
+        selectedExtras
+      );
+    } else if (nextType === "HMO / Shared House") {
+      // HMO / private room: 1 private bedroom, 1 bath, 0 or 1 shared living
+      handleRoomChange(
+        1,
+        Math.max(1, bathrooms || 1),
+        Math.min(1, livingRooms),
+        selectedExtras
+      );
+    }
+  };
+
+  const recommendedDurationHours = computeRecommendedHours(
+    bedrooms,
+    bathrooms,
+    livingRooms,
+    selectedExtras
+  );
+  const requiresManualQuote = recommendedDurationHours > MAX_DURATION_HOURS;
+  const isStudio = propertyType === "Studio";
+  const isHmo = propertyType === "HMO / Shared House";
+  const bedroomLabel = isStudio
+    ? "Separate bedrooms"
+    : isHmo
+    ? "Private bedrooms"
+    : "Bedrooms";
+  const bedroomHint = isStudio
+    ? "Count only separate rooms"
+    : isHmo
+    ? "Private rooms to clean"
+    : "Sleep & storage";
+  const bathroomLabel = isHmo ? "Shared bathrooms" : "Bathrooms";
+  const bathroomHint = isHmo ? "Shared shower & WC" : "Shower & WC";
+  const livingAreaLabel = isHmo
+    ? "Shared living areas"
+    : isStudio
+    ? "Main living area"
+    : "Living Areas";
+  const livingAreaHint = isHmo
+    ? "Communal rooms"
+    : isStudio
+    ? "Open-plan room"
+    : "Lounge & dining";
 
   const toggleExtra = (extraId: string) => {
     const updated = selectedExtras.includes(extraId)
@@ -223,10 +249,16 @@ export default function BookingPage() {
         "room_calc_bath_hours",
         "room_calc_living_hours",
       ])
-      .then(({ data }) => {
-        if (!data || data.length === 0) return;
+      .then(({ data, error: settingsError }) => {
+        if (settingsError) {
+          setError(
+            "We couldn't load the cleaning estimate settings. Please try again."
+          );
+          return;
+        }
+
         const map: Record<string, any> = {};
-        for (const row of data) map[row.key] = row.value;
+        for (const row of data || []) map[row.key] = row.value;
 
         setLiveDiscounts({
           none: 0,
@@ -235,24 +267,23 @@ export default function BookingPage() {
           monthly: Number(map["discount_monthly"]) || 0,
         });
 
-        const newMults = {
-          base: Number(map["room_calc_base_hours"]) || 2.0,
-          bed: Number(map["room_calc_bed_hours"]) || 0.5,
-          bath: Number(map["room_calc_bath_hours"]) || 0.5,
-          living: Number(map["room_calc_living_hours"]) || 0.5,
-        };
+        const newMults = parseDurationMultipliers(map);
+        if (!newMults) {
+          setError(
+            "The cleaning estimate settings are invalid. Please contact us."
+          );
+          return;
+        }
         setMultipliers(newMults);
 
-        let parsedExtras = DEFAULT_BOOKING_EXTRAS;
-        if (map["booking_extras"]) {
-          try {
-            const p = JSON.parse(map["booking_extras"]);
-            if (Array.isArray(p) && p.length > 0) {
-              parsedExtras = p;
-              setAvailableExtras(p);
-            }
-          } catch (_) {}
+        const parsedExtras = parseBookingExtras(map["booking_extras"]);
+        if (!parsedExtras) {
+          setError(
+            "The cleaning extras settings are invalid. Please contact us."
+          );
+          return;
         }
+        setAvailableExtras(parsedExtras);
 
         // Recompute initial duration with live admin settings
         const initialRec = computeRecommendedHours(
@@ -263,7 +294,7 @@ export default function BookingPage() {
           newMults,
           parsedExtras
         );
-        setDurationHours(initialRec);
+        setDurationHours(Math.min(MAX_DURATION_HOURS, initialRec));
       });
   }, []);
 
@@ -329,6 +360,17 @@ export default function BookingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !selectedService) return;
+    if (
+      bedrooms === 0 &&
+      bathrooms === 0 &&
+      livingRooms === 0 &&
+      selectedExtras.length === 0
+    ) {
+      setError(
+        "Please select at least one room or specialist extra to be cleaned."
+      );
+      return;
+    }
     if (availableStartHours.length === 0) {
       setError(
         "No future start times are available today. Please choose another date."
@@ -338,6 +380,20 @@ export default function BookingPage() {
     if (durationHours < MIN_DURATION_HOURS) {
       setError(
         `Minimum booking duration is ${formatDuration(MIN_DURATION_HOURS)}.`
+      );
+      return;
+    }
+    if (requiresManualQuote) {
+      setError(
+        `This clean needs more than ${MAX_DURATION_HOURS} hours. Please contact us for a tailored quote.`
+      );
+      return;
+    }
+    if (durationHours < recommendedDurationHours) {
+      setError(
+        `The rooms and extras selected require at least ${formatDuration(
+          recommendedDurationHours
+        )}.`
       );
       return;
     }
@@ -456,7 +512,7 @@ export default function BookingPage() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-1.5 bg-green-50 border border-green-200 text-green-800 text-xs font-semibold px-3 py-1 rounded-full mb-3">
             <Shield className="w-3.5 h-3.5 text-green-600" />
-            £2M Insured · DBS Vetted · Cashless Payment
+            Fully Insured · DBS Vetted · Cashless Payment
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-gray-900">
             Book a Professional Clean
@@ -632,8 +688,9 @@ export default function BookingPage() {
                     Tell us about your home
                   </h3>
                   <p className="text-xs text-gray-500">
-                    We'll automatically calculate the optimal cleaning time
-                    based on room count.
+                    Set any room count to 0 if that room type is not part of the
+                    property. The estimate updates as you change rooms and
+                    extras.
                   </p>
                 </div>
 
@@ -642,23 +699,22 @@ export default function BookingPage() {
                   <label className="text-xs font-bold text-gray-700 block mb-2">
                     Property Type
                   </label>
-                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
-                    {["House", "Flat / Apartment", "Studio / HMO"].map(
-                      (type) => (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setPropertyType(type)}
-                          className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all ${
-                            propertyType === type
-                              ? "bg-green-600 text-white border-green-600 shadow-xs"
-                              : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
-                          }`}
-                        >
-                          {type}
-                        </button>
-                      )
-                    )}
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+                    {BOOKING_PROPERTY_TYPES.map((type) => (
+                      <button
+                        key={type}
+                        type="button"
+                        aria-pressed={propertyType === type}
+                        onClick={() => handlePropertyTypeChange(type)}
+                        className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all ${
+                          propertyType === type
+                            ? "bg-green-600 text-white border-green-600 shadow-xs"
+                            : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100"
+                        }`}
+                      >
+                        {type}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -668,10 +724,11 @@ export default function BookingPage() {
                   <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
                     <div>
                       <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                        <Bed className="w-3.5 h-3.5 text-green-600" /> Bedrooms
+                        <Bed className="w-3.5 h-3.5 text-green-600" />{" "}
+                        {bedroomLabel}
                       </div>
                       <div className="text-[10px] text-gray-400">
-                        Sleep & storage
+                        {bedroomHint}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -679,13 +736,13 @@ export default function BookingPage() {
                         type="button"
                         onClick={() =>
                           handleRoomChange(
-                            Math.max(1, bedrooms - 1),
+                            Math.max(0, bedrooms - 1),
                             bathrooms,
                             livingRooms,
                             selectedExtras
                           )
                         }
-                        disabled={bedrooms <= 1}
+                        disabled={bedrooms <= 0}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Minus className="w-3.5 h-3.5" />
@@ -697,13 +754,13 @@ export default function BookingPage() {
                         type="button"
                         onClick={() =>
                           handleRoomChange(
-                            Math.min(8, bedrooms + 1),
+                            Math.min(MAX_ROOM_COUNTS.bedrooms, bedrooms + 1),
                             bathrooms,
                             livingRooms,
                             selectedExtras
                           )
                         }
-                        disabled={bedrooms >= 8}
+                        disabled={bedrooms >= MAX_ROOM_COUNTS.bedrooms}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -716,10 +773,10 @@ export default function BookingPage() {
                     <div>
                       <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
                         <Bath className="w-3.5 h-3.5 text-green-600" />{" "}
-                        Bathrooms
+                        {bathroomLabel}
                       </div>
                       <div className="text-[10px] text-gray-400">
-                        Shower & WC
+                        {bathroomHint}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -728,12 +785,12 @@ export default function BookingPage() {
                         onClick={() =>
                           handleRoomChange(
                             bedrooms,
-                            Math.max(1, bathrooms - 1),
+                            Math.max(0, bathrooms - 1),
                             livingRooms,
                             selectedExtras
                           )
                         }
-                        disabled={bathrooms <= 1}
+                        disabled={bathrooms <= 0}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Minus className="w-3.5 h-3.5" />
@@ -746,12 +803,12 @@ export default function BookingPage() {
                         onClick={() =>
                           handleRoomChange(
                             bedrooms,
-                            Math.min(6, bathrooms + 1),
+                            Math.min(MAX_ROOM_COUNTS.bathrooms, bathrooms + 1),
                             livingRooms,
                             selectedExtras
                           )
                         }
-                        disabled={bathrooms >= 6}
+                        disabled={bathrooms >= MAX_ROOM_COUNTS.bathrooms}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -763,11 +820,11 @@ export default function BookingPage() {
                   <div className="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-between">
                     <div>
                       <div className="text-xs font-bold text-gray-900 flex items-center gap-1">
-                        <Layers className="w-3.5 h-3.5 text-green-600" /> Living
-                        Areas
+                        <Layers className="w-3.5 h-3.5 text-green-600" />{" "}
+                        {livingAreaLabel}
                       </div>
                       <div className="text-[10px] text-gray-400">
-                        Lounge & dining
+                        {livingAreaHint}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -777,11 +834,11 @@ export default function BookingPage() {
                           handleRoomChange(
                             bedrooms,
                             bathrooms,
-                            Math.max(1, livingRooms - 1),
+                            Math.max(0, livingRooms - 1),
                             selectedExtras
                           )
                         }
-                        disabled={livingRooms <= 1}
+                        disabled={livingRooms <= 0}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Minus className="w-3.5 h-3.5" />
@@ -795,11 +852,14 @@ export default function BookingPage() {
                           handleRoomChange(
                             bedrooms,
                             bathrooms,
-                            Math.min(5, livingRooms + 1),
+                            Math.min(
+                              MAX_ROOM_COUNTS.livingAreas,
+                              livingRooms + 1
+                            ),
                             selectedExtras
                           )
                         }
-                        disabled={livingRooms >= 5}
+                        disabled={livingRooms >= MAX_ROOM_COUNTS.livingAreas}
                         className="w-7 h-7 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 font-bold disabled:opacity-30 hover:bg-gray-100"
                       >
                         <Plus className="w-3.5 h-3.5" />
@@ -820,6 +880,7 @@ export default function BookingPage() {
                         <button
                           key={extra.id}
                           type="button"
+                          aria-pressed={isSelected}
                           onClick={() => toggleExtra(extra.id)}
                           className={`p-3 rounded-2xl text-left border transition-all ${
                             isSelected
@@ -858,21 +919,14 @@ export default function BookingPage() {
                     <div className="text-xs text-gray-700">
                       Recommended for{" "}
                       <strong>
-                        {bedrooms} bed, {bathrooms} bath
+                        {bedrooms} bed, {bathrooms} bath, {livingRooms} living
                       </strong>{" "}
                       {selectedExtras.length > 0 && (
                         <span>+ {selectedExtras.length} extras</span>
                       )}
                       :{" "}
                       <strong>
-                        {formatDuration(
-                          computeRecommendedHours(
-                            bedrooms,
-                            bathrooms,
-                            livingRooms,
-                            selectedExtras
-                          )
-                        )}
+                        {formatDuration(recommendedDurationHours)}
                       </strong>
                     </div>
                   </div>
@@ -886,11 +940,28 @@ export default function BookingPage() {
                       type="button"
                       onClick={() =>
                         setDurationHours((h) =>
-                          Math.max(MIN_DURATION_HOURS, h - DURATION_STEP_HOURS)
+                          Math.max(
+                            Math.min(
+                              recommendedDurationHours,
+                              MAX_DURATION_HOURS
+                            ),
+                            h - DURATION_STEP_HOURS
+                          )
                         )
                       }
-                      disabled={durationHours <= MIN_DURATION_HOURS}
-                      className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-100"
+                      title={
+                        durationHours <=
+                        Math.min(recommendedDurationHours, MAX_DURATION_HOURS)
+                          ? `Minimum recommended duration for your selection is ${formatDuration(
+                              recommendedDurationHours
+                            )}`
+                          : "Decrease duration"
+                      }
+                      disabled={
+                        durationHours <=
+                        Math.min(recommendedDurationHours, MAX_DURATION_HOURS)
+                      }
+                      className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100"
                     >
                       <Minus className="w-3.5 h-3.5" />
                     </button>
@@ -904,6 +975,7 @@ export default function BookingPage() {
                           Math.min(MAX_DURATION_HOURS, h + DURATION_STEP_HOURS)
                         )
                       }
+                      title="Add extra time for a deeper clean"
                       disabled={durationHours >= MAX_DURATION_HOURS}
                       className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 disabled:opacity-30 hover:bg-gray-100"
                     >
@@ -911,6 +983,25 @@ export default function BookingPage() {
                     </button>
                   </div>
                 </div>
+                {durationHours <=
+                  Math.min(recommendedDurationHours, MAX_DURATION_HOURS) && (
+                  <p className="text-[11px] text-gray-500 italic">
+                    Duration locked at minimum{" "}
+                    {formatDuration(recommendedDurationHours)} to ensure our
+                    cleaners have enough time to complete all selected rooms and
+                    extras properly.
+                  </p>
+                )}
+                {requiresManualQuote && (
+                  <p
+                    role="status"
+                    className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-medium text-amber-900"
+                  >
+                    This property and selection need more than{" "}
+                    {MAX_DURATION_HOURS} hours. Please contact us for a tailored
+                    quote rather than shortening the estimated clean.
+                  </p>
+                )}
               </div>
 
               {/* ── 2. Date, Time & Frequency ───────────────────────── */}
@@ -1107,10 +1198,14 @@ export default function BookingPage() {
                   </button>
                   <button
                     type="submit"
-                    disabled={submitting}
+                    disabled={submitting || requiresManualQuote}
                     className="btn-primary py-3 px-8 text-sm font-bold flex-1 sm:flex-none shadow-md shadow-green-600/20"
                   >
-                    {submitting ? "Booking…" : "Confirm Booking"}
+                    {submitting
+                      ? "Booking…"
+                      : requiresManualQuote
+                      ? "Contact us for a quote"
+                      : "Confirm Booking"}
                   </button>
                 </div>
               </div>

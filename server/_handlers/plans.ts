@@ -14,11 +14,12 @@ export async function handlePlans(
 ) {
   const method = (req.method || 'GET').toUpperCase();
   const auth = await verifyAuth(req);
-  if (!auth) {
+  if (!auth.user || !auth.supabase) {
     return sendError(res, 'Authentication required', 401);
   }
 
   const { supabase, user } = auth;
+  if (!supabase || !user) return sendError(res, 'Authentication required', 401);
   const segments = subPath.split('/').filter(Boolean);
   const planId = segments[0] || params.id;
 

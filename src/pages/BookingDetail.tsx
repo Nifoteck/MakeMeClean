@@ -307,13 +307,15 @@ export default function BookingDetail() {
                   </span>
                 }
               />
-              {(booking.bedrooms || booking.bathrooms) && (
+              {(booking.bedrooms != null ||
+                booking.bathrooms != null ||
+                booking.living_rooms != null) && (
                 <InfoRow
                   icon={Home}
                   label="Property Layout"
-                  value={`${booking.bedrooms || 1} Bed · ${
-                    booking.bathrooms || 1
-                  } Bath · ${booking.living_rooms || 1} Living (${
+                  value={`${booking.bedrooms ?? 1} Bed · ${
+                    booking.bathrooms ?? 1
+                  } Bath · ${booking.living_rooms ?? 1} Living (${
                     booking.property_type || "House/Flat"
                   })`}
                 />

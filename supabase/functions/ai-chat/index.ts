@@ -97,9 +97,26 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const messages: { role: string; content: string }[] = body.messages ?? [];
+    const messages: { role: "user" | "assistant"; content: string }[] = Array.isArray(body?.messages)
+      ? body.messages
+          .filter(
+            (message: unknown): message is { role: string; content: string } =>
+              typeof message === "object" &&
+              message !== null &&
+              "role" in message &&
+              "content" in message &&
+              typeof message.role === "string" &&
+              ["user", "assistant"].includes(message.role) &&
+              typeof message.content === "string",
+          )
+          .slice(-10)
+          .map((message: { role: "user" | "assistant"; content: string }) => ({
+            role: message.role,
+            content: message.content.trim().slice(0, 2000),
+          }))
+      : [];
 
-    if (!messages.length || !messages[messages.length - 1]?.content?.trim()) {
+    if (!messages.length || messages[messages.length - 1]?.role !== "user" || !messages[messages.length - 1]?.content) {
       return json(400, { error: "No message provided" });
     }
 
@@ -114,7 +131,7 @@ Deno.serve(async (req) => {
         model: "llama-3.3-70b-versatile",
         messages: [
           { role: "system", content: `${SYSTEM_PROMPT}\n\n${SITE_LINKS}` },
-          ...messages.slice(-10), // keep last 10 messages for context
+          ...messages,
         ],
         max_tokens: 300,
         temperature: 0.7,

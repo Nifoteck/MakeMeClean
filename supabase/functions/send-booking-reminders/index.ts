@@ -22,8 +22,22 @@ function json(status: number, body: unknown) {
   });
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 function buildReminderHtml(customerName: string, serviceName: string, date: string, timeSlot: string, hoursLabel: string) {
   const font = "ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif";
+  const safeCustomerName = escapeHtml(customerName);
+  const safeServiceName = escapeHtml(serviceName);
+  const safeDate = escapeHtml(date);
+  const safeTimeSlot = escapeHtml(timeSlot);
+  const safeHoursLabel = escapeHtml(hoursLabel);
   return `<!doctype html>
 <html>
 <head><meta charset="utf-8"/><meta name="viewport" content="width=device-width"/></head>
@@ -40,13 +54,13 @@ function buildReminderHtml(customerName: string, serviceName: string, date: stri
         </tr>
         <tr>
           <td style="padding:24px 24px;font-family:${font}">
-            <p style="margin:0 0 16px;font-size:14px;color:#374151">Hi ${customerName},</p>
+            <p style="margin:0 0 16px;font-size:14px;color:#374151">Hi ${safeCustomerName},</p>
             <p style="margin:0 0 20px;font-size:14px;line-height:1.7;color:#374151">
-              This is a friendly reminder that your <strong>${serviceName}</strong> cleaning is coming up in <strong>${hoursLabel}</strong>.
+              This is a friendly reminder that your <strong>${safeServiceName}</strong> cleaning is coming up in <strong>${safeHoursLabel}</strong>.
             </p>
             <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:16px;margin:20px 0">
-              <p style="margin:0 0 8px;font-size:13px;color:#374151"><strong>📅 Date:</strong> ${date}</p>
-              <p style="margin:0;font-size:13px;color:#374151"><strong>⏰ Time:</strong> ${timeSlot}</p>
+              <p style="margin:0 0 8px;font-size:13px;color:#374151"><strong>📅 Date:</strong> ${safeDate}</p>
+              <p style="margin:0;font-size:13px;color:#374151"><strong>⏰ Time:</strong> ${safeTimeSlot}</p>
             </div>
             <p style="margin:16px 0;font-size:14px;color:#374151">
               Please ensure someone is home during the scheduled time. If you need to reschedule or have any questions, log in to your account or contact us.
@@ -67,12 +81,19 @@ function buildReminderHtml(customerName: string, serviceName: string, date: stri
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: corsHeaders() });
+  if (req.method !== "POST") return json(405, { error: "Method not allowed" });
 
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const brevoKey    = Deno.env.get("BREVO_API_KEY");
 
+    if (!supabaseUrl || !serviceKey) {
+      return json(500, { error: "Server misconfiguration" });
+    }
+    if (req.headers.get("authorization") !== `Bearer ${serviceKey}`) {
+      return json(401, { error: "Unauthorized" });
+    }
     if (!brevoKey) return json(500, { error: "Brevo not configured" });
 
     const sb = createClient(supabaseUrl, serviceKey);

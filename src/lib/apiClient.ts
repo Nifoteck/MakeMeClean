@@ -1,4 +1,10 @@
 import { supabase } from './supabase';
+import {
+  DURATION_STEP_HOURS,
+  MAX_DURATION_HOURS,
+  MIN_DURATION_HOURS,
+  START_HOURS,
+} from "../../shared/booking";
 
 export interface ApiResponse<T = any> {
   ok: boolean;
@@ -19,17 +25,24 @@ export class ApiError extends Error {
   }
 }
 
+function canUseSupabaseFallback(error: unknown): boolean {
+  return (
+    error instanceof TypeError ||
+    (error instanceof ApiError && error.status === 404)
+  );
+}
+
 async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData?.session?.access_token;
 
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
-  };
+  const headers = new Headers(options.headers);
+  if (options.body && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
 
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   const res = await fetch(endpoint, {
@@ -54,7 +67,8 @@ export const api = {
   getConfig: async () => {
     try {
       return await request('/api/config');
-    } catch {
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
       return {
         apiVersion: '2.2.0',
         siteUrl: window.location.origin,
@@ -67,8 +81,10 @@ export const api = {
   getSettings: async () => {
     try {
       return await request<Record<string, string>>('/api/settings');
-    } catch {
-      const { data } = await supabase.from('settings').select('key, value');
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
+      const { data, error: queryError } = await supabase.from('settings').select('key, value');
+      if (queryError) throw new ApiError(queryError.message, 500);
       const settingsMap: Record<string, string> = {};
       (data || []).forEach((row: any) => {
         if (row.key) settingsMap[row.key] = row.value || '';
@@ -80,12 +96,14 @@ export const api = {
   getServiceCities: async () => {
     try {
       return await request<string[]>('/api/service-cities');
-    } catch {
-      const { data } = await supabase
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
+      const { data, error: queryError } = await supabase
         .from('service_cities')
         .select('name')
         .eq('is_active', true)
         .order('name', { ascending: true });
+      if (queryError) throw new ApiError(queryError.message, 500);
       return (data || []).map((c: any) => c.name);
     }
   },
@@ -93,12 +111,14 @@ export const api = {
   getServices: async () => {
     try {
       return await request<any[]>('/api/services');
-    } catch {
-      const { data } = await supabase
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
+      const { data, error: queryError } = await supabase
         .from('services')
         .select('*')
         .eq('active', true)
         .order('price', { ascending: true });
+      if (queryError) throw new ApiError(queryError.message, 500);
       return data || [];
     }
   },
@@ -114,7 +134,8 @@ export const api = {
         loyalty: { points: number; tier: string; discount_percent: number; next_tier_points: number };
         unread_notifications_count: number;
       }>('/api/dashboard');
-    } catch {
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new ApiError('Unauthorized', 401);
 
@@ -124,6 +145,10 @@ export const api = {
         supabase.from('services').select('*').eq('active', true),
         supabase.from('notifications').select('*').eq('user_id', user.id).eq('read', false),
       ]);
+      const queryError = [profileRes, bookingsRes, servicesRes, notifsRes].find(
+        (result) => result.error,
+      )?.error;
+      if (queryError) throw new ApiError(queryError.message, 500);
 
       const bookings = bookingsRes.data || [];
       const counts = {
@@ -175,12 +200,17 @@ export const api = {
         maxDurationHours: number;
         durationStepHours: number;
       }>('/api/booking-options');
-    } catch {
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
       const [servicesRes, settingsRes, citiesRes] = await Promise.all([
         supabase.from('services').select('*').eq('active', true).order('price', { ascending: true }),
         supabase.from('settings').select('key, value'),
         supabase.from('service_cities').select('name').eq('is_active', true).order('name', { ascending: true }),
       ]);
+      const queryError = [servicesRes, settingsRes, citiesRes].find(
+        (result) => result.error,
+      )?.error;
+      if (queryError) throw new ApiError(queryError.message, 500);
 
       const discounts: Record<string, number> = {};
       (settingsRes.data || []).forEach((row: any) => {
@@ -193,10 +223,10 @@ export const api = {
         services: servicesRes.data || [],
         cities: (citiesRes.data || []).map((c: any) => c.name),
         discounts,
-        startHours: ['08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'],
-        minDurationHours: 2,
-        maxDurationHours: 8,
-        durationStepHours: 0.5,
+        startHours: [...START_HOURS],
+        minDurationHours: MIN_DURATION_HOURS,
+        maxDurationHours: MAX_DURATION_HOURS,
+        durationStepHours: DURATION_STEP_HOURS,
       };
     }
   },
@@ -230,7 +260,8 @@ export const api = {
       return await request<any[]>(
         status && status !== 'all' ? `/api/bookings?status=${encodeURIComponent(status)}` : '/api/bookings'
       );
-    } catch {
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new ApiError('Unauthorized', 401);
 
@@ -238,8 +269,8 @@ export const api = {
       if (status && status !== 'all') {
         query = query.eq('status', status);
       }
-      const { data, error } = await query;
-      if (error) throw new ApiError(error.message, 500);
+      const { data, error: queryError } = await query;
+      if (queryError) throw new ApiError(queryError.message, 500);
       return data || [];
     }
   },
@@ -247,9 +278,10 @@ export const api = {
   getBooking: async (id: string) => {
     try {
       return await request<any>(`/api/bookings/${id}`);
-    } catch {
-      const { data, error } = await supabase.from('bookings').select('*').eq('id', id).single();
-      if (error) throw new ApiError(error.message, 404);
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
+      const { data, error: queryError } = await supabase.from('bookings').select('*').eq('id', id).single();
+      if (queryError) throw new ApiError(queryError.message, 404);
       return data;
     }
   },
@@ -311,15 +343,16 @@ export const api = {
   getPlans: async () => {
     try {
       return await request<any[]>('/api/plans');
-    } catch {
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new ApiError('Unauthorized', 401);
-      const { data, error } = await supabase
+      const { data, error: queryError } = await supabase
         .from('recurring_plans')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      if (error) throw new ApiError(error.message, 500);
+      if (queryError) throw new ApiError(queryError.message, 500);
       return data || [];
     }
   },
@@ -340,14 +373,16 @@ export const api = {
   getLoyalty: async () => {
     try {
       return await request<any>('/api/loyalty');
-    } catch {
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new ApiError('Unauthorized', 401);
-      const { data: profile } = await supabase
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('id, full_name, loyalty_points, created_at')
         .eq('id', user.id)
         .single();
+      if (profileError) throw new ApiError(profileError.message, 500);
       const points = profile?.loyalty_points || 0;
       let tier = 'Bronze';
       let discount_percent = 0;
@@ -379,15 +414,16 @@ export const api = {
   getNotifications: async () => {
     try {
       return await request<any[]>('/api/notifications');
-    } catch {
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new ApiError('Unauthorized', 401);
-      const { data, error } = await supabase
+      const { data, error: queryError } = await supabase
         .from('notifications')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      if (error) throw new ApiError(error.message, 500);
+      if (queryError) throw new ApiError(queryError.message, 500);
       return data || [];
     }
   },
@@ -398,14 +434,16 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ notificationId }),
       });
-    } catch {
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) throw new ApiError('Unauthorized', 401);
       let query = supabase.from('notifications').update({ read: true }).eq('user_id', user.id);
       if (notificationId) {
         query = query.eq('id', notificationId);
       }
-      await query;
+      const { error: queryError } = await query;
+      if (queryError) throw new ApiError(queryError.message, 500);
       return { success: true };
     }
   },

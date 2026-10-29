@@ -3,6 +3,7 @@ import { CheckCircle, Upload, X, MapPin, Clock, PoundSterling, Heart, Users, Lea
 import { supabase } from "@/lib/supabase";
 import { sendOtp, verifyOtp } from "@/lib/otp";
 import { useAuth } from "@/hooks/useAuth";
+import { MAX_APPLICATION_DOCUMENT_SIZE_BYTES } from "@/lib/applicationDocuments";
 
 const ROLES = [
   "Domestic Cleaner",
@@ -50,7 +51,7 @@ const FILE_FIELDS: FileEntry[] = [
   { label: "DBS Certificate (optional)", key: "dbs_cert", required: false, accept: ".pdf,.jpg,.jpeg,.png" },
 ];
 
-const DRAFT_KEY = (email: string) => `careers-draft-${email.toLowerCase()}`;
+const DRAFT_KEY = (email: string) => `careers-draft-${email.trim().toLowerCase()}`;
 
 type Step = 1 | 2 | 3 | 4;
 type EmailStage = "entry" | "verify" | "verified";
@@ -125,6 +126,30 @@ const defaultForm = {
   declare_terms: false,
 };
 
+function createSafeDraftForm(source: Partial<typeof defaultForm>) {
+  return {
+    role: typeof source.role === "string" ? source.role : defaultForm.role,
+    employment_type: typeof source.employment_type === "string" ? source.employment_type : "",
+    available_days: Array.isArray(source.available_days)
+      ? source.available_days.filter((value): value is string => typeof value === "string")
+      : [],
+    available_hours: typeof source.available_hours === "string" ? source.available_hours : "",
+    earliest_start: typeof source.earliest_start === "string" ? source.earliest_start : "",
+    years_experience: typeof source.years_experience === "string" ? source.years_experience : "",
+    experience_types: Array.isArray(source.experience_types)
+      ? source.experience_types.filter((value): value is string => typeof value === "string")
+      : [],
+    own_equipment: typeof source.own_equipment === "string" ? source.own_equipment : "",
+    driving_licence: typeof source.driving_licence === "string" ? source.driving_licence : "",
+    own_transport: typeof source.own_transport === "string" ? source.own_transport : "",
+    notice_period: typeof source.notice_period === "string" ? source.notice_period : "",
+    current_employer: typeof source.current_employer === "string" ? source.current_employer : "",
+    current_job_title: typeof source.current_job_title === "string" ? source.current_job_title : "",
+    reason_for_leaving: typeof source.reason_for_leaving === "string" ? source.reason_for_leaving : "",
+    heard_about_us: typeof source.heard_about_us === "string" ? source.heard_about_us : "",
+  };
+}
+
 export default function Careers() {
   const { user, loading } = useAuth();
   const [step, setStep] = useState<Step>(1);
@@ -169,25 +194,54 @@ export default function Careers() {
       return updated;
     });
 
-  const saveDraft = (data: typeof form) => {
+  const saveDraft = (data: typeof form, draftStep = step) => {
     if (!data.email) return;
     try {
-      localStorage.setItem(DRAFT_KEY(data.email), JSON.stringify({ form: data, step }));
+      sessionStorage.setItem(
+        DRAFT_KEY(data.email),
+        JSON.stringify({ form: createSafeDraftForm(data), step: draftStep }),
+      );
     } catch {}
   };
 
   const loadDraft = (email: string) => {
     try {
-      const raw = localStorage.getItem(DRAFT_KEY(email));
+      const key = DRAFT_KEY(email);
+      let raw = sessionStorage.getItem(key);
+      let legacy = false;
+      if (!raw) {
+        raw = localStorage.getItem(key);
+        legacy = Boolean(raw);
+      }
       if (!raw) return null;
-      return JSON.parse(raw) as { form: typeof form; step: Step };
+      const parsed = JSON.parse(raw) as {
+        form?: Partial<typeof form>;
+        step?: number;
+      };
+      if (!parsed.form || typeof parsed.form !== "object") return null;
+
+      const draftStep = [1, 2, 3, 4].includes(Number(parsed.step))
+        ? (Number(parsed.step) as Step)
+        : 1;
+      return {
+        form: {
+          ...defaultForm,
+          email: email.trim().toLowerCase(),
+          ...createSafeDraftForm(parsed.form),
+        },
+        step: draftStep,
+        legacy,
+      };
     } catch {
       return null;
     }
   };
 
   const clearDraft = (email: string) => {
-    try { localStorage.removeItem(DRAFT_KEY(email)); } catch {}
+    try {
+      sessionStorage.removeItem(DRAFT_KEY(email));
+      localStorage.removeItem(DRAFT_KEY(email));
+    } catch {}
   };
 
   useEffect(() => {
@@ -303,6 +357,12 @@ export default function Careers() {
     if (draft) {
       setForm(draft.form);
       setStep(draft.step);
+      if (draft.legacy) {
+        try {
+          localStorage.removeItem(DRAFT_KEY(form.email));
+          saveDraft(draft.form, draft.step);
+        } catch {}
+      }
     }
   };
 
@@ -395,6 +455,7 @@ export default function Careers() {
     }
     setSubmitting(true);
     setError("");
+    const uploadedPaths: string[] = [];
     try {
       if (!user) throw new Error("Please log in to apply.");
       if (!activeRecruitment?.id) throw new Error("Recruitment is currently closed.");
@@ -412,17 +473,32 @@ export default function Careers() {
       const uploadedUrls: Record<string, string> = {};
       for (const field of FILE_FIELDS) {
         const file = files[field.key];
-        if (!file) continue;
-        const ext = file.name.includes(".") ? file.name.split(".").pop()!.toLowerCase() : "bin";
-        const safeName = `${form.first_name}${form.last_name}`.replace(/[^a-zA-Z0-9]/g, "");
-        const now = new Date();
-        const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,"0")}${String(now.getDate()).padStart(2,"0")}_${String(now.getHours()).padStart(2,"0")}${String(now.getMinutes()).padStart(2,"0")}${String(now.getSeconds()).padStart(2,"0")}`;
-        const path = `applications/${safeName}_${field.key}_${dateStr}.${ext}`;
-        const { error: uploadErr } = await supabase.storage.from("applications").upload(path, file);
-        if (!uploadErr) {
-          const { data } = supabase.storage.from("applications").getPublicUrl(path);
-          uploadedUrls[field.key] = data.publicUrl;
+        if (!file) {
+          if (field.required) throw new Error(`${field.label.replace(/\s*\*$/, "")} is required.`);
+          continue;
         }
+
+        const extension = file.name.includes(".")
+          ? file.name.split(".").pop()!.toLowerCase()
+          : "";
+        const allowedExtensions = field.accept
+          .split(",")
+          .map((value) => value.trim().replace(/^\./, "").toLowerCase());
+        if (!allowedExtensions.includes(extension)) {
+          throw new Error(`Choose a supported file type for ${field.label.replace(/\s*\*$/, "")}.`);
+        }
+        if (file.size > MAX_APPLICATION_DOCUMENT_SIZE_BYTES) {
+          throw new Error("Each document must be 10 MB or smaller.");
+        }
+
+        const path = `${user.id}/${field.key}_${crypto.randomUUID()}.${extension}`;
+        const { error: uploadErr } = await supabase.storage
+          .from("applications")
+          .upload(path, file, { contentType: file.type || undefined, upsert: false });
+        if (uploadErr) throw new Error(`Unable to upload ${field.label.replace(/\s*\*$/, "")}.`);
+
+        uploadedPaths.push(path);
+        uploadedUrls[field.key] = path;
       }
 
       const { error: insertErr } = await supabase.from("job_applications").insert({
@@ -502,6 +578,9 @@ export default function Careers() {
       setSubmitted(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err: unknown) {
+      if (uploadedPaths.length) {
+        await supabase.storage.from("applications").remove(uploadedPaths);
+      }
       setError((err as Error).message ?? "Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
@@ -773,7 +852,7 @@ export default function Careers() {
               {hasDraft && (
                 <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-lg px-3 py-2 mt-2 flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-                  We found a saved draft for this email. Verify your email to continue where you left off.
+                  Only work preferences are saved in this tab. Verify your email to continue; private details must be entered again.
                 </p>
               )}
             </div>

@@ -23,6 +23,7 @@ import AdminLayout from "@/components/admin/AdminLayout";
 import { useSettings } from "@/hooks/useSettings";
 import { ApplicationStatus, JobApplication } from "@/types";
 import { APPLICATION_STATUS_STYLES } from "@/lib/constants";
+import { getApplicationDocumentPath } from "@/lib/applicationDocuments";
 
 type ExtendedJobApplication = JobApplication & {
   date_of_birth?: string | null;
@@ -135,23 +136,64 @@ export default function AdminApplicantDetail() {
 
   useEffect(() => {
     if (!isAdmin || !id) return;
+    let active = true;
+
     (async () => {
-      const { data, error: err } = await supabase
-        .from("job_applications")
-        .select("*")
-        .eq("id", id)
-        .single();
-      if (err || !data) {
-        setError("Applicant not found.");
-        setFetching(false);
-        return;
+      try {
+        const { data, error: err } = await supabase
+          .from("job_applications")
+          .select("*")
+          .eq("id", id)
+          .single();
+        if (err || !data) throw new Error("Applicant not found.");
+
+        const record = data as ExtendedJobApplication;
+        const documentFields = [
+          "cv_url",
+          "id_proof_url",
+          "rtw_doc_url",
+          "dbs_cert_url",
+        ] as const;
+        const documentLinks: Partial<
+          Record<(typeof documentFields)[number], string | null>
+        > = {};
+
+        await Promise.all(
+          documentFields.map(async (field) => {
+            const path = getApplicationDocumentPath(record[field]);
+            if (!path) {
+              documentLinks[field] = null;
+              return;
+            }
+
+            const { data: signed, error } = await supabase.storage
+              .from("applications")
+              .createSignedUrl(path, 10 * 60);
+            documentLinks[field] = error ? null : signed?.signedUrl ?? null;
+          }),
+        );
+
+        if (!active) return;
+        const applicantRecord = { ...record, ...documentLinks };
+        setApplicant(applicantRecord);
+        setSelectedStatus(applicantRecord.status);
+        setNotes(applicantRecord.admin_notes ?? "");
+      } catch (loadError) {
+        if (active) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Unable to load applicant information.",
+          );
+        }
+      } finally {
+        if (active) setFetching(false);
       }
-      const record = data as ExtendedJobApplication;
-      setApplicant(record);
-      setSelectedStatus(record.status);
-      setNotes(record.admin_notes ?? "");
-      setFetching(false);
     })();
+
+    return () => {
+      active = false;
+    };
   }, [isAdmin, id]);
 
   const openEmailModal = () => {

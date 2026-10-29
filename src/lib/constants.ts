@@ -66,8 +66,19 @@ export const FREQ_LABELS_SHORT: Record<string, string> = {
   monthly:     "Monthly",
 };
 
-// ─── Booking Durations ────────────────────────────────────────────────────────
-
-export const MIN_DURATION_HOURS = 1.5;
-export const MAX_DURATION_HOURS = 12;
-export const DURATION_STEP_HOURS = 0.5;
+export {
+  BOOKING_PROPERTY_TYPES,
+  calculateRecommendedHours,
+  DEFAULT_BOOKING_EXTRAS,
+  DEFAULT_DURATION_MULTIPLIERS,
+  MAX_ROOM_COUNTS,
+  MIN_DURATION_HOURS,
+  MAX_DURATION_HOURS,
+  DURATION_STEP_HOURS,
+  parseDurationMultipliers,
+  parseBookingExtras,
+} from "../../shared/booking";
+export type {
+  BookingDurationMultipliers,
+  BookingExtra,
+} from "../../shared/booking";

@@ -35,6 +35,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     switch (route) {
+      case 'health':
+        return res.status(200).json({ status: 'ok', time: new Date().toISOString() });
       case 'config':
         return await handleConfig(req, res);
       case 'services':

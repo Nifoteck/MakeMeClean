@@ -7,18 +7,29 @@ export async function handleContact(req: VercelRequest, res: VercelResponse) {
 
   try {
     const body = req.body || {};
-    const name = (body.name || '').trim();
-    const email = (body.email || '').trim();
-    const phone = (body.phone || '').trim();
-    const subject = (body.subject || 'Website Inquiry').trim();
-    const message = (body.message || '').trim();
+    const readString = (value: unknown) =>
+      typeof value === 'string' ? value.trim() : '';
+    const name = readString(body.name);
+    const email = readString(body.email);
+    const phone = readString(body.phone);
+    const subject = readString(body.subject) || 'Website Inquiry';
+    const message = readString(body.message);
 
     if (!name || !email || !message) {
       return sendError(res, 'Please provide name, email, and message.', 400);
     }
+    if (
+      name.length > 160 ||
+      email.length > 254 ||
+      phone.length > 40 ||
+      subject.length > 160 ||
+      message.length > 5000
+    ) {
+      return sendError(res, 'One or more contact fields exceed the allowed length.', 400);
+    }
 
     const supabase = getServerSupabase();
-    const { data: inserted, error } = await supabase
+    const { error } = await supabase
       .from('contact_messages')
       .insert({
         name,
@@ -26,10 +37,8 @@ export async function handleContact(req: VercelRequest, res: VercelResponse) {
         phone: phone || null,
         subject,
         message,
-        read: false,
-      })
-      .select()
-      .single();
+        status: 'new',
+      });
 
     if (error) {
       return sendError(res, error.message, 500);
@@ -59,7 +68,6 @@ export async function handleContact(req: VercelRequest, res: VercelResponse) {
 
     return sendSuccess(res, {
       message: 'Thank you for reaching out. We have received your inquiry.',
-      id: inserted?.id,
     }, 201);
   } catch (err: any) {
     return sendError(res, err?.message || 'Failed to submit contact message', 500);
