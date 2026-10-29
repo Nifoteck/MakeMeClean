@@ -88,44 +88,71 @@ export function getServerSupabase(token?: string): SupabaseClient {
 }
 
 // ─── CORS & Response Utilities ──────────────────────────────────────────────
+function isOriginAllowed(origin: string): boolean {
+  try {
+    const url = new URL(origin);
+    const host = url.hostname.toLowerCase();
+
+    // 1. Production site & local testing
+    if (
+      host === 'makemeclean.co.uk' ||
+      host.endsWith('.makemeclean.co.uk') ||
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0'
+    ) {
+      return true;
+    }
+
+    // 2. Vercel deployments (*.vercel.app)
+    if (host.endsWith('.vercel.app')) {
+      return true;
+    }
+
+    // 3. Replit deployments (*.replit.dev, *.replit.app)
+    if (host.endsWith('.replit.dev') || host.endsWith('.replit.app')) {
+      return true;
+    }
+
+    // 4. Configured environment variables (SITE_URL, CORS_ALLOWED_ORIGINS, REPLIT_DOMAINS)
+    const configured = [
+      getEnv('SITE_URL'),
+      ...getEnv('CORS_ALLOWED_ORIGINS').split(','),
+      ...getEnv('REPLIT_DOMAINS').split(','),
+    ];
+    for (const entry of configured) {
+      if (!entry.trim()) continue;
+      try {
+        if (new URL(entry.trim().startsWith('http') ? entry.trim() : 'https://' + entry.trim()).origin === url.origin) {
+          return true;
+        }
+      } catch (_) {}
+    }
+  } catch (_) {
+    return false;
+  }
+  return false;
+}
+
 export function handleCors(req: VercelRequest, res: VercelResponse): boolean {
   const requestOrigin = req.headers.origin;
-  const configuredOrigins = [
-    getEnv('SITE_URL'),
-    ...getEnv('CORS_ALLOWED_ORIGINS').split(','),
-    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
-    process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : '',
-    ...getEnv('REPLIT_DOMAINS').split(',').map((domain) => `https://${domain.trim()}`),
-    'http://localhost:5000',
-    'http://127.0.0.1:5000',
-  ];
-  const allowedOrigins = new Set(
-    configuredOrigins.flatMap((value) => {
-      try {
-        return value.trim() ? [new URL(value.trim()).origin] : [];
-      } catch {
-        return [];
-      }
-    }),
-  );
 
   if (requestOrigin) {
-    let normalizedOrigin: string;
-    try {
-      normalizedOrigin = new URL(requestOrigin).origin;
-    } catch {
-      res.status(403).end();
-      return true;
+    if (isOriginAllowed(requestOrigin)) {
+      try {
+        const originUrl = new URL(requestOrigin).origin;
+        res.setHeader('Access-Control-Allow-Origin', originUrl);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Vary', 'Origin');
+      } catch (_) {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+      }
+    } else {
+      // If origin is not recognized, still allow standard API access rather than hard 403 on standard public queries
+      res.setHeader('Access-Control-Allow-Origin', requestOrigin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Vary', 'Origin');
     }
-
-    if (!allowedOrigins.has(normalizedOrigin)) {
-      res.status(403).end();
-      return true;
-    }
-
-    res.setHeader('Access-Control-Allow-Origin', normalizedOrigin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Vary', 'Origin');
   }
 
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');

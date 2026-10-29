@@ -368,11 +368,26 @@ export const api = {
     }),
 
   // ─── Contact, Loyalty, Notifications ──────────────────────────────────────
-  sendContactMessage: (payload: { name: string; email: string; phone?: string; subject?: string; message: string }) =>
-    request<any>('/api/contact', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    }),
+  sendContactMessage: async (payload: { name: string; email: string; phone?: string; subject?: string; message: string }) => {
+    try {
+      return await request<any>('/api/contact', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+    } catch (error) {
+      if (!canUseSupabaseFallback(error)) throw error;
+      const { error: insertError } = await supabase.from('contact_messages').insert({
+        name: payload.name,
+        email: payload.email,
+        phone: payload.phone || null,
+        subject: payload.subject || 'Website Inquiry',
+        message: payload.message,
+        status: 'new',
+      });
+      if (insertError) throw new ApiError(insertError.message, 500);
+      return { success: true };
+    }
+  },
 
   getLoyalty: async () => {
     try {
