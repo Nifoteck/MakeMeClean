@@ -96,15 +96,14 @@ export default function ServiceDetail() {
 
   const currentDurationObj =
     config.durationGuide[selectedPropIndex] || config.durationGuide[0];
-  const approxHours =
-    selectedPropIndex === 0
-      ? 2
-      : selectedPropIndex === 1
-      ? 3
-      : selectedPropIndex === 2
-      ? 4
-      : 5;
+  const approxHours = currentDurationObj?.approxHours ?? (selectedPropIndex === 0 ? 2 : selectedPropIndex === 1 ? 3 : selectedPropIndex === 2 ? 4 : 5);
   const estimatedCost = hourlyRate * approxHours;
+  const bookingParams = new URLSearchParams();
+  if (currentDurationObj?.bedrooms != null) bookingParams.set("bedrooms", String(currentDurationObj.bedrooms));
+  if (currentDurationObj?.bathrooms != null) bookingParams.set("bathrooms", String(currentDurationObj.bathrooms));
+  if (currentDurationObj?.living != null) bookingParams.set("livingRooms", String(currentDurationObj.living));
+  if (currentDurationObj?.propertyType) bookingParams.set("propertyType", currentDurationObj.propertyType);
+  const bookLink = /book/;
 
   return (
     <div className="min-h-screen bg-gray-50/60 pb-20">

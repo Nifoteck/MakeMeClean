@@ -1,7 +1,7 @@
 export interface ServiceDetailConfig {
   tagline: string;
   badge?: string;
-  durationGuide: { property: string; hours: string; description: string }[];
+  durationGuide: { property: string; hours: string; approxHours?: number; bedrooms?: number; bathrooms?: number; living?: number; propertyType?: string; description: string }[];
   inclusions: string[];
   exclusions: string[];
   suppliesInfo: {
@@ -16,10 +16,10 @@ export const defaultServiceDetail: ServiceDetailConfig = {
   tagline: "Professional, vetted, and fully insured cleaning tailored to your home.",
   badge: "Top Rated in Wales",
   durationGuide: [
-    { property: "1 Bedroom Flat", hours: "2 – 2.5 hours", description: "Ideal for routine tidy, kitchen & bathroom deep sanitisation" },
-    { property: "2 Bedroom House", hours: "3 – 3.5 hours", description: "Comprehensive room-by-room cleaning including floors and surfaces" },
-    { property: "3 Bedroom House", hours: "4 – 4.5 hours", description: "Full deep clean across all bedrooms, reception areas, and bathrooms" },
-    { property: "4+ Bedroom House", hours: "5+ hours", description: "Complete end-to-end multi-storey home cleaning" },
+    { property: "Studio / HMO", hours: "1.5 – 2 hours", approxHours: 2, description: "Compact open-plan or private room clean with bathroom & kitchen refresh" },
+    { property: "1–2 Bed Flat", hours: "2.5 – 3 hours", approxHours: 3, description: "Full apartment clean including lounge, kitchen, bedrooms and bathroom" },
+    { property: "3 Bed House", hours: "3.5 – 4.5 hours", approxHours: 4, description: "Multi-storey home cleaning across bedrooms, stairs, reception and bathrooms" },
+    { property: "4+ Bed House", hours: "5+ hours", approxHours: 5, description: "Complete thorough clean for large family homes across all living spaces" },
   ],
   inclusions: [
     "Full sanitisation of kitchen worktops, hobs & splashbacks",
@@ -102,6 +102,12 @@ const serviceCustomConfigs: Record<string, Partial<ServiceDetailConfig>> = {
     ],
   },
   deep: {
+    durationGuide: [
+      { property: "Studio / 1 Bed Flat", hours: "3 – 3.5 hours", approxHours: 3, bedrooms: 1, bathrooms: 1, living: 1, propertyType: "Flat / Apartment", description: "Intensive limescale removal, grout scrubbing, skirting dusting & deep sanitisation" },
+      { property: "2 Bed House", hours: "4 – 5 hours", approxHours: 4.5, bedrooms: 2, bathrooms: 1, living: 1, propertyType: "House", description: "Top-to-bottom scrub of high-use kitchens, bathrooms and all living areas" },
+      { property: "3 Bed House", hours: "5.5 – 6.5 hours", approxHours: 6, bedrooms: 3, bathrooms: 2, living: 1, propertyType: "House", description: "Seasonal spring reset tackling accumulated grime, extractor filters and tiles" },
+      { property: "4+ Bed House", hours: "7+ hours", approxHours: 7.5, bedrooms: 4, bathrooms: 2, living: 2, propertyType: "House", description: "Complete whole-home deep refresh across all floors and multiple bathrooms" },
+    ],
     tagline: "An intensive top-to-bottom refresh eliminating accumulated dirt, limescale, and grime.",
     badge: "Seasonal Favorite",
     inclusions: [
@@ -125,6 +131,12 @@ const serviceCustomConfigs: Record<string, Partial<ServiceDetailConfig>> = {
     ],
   },
   tenancy: {
+    durationGuide: [
+      { property: "1 Bed Flat / Studio", hours: "3 – 4 hours", approxHours: 3.5, bedrooms: 1, bathrooms: 1, living: 1, propertyType: "Flat / Apartment", description: "Checkout clean including inside oven, fridge, internal windows & cupboards" },
+      { property: "2 Bed Flat / House", hours: "4.5 – 6 hours", approxHours: 5, bedrooms: 2, bathrooms: 1, living: 1, propertyType: "House", description: "Full tenancy handover clean meeting inventory & estate agency deposit standards" },
+      { property: "3 Bed House", hours: "6 – 8 hours", approxHours: 7, bedrooms: 3, bathrooms: 2, living: 1, propertyType: "House", description: "Deep sanitisation of all rooms, appliances, woodwork and sanitised bathrooms" },
+      { property: "4+ Bed House", hours: "8+ hours", approxHours: 8.5, bedrooms: 4, bathrooms: 2, living: 2, propertyType: "House", description: "Large family home end-of-tenancy clean with 72-hour free re-clean guarantee" },
+    ],
     tagline: "Guaranteed check-out standard clean to secure 100% of your tenancy deposit.",
     badge: "100% Deposit Guarantee",
     inclusions: [
@@ -153,6 +165,12 @@ const serviceCustomConfigs: Record<string, Partial<ServiceDetailConfig>> = {
     ],
   },
   airbnb: {
+    durationGuide: [
+      { property: "Studio / 1 Bed Let", hours: "1.5 – 2 hours", approxHours: 2, bedrooms: 1, bathrooms: 1, living: 1, propertyType: "Studio", description: "Fast same-day turnaround, bed remaking with crisp linens, and welcome staging" },
+      { property: "2 Bed Holiday Home", hours: "2.5 – 3.5 hours", approxHours: 3, bedrooms: 2, bathrooms: 1, living: 1, propertyType: "Flat / Apartment", description: "Guest checkout turnover, linen change, kitchen inventory check & bathroom shine" },
+      { property: "3 Bed Cottage", hours: "3.5 – 4.5 hours", approxHours: 4, bedrooms: 3, bathrooms: 2, living: 1, propertyType: "House", description: "Hotel-grade clean for busy family holiday rentals before new arrivals" },
+      { property: "4+ Bed Luxury Let", hours: "5+ hours", approxHours: 5.5, bedrooms: 4, bathrooms: 2, living: 2, propertyType: "House", description: "Full presentation turnover with guest replenishment and photo check-in audit" },
+    ],
     tagline: "Rapid hotel-standard turnovers for holiday lets, Airbnb hosts, and short-term rentals.",
     badge: "Host Super-Tool",
     inclusions: [
@@ -175,6 +193,12 @@ const serviceCustomConfigs: Record<string, Partial<ServiceDetailConfig>> = {
     ],
   },
   carpet: {
+    durationGuide: [
+      { property: "1 Single Room / Rug", hours: "1 – 1.5 hours", approxHours: 1.5, description: "Pre-treatment spray, agitation, hot water extraction shampoo and deodorising" },
+      { property: "Living Room & Hallway", hours: "2 – 2.5 hours", approxHours: 2, description: "High-traffic stain removal, enzyme pet treatment and deep extraction" },
+      { property: "2–3 Bed Property (Full)", hours: "3 – 4 hours", approxHours: 3.5, description: "Complete wet extraction across all bedrooms, landings, hallway and stairs" },
+      { property: "Whole House (4+ Beds)", hours: "4.5 – 6 hours", approxHours: 5, description: "Whole-home industrial carpet shampoo restoration and allergen sanitisation" },
+    ],
     tagline: "Deep steam extraction removing embedded allergens, stubborn pet stains, and odors.",
     badge: "Heavy Duty Extraction",
     inclusions: [
@@ -196,6 +220,12 @@ const serviceCustomConfigs: Record<string, Partial<ServiceDetailConfig>> = {
     ],
   },
   oven: {
+    durationGuide: [
+      { property: "Single Oven & Hob", hours: "1.5 – 2 hours", approxHours: 1.5, description: "Racks dip-tank soaked, split door glass polished, hob and interior degreased" },
+      { property: "Double Oven & Extractor", hours: "2 – 2.5 hours", approxHours: 2, description: "Full double compartment deep clean with filter degreasing and polishing" },
+      { property: "Range / AGA Cooker", hours: "3 – 3.5 hours", approxHours: 3, description: "Complete multi-oven and burner restoration with 100% non-caustic safe solution" },
+      { property: "Full Kitchen Appliance Set", hours: "3.5 – 4.5 hours", approxHours: 4, description: "Oven, extractor, hob, microwave and fridge interior deep degreased" },
+    ],
     tagline: "Fume-free, eco-friendly deep degreasing restoring your oven to showroom shine.",
     badge: "Eco Fume-Free",
     inclusions: [

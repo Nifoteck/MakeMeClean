@@ -241,8 +241,16 @@ export default function BookingPage() {
     const queryPostcode = searchParams.get("postcode");
     const queryCity = searchParams.get("city");
     if (queryPostcode) setPostcode(queryPostcode.toUpperCase());
-    if (queryCity) setCity(queryCity);
-  }, []);
+        if (queryCity) setCity(queryCity);
+        const qType = searchParams.get("propertyType");
+        const qBeds = searchParams.get("bedrooms");
+        const qBaths = searchParams.get("bathrooms");
+        const qLiving = searchParams.get("livingRooms");
+        if (qType) setPropertyType(qType);
+        if (qBeds != null && !isNaN(Number(qBeds))) setBedrooms(Number(qBeds));
+        if (qBaths != null && !isNaN(Number(qBaths))) setBathrooms(Number(qBaths));
+        if (qLiving != null && !isNaN(Number(qLiving))) setLivingRooms(Number(qLiving));
+      }, []);
 
   useEffect(() => {
     supabase
