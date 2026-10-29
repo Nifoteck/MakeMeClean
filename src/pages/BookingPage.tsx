@@ -76,6 +76,7 @@ export default function BookingPage() {
   const { services } = useServices();
 
   const [step, setStep] = useState<Step>(1);
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedService, setSelectedService] = useState<Service | null>(null);
 
   // Wecasa-Style Dynamic Room & Extras State (Configurable from Admin)
@@ -607,11 +608,73 @@ export default function BookingPage() {
         {/* Step 1 — Choose service */}
         {step === 1 && (
           <div className="animate-fade-in bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-sm">
-            <h2 className="text-xl font-black text-gray-900 mb-4">
-              Choose your cleaning service
-            </h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+              <div>
+                <h2 className="text-xl font-black text-gray-900">
+                  Choose your cleaning service
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Filter by service category to find the exact clean for your needs.
+                </p>
+              </div>
+
+              {/* Wecasa-Style Category Pills */}
+              <div className="flex flex-wrap gap-1.5 p-1 bg-gray-50 rounded-2xl border border-gray-100">
+                {[
+                  { id: "all", label: "All Services" },
+                  { id: "domestic", label: "Domestic" },
+                  { id: "deep", label: "Deep Clean" },
+                  { id: "ironing", label: "Ironing & Laundry" },
+                  { id: "airbnb", label: "Holiday Let / Airbnb" },
+                  { id: "office", label: "Commercial" },
+                ].map((cat) => (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
+                      selectedCategory === cat.id
+                        ? "bg-green-600 text-white shadow-xs"
+                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
+                    )}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="grid sm:grid-cols-2 gap-4">
-              {services.map((s) => {
+              {services
+                .filter((s) => {
+                  const sId = (s.id || "").toLowerCase();
+                  const sName = (s.name || "").toLowerCase();
+                  if (selectedCategory === "all") return true;
+                  if (selectedCategory === "domestic") {
+                    return (
+                      sId.includes("standard") ||
+                      sId.includes("regular") ||
+                      sId.includes("one-off") ||
+                      sId.includes("housekeeping") ||
+                      sId.includes("same-day")
+                    );
+                  }
+                  if (selectedCategory === "deep") {
+                    return sId.includes("deep") || sId.includes("spring");
+                  }
+                  if (selectedCategory === "ironing") {
+                    return sId.includes("ironing");
+                  }
+                  if (selectedCategory === "airbnb") {
+                    return sId.includes("airbnb");
+                  }
+                  if (selectedCategory === "office") {
+                    return sId.includes("office");
+                  }
+                  return true;
+                })
+                .map((s) => {
                 const sd = Math.max(
                   0,
                   Math.min(100, Number(s.discount_percent ?? 0))
