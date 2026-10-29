@@ -16,7 +16,12 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useStaffRecord } from "@/hooks/useRole";
 import { supabase } from "@/lib/supabase";
-import { cn, formatCurrency, formatDate, sanitizeCleanNotes } from "@/lib/utils";
+import {
+  cn,
+  formatCurrency,
+  formatDate,
+  sanitizeCleanNotes,
+} from "@/lib/utils";
 import StaffLayout from "@/components/staff/StaffLayout";
 import StaffShiftMarketplace from "@/components/staff/StaffShiftMarketplace";
 import Pagination from "@/components/Pagination";
@@ -391,7 +396,9 @@ export default function StaffDashboard() {
                         </div>
                         <div className="flex items-center gap-2 text-sm text-gray-700 pt-1 font-medium">
                           <Home className="w-4 h-4 text-green-600 shrink-0" />
-                          {b.bedrooms ?? 1} Bed · {b.bathrooms ?? 1} Bath · {b.living_rooms ?? 1} Living ({b.property_type || "House/Flat"})
+                          {b.bedrooms ?? 1} Bed · {b.bathrooms ?? 1} Bath ·{" "}
+                          {b.living_rooms ?? 1} Living (
+                          {b.property_type || "House/Flat"})
                         </div>
                         {Array.isArray(b.extras) && b.extras.length > 0 && (
                           <div className="flex items-start gap-2 text-xs text-green-800 bg-green-50 p-2 rounded-lg border border-green-100 font-semibold mt-1">

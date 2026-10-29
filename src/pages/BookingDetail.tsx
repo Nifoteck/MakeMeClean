@@ -21,7 +21,12 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
-import { cn, formatDate, formatCurrency, sanitizeCleanNotes } from "@/lib/utils";
+import {
+  cn,
+  formatDate,
+  formatCurrency,
+  sanitizeCleanNotes,
+} from "@/lib/utils";
 import { START_HOURS } from "@/lib/services";
 import { Booking, RescheduleRequest } from "@/types";
 import { BOOKING_STATUS_STYLES } from "@/lib/constants";
