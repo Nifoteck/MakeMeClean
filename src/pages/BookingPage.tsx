@@ -10,6 +10,8 @@ import {
   Minus,
   Plus,
   RefreshCw,
+  Repeat,
+  CheckCircle2,
   Home,
   Bath,
   Bed,
@@ -1037,47 +1039,77 @@ export default function BookingPage() {
                   </div>
                 )}
 
-                {/* Recurring schedule */}
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-2">
-                    Repeat Clean (Save up to 15%)
-                  </label>
+                {/* Recurring schedule & Routine matching */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                      <Repeat className="w-3.5 h-3.5 text-green-600" /> Cleaning Frequency
+                    </label>
+                    <span className="text-[11px] font-semibold text-green-700 bg-green-50 border border-green-200/80 px-2 py-0.5 rounded-full">
+                      Lock in your regular cleaner
+                    </span>
+                  </div>
+
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {(
                       [
-                        "none",
-                        "monthly",
-                        "fortnightly",
-                        "weekly",
-                      ] as RecurringFreq[]
-                    ).map((value) => {
-                      const label =
-                        value === "none"
-                          ? "One-off"
-                          : value.charAt(0).toUpperCase() + value.slice(1);
-                      const discount = liveDiscounts[value] ?? 0;
+                        { id: "weekly", label: "Weekly", sub: "Most popular", discountKey: "weekly" },
+                        { id: "fortnightly", label: "Fortnightly", sub: "Every 2 weeks", discountKey: "fortnightly" },
+                        { id: "monthly", label: "Monthly", sub: "Every 4 weeks", discountKey: "monthly" },
+                        { id: "none", label: "One-off", sub: "Single visit", discountKey: "none" },
+                      ] as const
+                    ).map((freq) => {
+                      const isSelected = recurringFreq === freq.id;
+                      const discount = liveDiscounts[freq.discountKey as RecurringFreq] ?? 0;
                       return (
                         <button
                           type="button"
-                          key={value}
-                          onClick={() => setRecurringFreq(value)}
+                          key={freq.id}
+                          onClick={() => setRecurringFreq(freq.id as RecurringFreq)}
                           className={cn(
-                            "relative flex flex-col items-center justify-center py-2.5 px-2 rounded-xl border text-xs font-bold transition-all",
-                            recurringFreq === value
-                              ? "border-green-600 bg-green-50 text-green-800 shadow-xs"
-                              : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                            "relative flex flex-col items-start p-3 rounded-2xl border text-left transition-all",
+                            isSelected
+                              ? "border-green-600 bg-green-50/70 text-green-900 ring-2 ring-green-600/20 shadow-xs"
+                              : "border-gray-200 bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50/50"
                           )}
                         >
                           {discount > 0 && (
-                            <span className="absolute -top-2 -right-1 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                              -{discount}%
+                            <span className="absolute -top-2 -right-1 bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-xs">
+                              SAVE {discount}%
                             </span>
                           )}
-                          {label}
+                          <span className="font-black text-xs">{freq.label}</span>
+                          <span className="text-[10px] text-gray-400 font-normal mt-0.5">{freq.sub}</span>
                         </button>
                       );
                     })}
                   </div>
+
+                  {/* Frequency Explanation & Benefits Banner */}
+                  {recurringFreq !== "none" ? (
+                    <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-3.5 text-xs text-emerald-900 space-y-1.5">
+                      <div className="font-bold flex items-center gap-1.5 text-emerald-800">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        Dedicated regular cleaner guaranteed
+                      </div>
+                      <p className="text-[11px] text-emerald-700/90 leading-relaxed">
+                        {date ? (
+                          <>
+                            Your clean will recur <strong>{recurringFreq === "weekly" ? "every week" : recurringFreq === "fortnightly" ? "every 2 weeks" : "every 4 weeks"}</strong> on <strong>{new Date(date + "T12:00:00").toLocaleDateString("en-GB", { weekday: "long" })}s</strong> at <strong>{startHour}</strong>.
+                          </>
+                        ) : (
+                          <>
+                            Selecting a start date will anchor your recurring slot for the same weekday and time.
+                          </>
+                        )}
+                        {" "}You can skip weeks, pause for holidays, or cancel anytime online with zero cancellation fee.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3 text-[11px] text-gray-500 flex items-center justify-between">
+                      <span>Tip: Choose Weekly or Fortnightly to save up to 15% and get the same cleaner on every visit.</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
