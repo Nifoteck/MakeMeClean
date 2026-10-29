@@ -51,7 +51,7 @@ import type { BookingDurationMultipliers, BookingExtra } from "@/lib/constants";
 import { useServices } from "@/hooks/useServices";
 import { api } from "@/lib/apiClient";
 import { getServiceBookingConfig } from "@/lib/serviceBookingConfigs";
-import { WECASA_SERVICE_GROUPS } from "@/lib/wecasaServices";
+import { CORE_SERVICE_CATEGORIES } from "@/lib/serviceCatalog";
 
 type Step = 1 | 2 | 3;
 type RecurringFreq = "none" | "weekly" | "fortnightly" | "monthly";
@@ -660,16 +660,19 @@ export default function BookingPage() {
                 Select your service
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Choose the service category tailored to your property. Customize hours, rooms, and extras in Step 2.
+                Choose the service category tailored to your property. Customize
+                hours, rooms, and extras in Step 2.
               </p>
             </div>
 
-            {/* Wecasa-Style 5 Distinct Main Categories */}
+            {/* Core Service Category Cards */}
             <div className="grid md:grid-cols-2 gap-4">
-              {WECASA_SERVICE_GROUPS.map((group) => {
+              {CORE_SERVICE_CATEGORIES.map((group) => {
                 const matchedDbService =
                   services.find((s) => s.id === group.primaryServiceId) ||
-                  services.find((s) => s.name.toLowerCase().includes(group.id)) ||
+                  services.find((s) =>
+                    s.name.toLowerCase().includes(group.id)
+                  ) ||
                   services[0];
 
                 return (
@@ -679,7 +682,9 @@ export default function BookingPage() {
                     onClick={() => {
                       if (!matchedDbService) return;
                       setSelectedService(matchedDbService);
-                      const cfg = getServiceBookingConfig(matchedDbService.id || matchedDbService.name);
+                      const cfg = getServiceBookingConfig(
+                        matchedDbService.id || matchedDbService.name
+                      );
                       setPropertyType(cfg.defaultPropertyType);
                       setBedrooms(cfg.field1.default);
                       setBathrooms(cfg.field2.default);

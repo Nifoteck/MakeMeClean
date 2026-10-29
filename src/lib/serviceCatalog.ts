@@ -1,6 +1,6 @@
 import { Service } from "@/lib/services";
 
-export interface WecasaServiceGroup {
+export interface ServiceCategoryCard {
   id: string;
   name: string;
   badge?: string;
@@ -11,7 +11,7 @@ export interface WecasaServiceGroup {
   hourlyRateRange: string;
 }
 
-export const WECASA_SERVICE_GROUPS: WecasaServiceGroup[] = [
+export const CORE_SERVICE_CATEGORIES: ServiceCategoryCard[] = [
   {
     id: "domestic",
     name: "Classic Domestic Cleaning",
