@@ -22143,13 +22143,6 @@ var DEFAULT_BOOKING_EXTRAS = [
     desc: "Internal panes & sills buffed"
   },
   {
-    id: "bed_linen",
-    label: "Bed Linen Change",
-    icon: "\u{1F6CF}\uFE0F",
-    duration: 0.5,
-    desc: "Fresh bedsheets changed & made up"
-  },
-  {
     id: "ironing",
     label: "Ironing & Laundry",
     icon: "\u{1F9FA}",

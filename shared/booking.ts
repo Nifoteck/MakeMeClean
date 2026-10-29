@@ -51,6 +51,18 @@ export const BOOKING_PROPERTY_TYPES = [
   "HMO / Shared House",
 ] as const;
 
+export const ACCESS_METHODS = [
+  { id: "home", label: "I\'ll be at home", desc: "You or someone will let the cleaner in" },
+  { id: "key_safe", label: "Key safe / Lockbox", desc: "Access code left in instructions" },
+  { id: "concierge", label: "Concierge / Front desk", desc: "Keys with building reception" },
+  { id: "hidden_key", label: "Hidden key", desc: "Key left in a designated secure spot" },
+] as const;
+
+export const CLEANING_SUPPLIES_OPTIONS = [
+  { id: "cleaner", label: "Cleaner brings eco supplies", desc: "Sprays, microfibre cloths & safe products included" },
+  { id: "customer", label: "I will provide cleaning products", desc: "Cleaner uses your preferred sprays and supplies" },
+] as const;
+
 export const DEFAULT_BOOKING_EXTRAS: BookingExtra[] = [
   {
     id: "oven",
