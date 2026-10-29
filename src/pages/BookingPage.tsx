@@ -83,7 +83,7 @@ export default function BookingPage() {
     DEFAULT_DURATION_MULTIPLIERS
   );
 
-  const [propertyType, setPropertyType] = useState("House");
+  const [propertyType, setPropertyType] = useState("House / Flat");
   const [bedrooms, setBedrooms] = useState(2);
   const [bathrooms, setBathrooms] = useState(1);
   const [livingRooms, setLivingRooms] = useState(1);
@@ -158,30 +158,17 @@ export default function BookingPage() {
   ) => {
     setPropertyType(nextType);
     if (nextType === "Studio") {
-      // Studio is an open-plan living/sleeping layout: 0 separate bedrooms, 1 bath, 1 living area
-      handleRoomChange(0, Math.max(1, bathrooms), 1, selectedExtras);
-    } else if (nextType === "Flat / Apartment") {
-      // Flat typical default: 1 bed, 1 bath, 1 living
-      handleRoomChange(
-        Math.max(1, bedrooms || 1),
-        Math.max(1, bathrooms || 1),
-        Math.max(1, livingRooms || 1),
-        selectedExtras
-      );
-    } else if (nextType === "House") {
-      // House typical default: 2 bed, 1 bath, 1 living
-      handleRoomChange(
-        Math.max(2, bedrooms || 2),
-        Math.max(1, bathrooms || 1),
-        Math.max(1, livingRooms || 1),
-        selectedExtras
-      );
+      // Studio: open-plan living/sleeping layout with 0 separate bedrooms
+      handleRoomChange(0, Math.max(1, bathrooms || 1), 1, selectedExtras);
     } else if (nextType === "HMO / Shared House") {
-      // HMO / private room: 1 private bedroom, 1 bath, 0 or 1 shared living
+      // HMO: 1 private bedroom, 1 shared bathroom, 0 separate living
+      handleRoomChange(1, Math.max(1, bathrooms || 1), Math.min(1, livingRooms), selectedExtras);
+    } else {
+      // Standard House / Flat default
       handleRoomChange(
-        1,
+        Math.max(1, bedrooms || 2),
         Math.max(1, bathrooms || 1),
-        Math.min(1, livingRooms),
+        Math.max(1, livingRooms || 1),
         selectedExtras
       );
     }
@@ -728,7 +715,7 @@ export default function BookingPage() {
                   <label className="text-xs font-bold text-gray-700 block mb-2">
                     Property Type
                   </label>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
                     {BOOKING_PROPERTY_TYPES.map((type) => (
                       <button
                         key={type}

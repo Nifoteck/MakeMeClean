@@ -22115,8 +22115,7 @@ var MAX_ROOM_COUNTS = {
   livingAreas: 5
 };
 var BOOKING_PROPERTY_TYPES = [
-  "House",
-  "Flat / Apartment",
+  "House / Flat",
   "Studio",
   "HMO / Shared House"
 ];
@@ -22700,6 +22699,8 @@ async function handleDashboard(req, res) {
 // server/_handlers/bookings.ts
 var ACCEPTED_PROPERTY_TYPES = [
   ...BOOKING_PROPERTY_TYPES,
+  "House",
+  "Flat / Apartment",
   "House/Flat",
   "Studio / HMO"
 ];
@@ -22755,7 +22756,7 @@ async function handleBookings(req, res, subPath, params = {}) {
         bathrooms = 1,
         livingRooms = 1,
         extras = [],
-        propertyType = "House",
+        propertyType = "House / Flat",
         accessMethod = "home",
         suppliesOption = "cleaner",
         parkingOption = "free",

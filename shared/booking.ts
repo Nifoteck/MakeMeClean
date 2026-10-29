@@ -45,8 +45,7 @@ export const MAX_ROOM_COUNTS = {
 } as const;
 
 export const BOOKING_PROPERTY_TYPES = [
-  "House",
-  "Flat / Apartment",
+  "House / Flat",
   "Studio",
   "HMO / Shared House",
 ] as const;

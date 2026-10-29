@@ -20,6 +20,8 @@ import {
 
 const ACCEPTED_PROPERTY_TYPES: readonly string[] = [
   ...BOOKING_PROPERTY_TYPES,
+  'House',
+  'Flat / Apartment',
   'House/Flat',
   'Studio / HMO',
 ];
@@ -99,7 +101,7 @@ export async function handleBookings(
         bathrooms = 1,
         livingRooms = 1,
         extras = [],
-        propertyType = 'House',
+        propertyType = 'House / Flat',
         accessMethod = 'home',
         suppliesOption = 'cleaner',
         parkingOption = 'free',
