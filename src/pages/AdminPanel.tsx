@@ -21,7 +21,12 @@ import {
   ChevronUp,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
+import {
+  cn,
+  formatCurrency,
+  formatDate,
+  isBookingStartTimePassed,
+} from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
 import AdminLayout from "@/components/admin/AdminLayout";
@@ -37,7 +42,12 @@ import {
 } from "@/lib/constants";
 import Spinner from "@/components/Spinner";
 
-type StatusFilter = "all" | "upcoming" | "completed" | "cancelled";
+type StatusFilter =
+  | "all"
+  | "upcoming"
+  | "pending_payment"
+  | "completed"
+  | "cancelled";
 
 const STATUS_PILL = BOOKING_STATUS_STYLES;
 
@@ -182,7 +192,30 @@ export default function AdminPanel() {
         .eq("active", true),
       supabase.from("booking_assignments").select("booking_id, staff_id"),
     ]);
-    setBookings((bData as Booking[]) ?? []);
+    const loadedBookings = (bData as Booking[]) ?? [];
+
+    // Automatically detect and update unpaid bookings whose scheduled start time has arrived/passed
+    const expiredUnpaidIds = loadedBookings
+      .filter(
+        (b) =>
+          b.status === "upcoming" &&
+          b.payment_status !== "paid" &&
+          isBookingStartTimePassed(b.date, b.time_slot)
+      )
+      .map((b) => b.id);
+
+    if (expiredUnpaidIds.length > 0) {
+      void supabase
+        .from("bookings")
+        .update({ status: "cancelled" })
+        .in("id", expiredUnpaidIds);
+    }
+
+    const resolvedBookings = loadedBookings.map((b) =>
+      expiredUnpaidIds.includes(b.id) ? { ...b, status: "cancelled" } : b
+    );
+
+    setBookings(resolvedBookings);
     const imgMap: Record<string, string> = {};
     for (const s of svcData ?? []) if (s.image_url) imgMap[s.id] = s.image_url;
     setServiceImages(imgMap);
@@ -349,7 +382,19 @@ export default function AdminPanel() {
       b.city.toLowerCase().includes(q) ||
       (b.invoice_number ?? "").toLowerCase().includes(q) ||
       (b.profiles?.full_name ?? "").toLowerCase().includes(q);
-    return matchQ && (statusFilter === "all" || b.status === statusFilter);
+
+    if (!matchQ) return false;
+
+    if (statusFilter === "all") return true;
+    if (statusFilter === "upcoming") {
+      // Confirmed upcoming: Must be status upcoming AND paid
+      return b.status === "upcoming" && b.payment_status === "paid";
+    }
+    if (statusFilter === "pending_payment") {
+      // Pending payment: Upcoming but not paid yet
+      return b.status === "upcoming" && b.payment_status !== "paid";
+    }
+    return b.status === statusFilter;
   });
 
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -362,8 +407,16 @@ export default function AdminPanel() {
   const stats = [
     { label: "Total bookings", value: bookings.length },
     {
-      label: "Upcoming",
-      value: bookings.filter((b) => b.status === "upcoming").length,
+      label: "Upcoming (Paid)",
+      value: bookings.filter(
+        (b) => b.status === "upcoming" && b.payment_status === "paid"
+      ).length,
+    },
+    {
+      label: "Pending Payment",
+      value: bookings.filter(
+        (b) => b.status === "upcoming" && b.payment_status !== "paid"
+      ).length,
     },
     {
       label: "Completed",
@@ -604,21 +657,27 @@ export default function AdminPanel() {
             className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {(
-            ["all", "upcoming", "completed", "cancelled"] as StatusFilter[]
+            [
+              { id: "all", label: "All" },
+              { id: "upcoming", label: "Upcoming (Paid)" },
+              { id: "pending_payment", label: "Pending Payment" },
+              { id: "completed", label: "Completed" },
+              { id: "cancelled", label: "Cancelled / Expired" },
+            ] as { id: StatusFilter; label: string }[]
           ).map((tab) => (
             <button
-              key={tab}
-              onClick={() => setStatusFilter(tab)}
+              key={tab.id}
+              onClick={() => setStatusFilter(tab.id)}
               className={cn(
-                "px-4 py-2.5 rounded-xl text-xs font-bold capitalize transition-all",
-                statusFilter === tab
+                "px-4 py-2.5 rounded-xl text-xs font-bold transition-all",
+                statusFilter === tab.id
                   ? "bg-green-600 text-white shadow-xs"
                   : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
               )}
             >
-              {tab}
+              {tab.label}
             </button>
           ))}
         </div>

@@ -28,7 +28,23 @@ export function isPastDate(dateStr: string): boolean {
   return Number.isFinite(bookingDate.getTime()) && bookingDate < today;
 }
 
-export function isActiveUpcomingBooking(status: string, dateStr: string): boolean {
+/**
+ * Returns true if the scheduled slot time on the booking date has already passed.
+ * e.g., date: "2026-10-29", timeSlot: "11:00 – 18:00" -> checks whether current time > 11:00 on 2026-10-29.
+ */
+export function isBookingStartTimePassed(dateStr: string, timeSlot?: string | null): boolean {
+  if (!dateStr) return false;
+  const startHourStr = (timeSlot || "09:00").split(/[-–]/)[0]?.trim() || "09:00";
+  const [hour, min] = startHourStr.split(":").map(Number);
+  const scheduledTime = new Date(`${dateStr}T${String(hour || 9).padStart(2, "0")}:${String(min || 0).padStart(2, "0")}:00`);
+  const now = new Date();
+  return Number.isFinite(scheduledTime.getTime()) && now > scheduledTime;
+}
+
+export function isActiveUpcomingBooking(status: string, dateStr: string, timeSlot?: string | null, paymentStatus?: string | null): boolean {
+  if (status === "cancelled" || status === "completed") return false;
+  // If payment hasn't been completed and the start time has already arrived/passed, it's expired/cancelled
+  if (paymentStatus !== "paid" && isBookingStartTimePassed(dateStr, timeSlot)) return false;
   return ["upcoming", "pending", "confirmed"].includes(status) && !isPastDate(dateStr);
 }
 

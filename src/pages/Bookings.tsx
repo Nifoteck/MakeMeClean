@@ -80,18 +80,38 @@ export default function Bookings() {
 
   const counts = {
     all: bookings.length,
-    upcoming: bookings.filter((b) => isActiveUpcomingBooking(b.status, b.date))
-      .length,
+    upcoming: bookings.filter((b) =>
+      isActiveUpcomingBooking(b.status, b.date, b.time_slot, b.payment_status)
+    ).length,
     past: bookings.filter((b) => isPastDate(b.date)).length,
     completed: bookings.filter((b) => b.status === "completed").length,
-    cancelled: bookings.filter((b) => b.status === "cancelled").length,
+    cancelled: bookings.filter(
+      (b) =>
+        b.status === "cancelled" ||
+        (b.status === "upcoming" &&
+          b.payment_status !== "paid" &&
+          isPastDate(b.date))
+    ).length,
   };
 
   const filtered = bookings
     .filter((b) => {
       if (filter === "all") return true;
-      if (filter === "upcoming") return isActiveUpcomingBooking(b.status, b.date);
+      if (filter === "upcoming")
+        return isActiveUpcomingBooking(
+          b.status,
+          b.date,
+          b.time_slot,
+          b.payment_status
+        );
       if (filter === "past") return isPastDate(b.date);
+      if (filter === "cancelled")
+        return (
+          b.status === "cancelled" ||
+          (b.status === "upcoming" &&
+            b.payment_status !== "paid" &&
+            isPastDate(b.date))
+        );
       return b.status === filter;
     })
     .filter((b) => {
@@ -136,25 +156,27 @@ export default function Bookings() {
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-          {(
-            ["all", "upcoming", "past", "completed"] as FilterStatus[]
-          ).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                "bg-white border rounded-2xl p-4 shadow-sm text-left transition-all hover:shadow-md",
-                filter === f
-                  ? "border-green-400 ring-2 ring-green-100"
-                  : "border-gray-100"
-              )}
-            >
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
-                {f === "all" ? "Total" : f.charAt(0).toUpperCase() + f.slice(1)}
-              </p>
-              <p className="text-2xl font-black text-gray-900">{counts[f]}</p>
-            </button>
-          ))}
+          {(["all", "upcoming", "past", "completed"] as FilterStatus[]).map(
+            (f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={cn(
+                  "bg-white border rounded-2xl p-4 shadow-sm text-left transition-all hover:shadow-md",
+                  filter === f
+                    ? "border-green-400 ring-2 ring-green-100"
+                    : "border-gray-100"
+                )}
+              >
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">
+                  {f === "all"
+                    ? "Total"
+                    : f.charAt(0).toUpperCase() + f.slice(1)}
+                </p>
+                <p className="text-2xl font-black text-gray-900">{counts[f]}</p>
+              </button>
+            )
+          )}
         </div>
 
         {/* Search + filter */}
@@ -171,7 +193,13 @@ export default function Bookings() {
           </div>
           <div className="flex gap-2 overflow-x-auto pb-0.5">
             {(
-              ["all", "upcoming", "past", "completed", "cancelled"] as FilterStatus[]
+              [
+                "all",
+                "upcoming",
+                "past",
+                "completed",
+                "cancelled",
+              ] as FilterStatus[]
             ).map((f) => (
               <button
                 key={f}
@@ -248,7 +276,8 @@ export default function Bookings() {
                       {b.service_name}
                     </p>
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      {(b.status !== "upcoming" || b.payment_status === "paid") && (
+                      {(b.status !== "upcoming" ||
+                        b.payment_status === "paid") && (
                         <span
                           className={cn(
                             "text-xs font-semibold px-2 py-0.5 rounded-full",
