@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import ServiceCard from "@/components/ServiceCard";
 import { useServices } from "@/hooks/useServices";
+import { buildServiceCatalogFromDb } from "@/lib/serviceCatalog";
 import { useSettings } from "@/hooks/useSettings";
 import { supabase } from "@/lib/supabase";
 import {
@@ -526,12 +527,55 @@ export default function Home() {
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {popularServices.map((service, idx) => (
+            {buildServiceCatalogFromDb(services).map((card, idx) => (
               <div
-                key={service.id}
+                key={card.id}
                 className={`animate-fade-in-up stagger-${(idx % 6) + 1}`}
               >
-                <ServiceCard service={service} />
+                <div className="bg-white border border-gray-200 rounded-3xl p-6 sm:p-7 shadow-xs hover:shadow-md hover:border-green-300 transition-all flex flex-col justify-between h-full group">
+                  <div>
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="w-14 h-14 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                        {card.icon}
+                      </div>
+                      <div className="text-right">
+                        {card.badge && (
+                          <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full mb-1">
+                            {card.badge}
+                          </span>
+                        )}
+                        <p className="text-lg font-black text-gray-900">
+                          {card.hourlyRateRange}
+                        </p>
+                      </div>
+                    </div>
+
+                    <h3 className="text-lg font-black text-gray-900 mb-1 group-hover:text-green-700 transition-colors">
+                      {card.name}
+                    </h3>
+                    <p className="text-xs font-semibold text-green-700 mb-2">
+                      {card.tagline}
+                    </p>
+                    <p className="text-xs text-gray-600 leading-relaxed mb-6">
+                      {card.description}
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-2">
+                    <Link
+                      href={`/services/${card.primaryServiceId}`}
+                      className="text-xs font-bold text-gray-600 hover:text-green-700 transition-colors inline-flex items-center gap-1"
+                    >
+                      Learn more
+                    </Link>
+                    <Link
+                      href={`/book?service=${card.primaryServiceId}`}
+                      className="btn-primary text-xs font-bold py-2 px-4 flex items-center gap-1.5 shadow-xs"
+                    >
+                      Book Now <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
+                </div>
               </div>
             ))}
           </div>
@@ -541,7 +585,7 @@ export default function Home() {
               href="/services"
               className="btn-secondary inline-flex items-center gap-2 px-8 py-3.5"
             >
-              Explore All 11 Services & Prices{" "}
+              View Full Pricing & Service Scope{" "}
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

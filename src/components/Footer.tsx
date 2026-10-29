@@ -11,6 +11,7 @@ import {
 import logoUrl from "/logo.png";
 import { useSettings } from "@/hooks/useSettings";
 import { useServices } from "@/hooks/useServices";
+import { buildServiceCatalogFromDb } from "@/lib/serviceCatalog";
 
 export default function Footer() {
   const settings = useSettings();
@@ -66,34 +67,19 @@ export default function Footer() {
               Services
             </p>
             <ul className="space-y-2.5 text-sm">
-              {services.length > 0
-                ? services.map((s) => (
-                    <li key={s.id}>
-                      <Link
-                        href={`/services/${s.id}`}
-                        className="hover:text-green-400 transition-colors duration-100"
-                      >
-                        {s.name}
-                      </Link>
-                    </li>
-                  ))
-                : [
-                    "Standard Cleaning",
-                    "Deep Cleaning",
-                    "Airbnb Cleaning",
-                    "End of Tenancy",
-                    "Window Cleaning",
-                    "Ironing Service",
-                  ].map((name) => (
-                    <li key={name}>
-                      <Link
-                        href="/services"
-                        className="hover:text-green-400 transition-colors duration-100"
-                      >
-                        {name}
-                      </Link>
-                    </li>
-                  ))}
+              {buildServiceCatalogFromDb(services).map((cat) => (
+                <li key={cat.id}>
+                  <Link
+                    href={`/services/${cat.primaryServiceId}`}
+                    className="hover:text-green-400 transition-colors duration-100 flex items-center justify-between group"
+                  >
+                    <span>{cat.name}</span>
+                    <span className="text-[11px] text-gray-400 group-hover:text-green-300 font-medium">
+                      {cat.hourlyRateRange}
+                    </span>
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 

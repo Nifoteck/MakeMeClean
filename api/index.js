@@ -22452,6 +22452,18 @@ async function handleServices(req, res) {
     return sendError(res, "Method not allowed", 405);
   }
   try {
+    let resolveCategory2 = function(s) {
+      const dbCat = (s.category || "").trim().toLowerCase();
+      if (dbCat && !["domestic", ""].includes(dbCat)) return dbCat;
+      const id = (s.id || "").toLowerCase();
+      const name = (s.name || "").toLowerCase();
+      if (id.includes("ironing") || name.includes("ironing")) return "ironing";
+      if (id.includes("office") || name.includes("office") || id.includes("commercial") || name.includes("commercial")) return "commercial";
+      if (id.includes("airbnb") || name.includes("airbnb") || id.includes("holiday") || name.includes("holiday")) return "airbnb";
+      if (id.includes("deep") || name.includes("deep") || id.includes("spring") || name.includes("spring")) return "deep";
+      return "domestic";
+    };
+    var resolveCategory = resolveCategory2;
     const supabase = getServerSupabase();
     const { data, error } = await supabase.from("services").select("*").eq("active", true).order("price", { ascending: true });
     if (error) {
@@ -22465,11 +22477,11 @@ async function handleServices(req, res) {
       discount_percent: Number(s.discount_percent || 0),
       popular: Boolean(s.popular),
       active: Boolean(s.active),
-      category: s.category || "domestic",
+      category: resolveCategory2(s),
       badge: s.badge || null,
       tagline: s.tagline || null,
-      icon: s.icon || "\u{1F9F9}",
-      sort_order: Number(s.sort_order || 0),
+      icon: s.icon || null,
+      sort_order: typeof s.sort_order === "number" ? s.sort_order : 0,
       image_url: resolveServiceImageUrl(s.id, s.image_url),
       raw_image_url: s.image_url
     }));
