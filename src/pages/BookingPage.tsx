@@ -1198,7 +1198,8 @@ export default function BookingPage() {
                 onClick={() => handleNext(4)}
                 className="btn-primary py-2.5 px-6 text-xs font-bold flex items-center gap-1.5"
               >
-                Continue to Location & Keys <ArrowRight className="w-3.5 h-3.5" />
+                Continue to Location & Keys{" "}
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>

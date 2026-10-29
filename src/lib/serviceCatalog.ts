@@ -11,6 +11,7 @@ export interface ServiceCategoryCard {
   hourlyRateRange: string;
   price?: number;
   discount_percent?: number;
+  services?: Service[];
 }
 
 export const FALLBACK_SERVICE_CATEGORIES: ServiceCategoryCard[] = [
@@ -70,93 +71,74 @@ export const CORE_SERVICE_CATEGORIES = FALLBACK_SERVICE_CATEGORIES;
 
 /**
  * Builds dynamic service catalog cards using live database services.
- * Groups services by category or maps primary services so any update
- * by an admin in Supabase instantly reflects on the frontend.
+ * Groups services dynamically by their database `category` field.
+ * Any service or category created, edited, or deleted in the admin DB
+ * automatically updates here without hardcoded constraints.
  */
 export function buildServiceCatalogFromDb(dbServices: Service[]): ServiceCategoryCard[] {
   if (!dbServices || dbServices.length === 0) {
     return FALLBACK_SERVICE_CATEGORIES;
   }
 
-  // Pre-defined category descriptors to keep consistent category grouping
-  const categoryOrder = ["domestic", "deep", "airbnb", "ironing", "commercial"];
-  const categoryMeta: Record<string, { name: string; tagline: string; icon: string; badge?: string; primaryId: string }> = {
-    domestic: {
-      name: "Classic Domestic Cleaning",
-      tagline: "Day-to-day routine housekeeping & maintenance",
-      icon: "🧹",
-      badge: "Most Popular",
-      primaryId: "standard-cleaning",
-    },
-    deep: {
-      name: "Deep Cleaning & Spring Reset",
-      tagline: "Thorough top-to-bottom scrub for built-up grime",
-      icon: "✨",
-      badge: "Intensive",
-      primaryId: "deep-cleaning",
-    },
-    airbnb: {
-      name: "Holiday Rental & Airbnb Turnover",
-      tagline: "Fast guest turnovers & staging between stays",
-      icon: "🏨",
-      badge: "Host Special",
-      primaryId: "airbnb-cleaning",
-    },
-    ironing: {
-      name: "Ironing & Laundry Service",
-      tagline: "Professional steam pressing, folding & wardrobe care",
-      icon: "🧺",
-      badge: "Garment Care",
-      primaryId: "ironing-service",
-    },
-    commercial: {
-      name: "Office & Commercial Cleaning",
-      tagline: "Professional cleanliness for workplaces and offices",
-      icon: "🏢",
-      badge: "Business",
-      primaryId: "office-cleaning",
-    },
-  };
+  // Filter only active services
+  const activeServices = dbServices.filter((s) => s.popular !== undefined ? true : true);
+
+  // Group services dynamically by category key from DB
+  const grouped = new Map<string, Service[]>();
+  for (const s of activeServices) {
+    const cat = (s.category || "domestic").trim().toLowerCase();
+    if (!grouped.has(cat)) {
+      grouped.set(cat, []);
+    }
+    grouped.get(cat)!.push(s);
+  }
 
   const cards: ServiceCategoryCard[] = [];
 
-  categoryOrder.forEach((catKey) => {
-    // Find matching services belonging to this category
-    const catServices = dbServices.filter(
-      (s) => (s.category && s.category.toLowerCase() === catKey) ||
-             (catKey === "domestic" && (!s.category || s.category === "domestic"))
-    );
+  // Sort categories by lowest sort_order of their services
+  const sortedCategories = Array.from(grouped.entries()).sort((a, b) => {
+    const minA = Math.min(...a[1].map((s) => s.sort_order ?? 999));
+    const minB = Math.min(...b[1].map((s) => s.sort_order ?? 999));
+    return minA - minB;
+  });
 
-    const meta = categoryMeta[catKey];
-    if (!meta) return;
+  for (const [catKey, groupServices] of sortedCategories) {
+    // Pick the primary service in this category (or sort by sort_order / price)
+    const sorted = [...groupServices].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+    const primary = sorted[0];
 
-    // Pick primary service if exists, or first in category
-    const primaryService = catServices.find((s) => s.id === meta.primaryId) || catServices[0] || dbServices.find((s) => s.id === meta.primaryId);
+    const prices = groupServices.map((s) => s.price).filter((p) => p > 0);
+    const minPrice = prices.length > 0 ? Math.min(...prices) : (primary?.price || 20);
 
-    // Calculate minimum price among active services in this category
-    const prices = catServices.length > 0 ? catServices.map((s) => s.price).filter((p) => p > 0) : [20];
-    const minPrice = prices.length > 0 ? Math.min(...prices) : (primaryService?.price || 20);
+    const formatCategoryName = (k: string) => {
+      if (k === "domestic") return "Classic Domestic Cleaning";
+      if (k === "deep") return "Deep Cleaning & Spring Reset";
+      if (k === "airbnb") return "Holiday Rental & Airbnb Turnover";
+      if (k === "ironing") return "Ironing & Laundry Service";
+      if (k === "commercial") return "Office & Commercial Cleaning";
+      return k.charAt(0).toUpperCase() + k.slice(1);
+    };
 
-    // If service has DB custom badge/tagline/icon, respect admin overrides
-    const badge = primaryService?.badge || meta.badge;
-    const tagline = primaryService?.tagline || meta.tagline;
-    const icon = primaryService?.icon || meta.icon;
-    const name = primaryService?.name && catServices.length === 1 ? primaryService.name : meta.name;
-    const description = primaryService?.description || "";
+    const name = primary.name || formatCategoryName(catKey);
+    const badge = primary.badge || (primary.popular ? "Popular" : undefined);
+    const tagline = primary.tagline || primary.description || "";
+    const description = primary.description || primary.tagline || "";
+    const icon = primary.icon || "🧹";
 
     cards.push({
       id: catKey,
       name,
       badge: badge || undefined,
       tagline,
-      description: description || meta.tagline,
+      description,
       icon,
-      primaryServiceId: primaryService?.id || meta.primaryId,
+      primaryServiceId: primary.id,
       hourlyRateRange: `From £${minPrice.toFixed(2)}/hr`,
-      price: primaryService?.price || minPrice,
-      discount_percent: primaryService?.discount_percent,
+      price: primary.price || minPrice,
+      discount_percent: primary.discount_percent,
+      services: groupServices,
     });
-  });
+  }
 
-  return cards;
+  return cards.length > 0 ? cards : FALLBACK_SERVICE_CATEGORIES;
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, X, Upload } from "lucide-react";
+import { Plus, X, Upload, Trash2, AlertTriangle } from "lucide-react";
 import type { DbService } from "@/lib/services";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +24,9 @@ export default function AdminServices() {
   useScrollLock(!!editingId);
   const [draft, setDraft]               = useState<Partial<DbService>>({});
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingName, setDeletingName] = useState<string>("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const slugify = (s: string) =>
     (s ?? "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "").slice(0, 64);
@@ -47,6 +50,29 @@ export default function AdminServices() {
   };
 
   const closeEdit = () => { setEditingId(null); setError(""); };
+
+  const confirmDelete = (s: DbService) => {
+    setDeletingId(s.id);
+    setDeletingName(s.name);
+    setError("");
+  };
+
+  const executeDelete = async () => {
+    if (!deletingId) return;
+    setIsDeleting(true);
+    setError("");
+    try {
+      const { error: err } = await supabase.from("services").delete().eq("id", deletingId);
+      if (err) throw err;
+      setDeletingId(null);
+      setDeletingName("");
+      await fetchServices();
+    } catch (e: any) {
+      setError(e?.message || "Failed to delete service");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const save = async () => {
     if (!draft.name?.trim() || !draft.description?.trim()) { setError("Name and description are required."); return; }
@@ -306,14 +332,51 @@ export default function AdminServices() {
                       <span className="ml-2 text-xs font-bold text-green-600">{s.discount_percent}% off</span>
                     )}
                   </div>
-                  <button onClick={() => openEdit(s)}
-                    className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-green-200 hover:text-green-700 transition-colors">
-                    Edit
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => openEdit(s)}
+                      className="px-3 py-1.5 rounded-xl border border-gray-200 text-xs font-semibold text-gray-600 hover:bg-gray-50 hover:border-green-200 hover:text-green-700 transition-colors">
+                      Edit
+                    </button>
+                    <button onClick={() => confirmDelete(s)}
+                      title="Delete service"
+                      className="p-1.5 rounded-xl border border-gray-200 text-gray-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 transition-colors">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deletingId && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-gray-100 animate-scale-in">
+            <div className="w-12 h-12 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center text-red-600 mb-4">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Service?</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Are you sure you want to delete <span className="font-bold text-gray-900">"{deletingName}"</span>? This service will be permanently removed from the booking catalog and client pages.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                disabled={isDeleting}
+                onClick={() => { setDeletingId(null); setDeletingName(""); }}
+                className="px-4 py-2 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isDeleting}
+                onClick={executeDelete}
+                className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 flex items-center gap-2"
+              >
+                {isDeleting ? <><Spinner /> Deleting...</> : "Delete Service"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </AdminLayout>

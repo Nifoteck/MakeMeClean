@@ -20,14 +20,7 @@ import { useServices } from "@/hooks/useServices";
 import { buildServiceCatalogFromDb } from "@/lib/serviceCatalog";
 import { formatCurrency } from "@/lib/utils";
 
-const CATEGORY_TABS = [
-  { id: "all", label: "All Services" },
-  { id: "domestic", label: "Domestic" },
-  { id: "deep", label: "Deep Clean" },
-  { id: "airbnb", label: "Holiday Let / Airbnb" },
-  { id: "ironing", label: "Ironing & Laundry" },
-  { id: "commercial", label: "Commercial / Office" },
-];
+// Category tabs are now dynamically populated from database services
 
 export default function Services() {
   const [search, setSearch] = useState("");
@@ -37,6 +30,18 @@ export default function Services() {
   const catalogCards = useMemo(() => {
     return buildServiceCatalogFromDb(services);
   }, [services]);
+
+  const categoryTabs = useMemo(() => {
+    const tabs = [{ id: "all", label: "All Services" }];
+    const seen = new Set<string>();
+    catalogCards.forEach((c) => {
+      if (!seen.has(c.id)) {
+        seen.add(c.id);
+        tabs.push({ id: c.id, label: c.name });
+      }
+    });
+    return tabs;
+  }, [catalogCards]);
 
   const filteredCards = useMemo(() => {
     return catalogCards.filter((card) => {
@@ -68,7 +73,10 @@ export default function Services() {
             </h1>
 
             <p className="text-gray-600 text-base sm:text-lg mb-8 leading-relaxed">
-              Clear, transparent hourly pricing with no surprise charges. Every booking includes DBS-checked cleaners, full public liability insurance, eco supplies, and our 100% satisfaction re-clean guarantee.
+              Clear, transparent hourly pricing with no surprise charges. Every
+              booking includes DBS-checked cleaners, full public liability
+              insurance, eco supplies, and our 100% satisfaction re-clean
+              guarantee.
             </p>
 
             {/* Search Input & Category Filters */}
@@ -87,7 +95,7 @@ export default function Services() {
 
               {/* Category Filter Chips */}
               <div className="flex items-center gap-2 flex-wrap pt-2">
-                {CATEGORY_TABS.map((cat) => {
+                {categoryTabs.map((cat) => {
                   const isActive = selectedCategory === cat.id;
                   return (
                     <button

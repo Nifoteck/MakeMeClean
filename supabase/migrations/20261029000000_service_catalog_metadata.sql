@@ -50,3 +50,4 @@ SET category = 'commercial',
     icon = '🏢',
     sort_order = 5
 WHERE id = 'office-cleaning';
+
