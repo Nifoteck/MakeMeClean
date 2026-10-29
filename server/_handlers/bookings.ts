@@ -277,12 +277,14 @@ export async function handleBookings(
           400,
         );
       }
-      if (durationHours < minimumDurationHours) {
+      // Allow customers to adjust up to 30 mins lower than recommendation (minimum MIN_DURATION_HOURS)
+      const allowedFloorHours = Math.max(MIN_DURATION_HOURS, minimumDurationHours - 0.5);
+      if (durationHours < allowedFloorHours) {
         return sendError(
           res,
-          `The selected rooms and extras require at least ${minimumDurationHours} hours.`,
+          `The selected rooms and extras require at least ${allowedFloorHours} hours.`,
           400,
-          { minimumDurationHours },
+          { minimumDurationHours, allowedFloorHours },
         );
       }
       const baseHourlyRate = Number(service.price) || 20.0;

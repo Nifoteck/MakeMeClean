@@ -22884,12 +22884,13 @@ async function handleBookings(req, res, subPath, params = {}) {
           400
         );
       }
-      if (durationHours < minimumDurationHours) {
+      const allowedFloorHours = Math.max(MIN_DURATION_HOURS, minimumDurationHours - 0.5);
+      if (durationHours < allowedFloorHours) {
         return sendError(
           res,
-          `The selected rooms and extras require at least ${minimumDurationHours} hours.`,
+          `The selected rooms and extras require at least ${allowedFloorHours} hours.`,
           400,
-          { minimumDurationHours }
+          { minimumDurationHours, allowedFloorHours }
         );
       }
       const baseHourlyRate = Number(service.price) || 20;

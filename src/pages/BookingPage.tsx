@@ -147,9 +147,10 @@ export default function BookingPage() {
       multipliers,
       availableExtras
     );
-    // Automatically clamp or expand duration to at least the recommended hours to prevent under-booking
+    // Allow going up to 30 minutes lower than recommended (down to MIN_DURATION_HOURS)
+    const allowedFloor = Math.max(MIN_DURATION_HOURS, recommended - DURATION_STEP_HOURS);
     setDurationHours((current) =>
-      Math.min(MAX_DURATION_HOURS, Math.max(recommended, current))
+      Math.min(MAX_DURATION_HOURS, Math.max(allowedFloor, current))
     );
   };
 
@@ -181,6 +182,8 @@ export default function BookingPage() {
     selectedExtras
   );
   const requiresManualQuote = recommendedDurationHours > MAX_DURATION_HOURS;
+  // Customers can adjust duration up to 30 mins below recommendation (floor: 1.5h)
+  const allowedFloorHours = Math.max(MIN_DURATION_HOURS, recommendedDurationHours - DURATION_STEP_HOURS);
   const bedroomLabel = "Bedrooms";
   const bedroomHint = "Sleep & storage (or 0 for studio)";
   const bathroomLabel = "Bathrooms";
@@ -375,11 +378,9 @@ export default function BookingPage() {
       );
       return;
     }
-    if (durationHours < recommendedDurationHours) {
+    if (durationHours < allowedFloorHours) {
       setError(
-        `The rooms and extras selected require at least ${formatDuration(
-          recommendedDurationHours
-        )}.`
+        `The rooms and extras selected require at least ${formatDuration(allowedFloorHours)} (30 minutes below recommendation).`
       );
       return;
     }
@@ -938,27 +939,15 @@ export default function BookingPage() {
                       type="button"
                       onClick={() =>
                         setDurationHours((h) =>
-                          Math.max(
-                            Math.min(
-                              recommendedDurationHours,
-                              MAX_DURATION_HOURS
-                            ),
-                            h - DURATION_STEP_HOURS
-                          )
+                          Math.max(allowedFloorHours, h - DURATION_STEP_HOURS)
                         )
                       }
                       title={
-                        durationHours <=
-                        Math.min(recommendedDurationHours, MAX_DURATION_HOURS)
-                          ? `Minimum recommended duration for your selection is ${formatDuration(
-                              recommendedDurationHours
-                            )}`
-                          : "Decrease duration"
+                        durationHours <= allowedFloorHours
+                          ? `Minimum allowed duration for your selection is ${formatDuration(allowedFloorHours)}`
+                          : "Decrease duration by 30 mins"
                       }
-                      disabled={
-                        durationHours <=
-                        Math.min(recommendedDurationHours, MAX_DURATION_HOURS)
-                      }
+                      disabled={durationHours <= allowedFloorHours}
                       className="w-8 h-8 rounded-lg bg-white border border-gray-300 flex items-center justify-center text-gray-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-gray-100"
                     >
                       <Minus className="w-3.5 h-3.5" />
@@ -981,13 +970,9 @@ export default function BookingPage() {
                     </button>
                   </div>
                 </div>
-                {durationHours <=
-                  Math.min(recommendedDurationHours, MAX_DURATION_HOURS) && (
-                  <p className="text-[11px] text-gray-500 italic">
-                    Duration locked at minimum{" "}
-                    {formatDuration(recommendedDurationHours)} to ensure our
-                    cleaners have enough time to complete all selected rooms and
-                    extras properly.
+                {durationHours < recommendedDurationHours && (
+                  <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200/80 rounded-xl px-3 py-2">
+                    ⚡ You have chosen {formatDuration(durationHours)} (30 mins less than our recommended {formatDuration(recommendedDurationHours)}). Our cleaners will focus on your top priorities within this booking time.
                   </p>
                 )}
                 {requiresManualQuote && (
