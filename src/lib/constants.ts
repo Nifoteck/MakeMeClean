@@ -68,6 +68,8 @@ export const FREQ_LABELS_SHORT: Record<string, string> = {
 
 export {
   BOOKING_PROPERTY_TYPES,
+  ACCESS_METHODS,
+  CLEANING_SUPPLIES_OPTIONS,
   calculateRecommendedHours,
   DEFAULT_BOOKING_EXTRAS,
   DEFAULT_DURATION_MULTIPLIERS,

@@ -247,6 +247,10 @@ export const api = {
     livingRooms?: number;
     extras?: string[];
     propertyType?: string;
+    accessMethod?: string;
+    suppliesOption?: string;
+    parkingOption?: string;
+    hasPets?: boolean;
   }) => {
     return request<{ booking: any; invoiceNumber: string }>('/api/bookings', {
       method: 'POST',

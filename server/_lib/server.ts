@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 export {
   BOOKING_PROPERTY_TYPES,
+  ACCESS_METHODS,
+  CLEANING_SUPPLIES_OPTIONS,
   calculateRecommendedHours,
   calculateDurationHours,
   calcTimeSlot,

@@ -100,6 +100,10 @@ export async function handleBookings(
         livingRooms = 1,
         extras = [],
         propertyType = 'House',
+        accessMethod = 'home',
+        suppliesOption = 'cleaner',
+        parkingOption = 'free',
+        hasPets = false,
       } = body;
 
       if (!serviceId || !date || !address || !postcode) {
@@ -314,7 +318,27 @@ export async function handleBookings(
         price: finalPrice,
         status: 'upcoming',
         payment_status: 'pending',
-        notes: notes ? String(notes).trim() : null,
+        notes: (() => {
+          const parts: string[] = [];
+          if (accessMethod) {
+            const accessLabels: Record<string, string> = { home: "Customer at home", key_safe: "Key safe / Lockbox", concierge: "Concierge / Front desk", hidden_key: "Hidden key" };
+            parts.push("[Access: " + (accessLabels[accessMethod] || accessMethod) + "]");
+          }
+          if (suppliesOption) {
+            parts.push("[Supplies: " + (suppliesOption === "cleaner" ? "Cleaner brings eco supplies" : "Customer provides supplies") + "]");
+          }
+          if (parkingOption) {
+            const parkingLabels: Record<string, string> = { free: "Free on-street/driveway", permit: "Visitor permit provided", paid: "Paid meter nearby", none: "No parking" };
+            parts.push("[Parking: " + (parkingLabels[parkingOption] || parkingOption) + "]");
+          }
+          if (hasPets) {
+            parts.push("[Pets: Yes, pets at property]");
+          }
+          if (notes && String(notes).trim()) {
+            parts.push(String(notes).trim());
+          }
+          return parts.length > 0 ? parts.join(" \n") : null;
+        })(),
         invoice_number: invoiceNumber,
         bedrooms: parsedBedrooms,
         bathrooms: parsedBathrooms,

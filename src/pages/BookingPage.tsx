@@ -16,6 +16,9 @@ import {
   Sparkles,
   Layers,
   Shield,
+  Key,
+  Car,
+  Dog,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/lib/supabase";
@@ -30,6 +33,8 @@ import { cn, formatCurrency } from "@/lib/utils";
 import {
   FREQ_LABELS,
   BOOKING_PROPERTY_TYPES,
+  ACCESS_METHODS,
+  CLEANING_SUPPLIES_OPTIONS,
   calculateRecommendedHours,
   DEFAULT_BOOKING_EXTRAS,
   DEFAULT_DURATION_MULTIPLIERS,
@@ -94,6 +99,10 @@ export default function BookingPage() {
   const [citiesList, setCitiesList] = useState<string[]>(walesCities);
   const [postcode, setPostcode] = useState("");
   const [notes, setNotes] = useState("");
+  const [accessMethod, setAccessMethod] = useState("home");
+  const [suppliesOption, setSuppliesOption] = useState("cleaner");
+  const [parkingOption, setParkingOption] = useState("free");
+  const [hasPets, setHasPets] = useState(false);
   const [recurringFreq, setRecurringFreq] = useState<RecurringFreq>("none");
   const [liveDiscounts, setLiveDiscounts] =
     useState<Record<RecurringFreq, number>>(EMPTY_DISCOUNTS);
@@ -411,6 +420,10 @@ export default function BookingPage() {
         city,
         postcode,
         notes: notes || undefined,
+        accessMethod,
+        suppliesOption,
+        parkingOption,
+        hasPets,
         recurringFreq,
         bedrooms,
         bathrooms,
@@ -468,6 +481,14 @@ export default function BookingPage() {
             <div className="flex justify-between">
               <span className="text-gray-400">Duration:</span>
               <span className="font-bold">{formatDuration(durationHours)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Supplies:</span>
+              <span className="font-bold">{suppliesOption === "cleaner" ? "Cleaner brings supplies" : "Customer provides"}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-400">Access:</span>
+              <span className="font-bold">{ACCESS_METHODS.find(m => m.id === accessMethod)?.label || accessMethod}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-400">Address:</span>
@@ -1104,7 +1125,86 @@ export default function BookingPage() {
                   <MapPin className="w-3.5 h-3.5" /> Step C · Location & Keys
                 </p>
 
-                <div className="grid sm:grid-cols-3 gap-4">
+                <div>
+  <label className="text-xs font-bold text-gray-700 block mb-2">
+    <Key className="w-3.5 h-3.5 inline mr-1 text-green-600" /> How should our cleaner access your property?
+  </label>
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+    {ACCESS_METHODS.map((method) => (
+      <button
+        type="button"
+        key={method.id}
+        onClick={() => setAccessMethod(method.id)}
+        className={cn(
+          "p-3 rounded-2xl border text-left transition-all",
+          accessMethod === method.id
+            ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
+            : "border-gray-200 bg-white hover:border-gray-300"
+        )}
+      >
+        <div className="font-bold text-xs text-gray-900">{method.label}</div>
+        <div className="text-[10px] text-gray-500 mt-0.5 line-clamp-2">{method.desc}</div>
+      </button>
+    ))}
+  </div>
+</div>
+<div>
+  <label className="text-xs font-bold text-gray-700 block mb-2">
+    <Sparkles className="w-3.5 h-3.5 inline mr-1 text-green-600" /> Cleaning Products & Supplies
+  </label>
+  <div className="grid sm:grid-cols-2 gap-2 mb-4">
+    {CLEANING_SUPPLIES_OPTIONS.map((opt) => (
+      <button
+        type="button"
+        key={opt.id}
+        onClick={() => setSuppliesOption(opt.id)}
+        className={cn(
+          "p-3 rounded-2xl border text-left transition-all",
+          suppliesOption === opt.id
+            ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
+            : "border-gray-200 bg-white hover:border-gray-300"
+        )}
+      >
+        <div className="font-bold text-xs text-gray-900">{opt.label}</div>
+        <div className="text-[10px] text-gray-500 mt-0.5">{opt.desc}</div>
+      </button>
+    ))}
+  </div>
+</div>
+<div className="grid sm:grid-cols-2 gap-3 mb-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+  <div>
+    <label className="text-xs font-bold text-gray-700 block mb-1 flex items-center gap-1">
+      <Car className="w-3.5 h-3.5 text-gray-500" /> Parking arrangements
+    </label>
+    <select
+      value={parkingOption}
+      onChange={(e) => setParkingOption(e.target.value)}
+      className="input-field text-xs bg-white"
+    >
+      <option value="free">Free on-street / driveway parking</option>
+      <option value="permit">Visitor permit provided on arrival</option>
+      <option value="paid">Paid parking meter nearby</option>
+      <option value="none">No parking available (public transport only)</option>
+    </select>
+  </div>
+  <div>
+    <label className="text-xs font-bold text-gray-700 block mb-1 flex items-center gap-1">
+      <Dog className="w-3.5 h-3.5 text-gray-500" /> Pets at home
+    </label>
+    <button
+      type="button"
+      onClick={() => setHasPets(!hasPets)}
+      className={cn(
+        "w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-between transition-all bg-white",
+        hasPets ? "border-green-600 bg-green-50/50 text-green-800" : "border-gray-200 text-gray-600"
+      )}
+    >
+      <span>{hasPets ? "🐾 Yes, pets at property" : "No pets at property"}</span>
+      <span className="text-[10px] text-gray-400 font-normal">Click to toggle</span>
+    </button>
+  </div>
+</div>
+<div className="grid sm:grid-cols-3 gap-4">
                   <div>
                     <label className="text-xs font-bold text-gray-700 block mb-1.5">
                       Postcode
