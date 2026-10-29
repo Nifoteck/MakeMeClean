@@ -51,6 +51,7 @@ import type { BookingDurationMultipliers, BookingExtra } from "@/lib/constants";
 import { useServices } from "@/hooks/useServices";
 import { api } from "@/lib/apiClient";
 import { getServiceBookingConfig } from "@/lib/serviceBookingConfigs";
+import { WECASA_SERVICE_GROUPS } from "@/lib/wecasaServices";
 
 type Step = 1 | 2 | 3;
 type RecurringFreq = "none" | "weekly" | "fortnightly" | "monthly";
@@ -653,134 +654,76 @@ export default function BookingPage() {
 
         {/* Step 1 — Choose service */}
         {step === 1 && (
-          <div className="animate-fade-in bg-white p-6 sm:p-8 rounded-3xl border border-gray-200 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-              <div>
-                <h2 className="text-xl font-black text-gray-900">
-                  Choose your cleaning service
-                </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Filter by service category to find the exact clean for your
-                  needs.
-                </p>
-              </div>
-
-              {/* Wecasa-Style Category Pills */}
-              <div className="flex flex-wrap gap-1.5 p-1 bg-gray-50 rounded-2xl border border-gray-100">
-                {[
-                  { id: "all", label: "All Services" },
-                  { id: "domestic", label: "Domestic" },
-                  { id: "deep", label: "Deep Clean" },
-                  { id: "ironing", label: "Ironing & Laundry" },
-                  { id: "airbnb", label: "Holiday Let / Airbnb" },
-                  { id: "office", label: "Commercial" },
-                ].map((cat) => (
-                  <button
-                    key={cat.id}
-                    type="button"
-                    onClick={() => setSelectedCategory(cat.id)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-xl text-xs font-bold transition-all",
-                      selectedCategory === cat.id
-                        ? "bg-green-600 text-white shadow-xs"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
-                    )}
-                  >
-                    {cat.label}
-                  </button>
-                ))}
-              </div>
+          <div className="animate-fade-in space-y-6">
+            <div className="text-center max-w-xl mx-auto mb-2">
+              <h2 className="text-2xl font-black text-gray-900 tracking-tight">
+                Select your service
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Choose the service category tailored to your property. Customize hours, rooms, and extras in Step 2.
+              </p>
             </div>
 
-            <div className="grid sm:grid-cols-2 gap-4">
-              {services
-                .filter((s) => {
-                  const sId = (s.id || "").toLowerCase();
-                  const sName = (s.name || "").toLowerCase();
-                  if (selectedCategory === "all") return true;
-                  if (selectedCategory === "domestic") {
-                    return (
-                      sId.includes("standard") ||
-                      sId.includes("regular") ||
-                      sId.includes("one-off") ||
-                      sId.includes("housekeeping") ||
-                      sId.includes("same-day")
-                    );
-                  }
-                  if (selectedCategory === "deep") {
-                    return sId.includes("deep") || sId.includes("spring");
-                  }
-                  if (selectedCategory === "ironing") {
-                    return sId.includes("ironing");
-                  }
-                  if (selectedCategory === "airbnb") {
-                    return sId.includes("airbnb");
-                  }
-                  if (selectedCategory === "office") {
-                    return sId.includes("office");
-                  }
-                  return true;
-                })
-                .map((s) => {
-                  const sd = Math.max(
-                    0,
-                    Math.min(100, Number(s.discount_percent ?? 0))
-                  );
-                  const sp = sd > 0 ? s.price * (1 - sd / 100) : s.price;
-                  return (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        setSelectedService(s);
-                        const cfg = getServiceBookingConfig(s.id || s.name);
-                        setPropertyType(cfg.defaultPropertyType);
-                        setBedrooms(cfg.field1.default);
-                        setBathrooms(cfg.field2.default);
-                        setLivingRooms(cfg.field3.default);
-                        setSelectedExtras([]);
-                        setStep(2);
-                      }}
-                      className={`text-left p-4 rounded-2xl border transition-all duration-150 group hover:border-green-500 hover:shadow-md ${
-                        selectedService?.id === s.id
-                          ? "border-green-600 bg-green-50/50 ring-2 ring-green-500/20"
-                          : "border-gray-200 bg-white"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 shrink-0">
-                          {s.image_url ? (
-                            <img
-                              src={s.image_url}
-                              alt={s.name}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400">
-                              Clean
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-bold text-gray-900 text-sm group-hover:text-green-700">
-                            {s.name}
-                          </div>
-                          <div className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                            {s.description}
-                          </div>
-                          <div className="mt-2 text-green-700 font-black text-sm">
-                            {formatCurrency(sp)}/hr
-                            {sd > 0 && (
-                              <span className="text-xs text-gray-400 line-through font-normal ml-1.5">
-                                {formatCurrency(s.price)}/hr
-                              </span>
-                            )}
-                          </div>
-                        </div>
+            {/* Wecasa-Style 5 Distinct Main Categories */}
+            <div className="grid md:grid-cols-2 gap-4">
+              {WECASA_SERVICE_GROUPS.map((group) => {
+                const matchedDbService =
+                  services.find((s) => s.id === group.primaryServiceId) ||
+                  services.find((s) => s.name.toLowerCase().includes(group.id)) ||
+                  services[0];
+
+                return (
+                  <button
+                    key={group.id}
+                    type="button"
+                    onClick={() => {
+                      if (!matchedDbService) return;
+                      setSelectedService(matchedDbService);
+                      const cfg = getServiceBookingConfig(matchedDbService.id || matchedDbService.name);
+                      setPropertyType(cfg.defaultPropertyType);
+                      setBedrooms(cfg.field1.default);
+                      setBathrooms(cfg.field2.default);
+                      setLivingRooms(cfg.field3.default);
+                      setSelectedExtras([]);
+                      setStep(2);
+                    }}
+                    className="p-6 rounded-3xl border-2 border-gray-200 bg-white hover:border-green-600 hover:shadow-lg transition-all text-left flex flex-col justify-between group relative overflow-hidden"
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="w-14 h-14 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
+                        {group.icon}
                       </div>
-                    </button>
-                  );
-                })}
+                      <div className="flex flex-col items-end">
+                        {group.badge && (
+                          <span className="bg-green-100 text-green-800 text-[11px] font-black px-2.5 py-0.5 rounded-full mb-1">
+                            {group.badge}
+                          </span>
+                        )}
+                        <span className="text-sm font-black text-green-700">
+                          {group.hourlyRateRange}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-black text-gray-900 group-hover:text-green-700 transition-colors">
+                        {group.name}
+                      </h3>
+                      <p className="text-xs font-semibold text-green-700 mt-0.5">
+                        {group.tagline}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                        {group.description}
+                      </p>
+                    </div>
+
+                    <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between text-xs font-bold text-gray-700 group-hover:text-green-700">
+                      <span>Select & customize</span>
+                      <ArrowRight className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
