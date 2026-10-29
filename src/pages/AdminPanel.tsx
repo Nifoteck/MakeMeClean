@@ -26,6 +26,7 @@ import {
   formatCurrency,
   formatDate,
   isBookingStartTimePassed,
+  isBookingEndTimePassed,
 } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useIsAdmin } from "@/hooks/useRole";
@@ -46,6 +47,7 @@ type StatusFilter =
   | "all"
   | "upcoming"
   | "pending_payment"
+  | "pending_completion"
   | "completed"
   | "cancelled";
 
@@ -393,11 +395,23 @@ export default function AdminPanel() {
 
     if (statusFilter === "all") return true;
     if (statusFilter === "upcoming") {
-      // Confirmed upcoming: Must be status upcoming AND paid
-      return b.status === "upcoming" && b.payment_status === "paid";
+      // Confirmed upcoming: Paid and the scheduled clean has not yet finished
+      return (
+        b.status === "upcoming" &&
+        b.payment_status === "paid" &&
+        !isBookingEndTimePassed(b.date, b.time_slot, b.duration_hours)
+      );
+    }
+    if (statusFilter === "pending_completion") {
+      // Pending completion: Paid, end time has passed, but admin hasn't marked complete yet
+      return (
+        b.status === "upcoming" &&
+        b.payment_status === "paid" &&
+        isBookingEndTimePassed(b.date, b.time_slot, b.duration_hours)
+      );
     }
     if (statusFilter === "pending_payment") {
-      // Pending payment: Upcoming but not paid yet
+      // Pending payment: Upcoming date but not paid yet
       return b.status === "upcoming" && b.payment_status !== "paid";
     }
     return b.status === statusFilter;
@@ -415,7 +429,19 @@ export default function AdminPanel() {
     {
       label: "Upcoming (Paid)",
       value: bookings.filter(
-        (b) => b.status === "upcoming" && b.payment_status === "paid"
+        (b) =>
+          b.status === "upcoming" &&
+          b.payment_status === "paid" &&
+          !isBookingEndTimePassed(b.date, b.time_slot, b.duration_hours)
+      ).length,
+    },
+    {
+      label: "Pending Completion",
+      value: bookings.filter(
+        (b) =>
+          b.status === "upcoming" &&
+          b.payment_status === "paid" &&
+          isBookingEndTimePassed(b.date, b.time_slot, b.duration_hours)
       ).length,
     },
     {
@@ -668,6 +694,7 @@ export default function AdminPanel() {
             [
               { id: "all", label: "All" },
               { id: "upcoming", label: "Upcoming (Paid)" },
+              { id: "pending_completion", label: "Pending Completion" },
               { id: "pending_payment", label: "Pending Payment" },
               { id: "completed", label: "Completed" },
               { id: "cancelled", label: "Cancelled / Expired" },
@@ -875,7 +902,18 @@ export default function AdminPanel() {
                       <span>{isExpanded ? "Hide" : "Details"}</span>
                     </button>
 
-                    {b.status !== "upcoming" || b.payment_status === "paid" ? (
+                    {b.status === "upcoming" &&
+                    b.payment_status === "paid" &&
+                    isBookingEndTimePassed(
+                      b.date,
+                      b.time_slot,
+                      b.duration_hours
+                    ) ? (
+                      <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-indigo-100 text-indigo-700">
+                        Pending completion
+                      </span>
+                    ) : b.status !== "upcoming" ||
+                      b.payment_status === "paid" ? (
                       <span
                         className={cn(
                           "text-xs font-bold px-3 py-1.5 rounded-full",
