@@ -350,6 +350,10 @@ export async function handleBookings(
         extras: selectedExtraIds,
         property_type: normalizedPropertyType,
         duration_hours: durationHours,
+        access_method: accessMethod || 'home',
+        supplies_option: suppliesOption || 'cleaner',
+        parking_option: parkingOption || 'free',
+        has_pets: Boolean(hasPets),
       };
 
       const { data: booking, error: insertErr } = await supabase
@@ -384,6 +388,10 @@ export async function handleBookings(
             living_rooms: parsedLivingRooms,
             extras: selectedExtraIds,
             property_type: normalizedPropertyType,
+            access_method: accessMethod || 'home',
+            supplies_option: suppliesOption || 'cleaner',
+            parking_option: parkingOption || 'free',
+            has_pets: Boolean(hasPets),
           });
           if (planErr) {
             console.error('[Recurring Plan Insert Warning]:', planErr);

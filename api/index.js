@@ -22948,7 +22948,11 @@ async function handleBookings(req, res, subPath, params = {}) {
         living_rooms: parsedLivingRooms,
         extras: selectedExtraIds,
         property_type: normalizedPropertyType,
-        duration_hours: durationHours
+        duration_hours: durationHours,
+        access_method: accessMethod || "home",
+        supplies_option: suppliesOption || "cleaner",
+        parking_option: parkingOption || "free",
+        has_pets: Boolean(hasPets)
       };
       const { data: booking, error: insertErr } = await supabase.from("bookings").insert(bookingInsert).select().single();
       if (insertErr || !booking) {
@@ -22975,7 +22979,11 @@ async function handleBookings(req, res, subPath, params = {}) {
             bathrooms: parsedBathrooms,
             living_rooms: parsedLivingRooms,
             extras: selectedExtraIds,
-            property_type: normalizedPropertyType
+            property_type: normalizedPropertyType,
+            access_method: accessMethod || "home",
+            supplies_option: suppliesOption || "cleaner",
+            parking_option: parkingOption || "free",
+            has_pets: Boolean(hasPets)
           });
           if (planErr) {
             console.error("[Recurring Plan Insert Warning]:", planErr);
