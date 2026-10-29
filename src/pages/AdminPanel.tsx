@@ -133,7 +133,9 @@ export default function AdminPanel() {
   const { isAdmin, loading: roleLoading } = useIsAdmin(user?.id);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [serviceImages, setServiceImages] = useState<Record<string, string>>({});
+  const [serviceImages, setServiceImages] = useState<Record<string, string>>(
+    {}
+  );
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [fetching, setFetching] = useState(false);
@@ -141,15 +143,21 @@ export default function AdminPanel() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
-  const [expandedBookingIds, setExpandedBookingIds] = useState<Record<string, boolean>>({});
+  const [expandedBookingIds, setExpandedBookingIds] = useState<
+    Record<string, boolean>
+  >({});
 
   // Assign modal
-  const [assignModal, setAssignModal] = useState<{ booking: Booking } | null>(null);
+  const [assignModal, setAssignModal] = useState<{ booking: Booking } | null>(
+    null
+  );
   useScrollLock(!!assignModal);
   const [pickedStaff, setPickedStaff] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState("");
-  const [staffAvailability, setStaffAvailability] = useState<Record<string, boolean>>({});
+  const [staffAvailability, setStaffAvailability] = useState<
+    Record<string, boolean>
+  >({});
 
   const toggleExpanded = (id: string) => {
     setExpandedBookingIds((prev) => ({ ...prev, [id]: !prev[id] }));
@@ -157,10 +165,21 @@ export default function AdminPanel() {
 
   const fetchAll = async () => {
     setFetching(true);
-    const [{ data: bData }, { data: svcData }, { data: staffData }, { data: aData }] = await Promise.all([
-      supabase.from("bookings").select("*, profiles(full_name, phone)").order("created_at", { ascending: false }),
+    const [
+      { data: bData },
+      { data: svcData },
+      { data: staffData },
+      { data: aData },
+    ] = await Promise.all([
+      supabase
+        .from("bookings")
+        .select("*, profiles(full_name, phone)")
+        .order("created_at", { ascending: false }),
       supabase.from("services").select("id, image_url"),
-      supabase.from("staff").select("id, first_name, last_name, email").eq("active", true),
+      supabase
+        .from("staff")
+        .select("id, first_name, last_name, email")
+        .eq("active", true),
       supabase.from("booking_assignments").select("booking_id, staff_id"),
     ]);
     setBookings((bData as Booking[]) ?? []);
@@ -182,11 +201,19 @@ export default function AdminPanel() {
     setPage(1);
   }, [search, statusFilter]);
 
-  const updateStatus = async (id: string, status: "completed" | "cancelled") => {
+  const updateStatus = async (
+    id: string,
+    status: "completed" | "cancelled"
+  ) => {
     setUpdatingId(id);
-    const { error } = await supabase.from("bookings").update({ status }).eq("id", id);
+    const { error } = await supabase
+      .from("bookings")
+      .update({ status })
+      .eq("id", id);
     if (!error) {
-      setBookings((prev) => prev.map((b) => (b.id === id ? { ...b, status } : b)));
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status } : b))
+      );
     }
     setUpdatingId(null);
   };
@@ -198,7 +225,15 @@ export default function AdminPanel() {
 
     // Check staff availability for this booking's date
     const dateObj = new Date(booking.date);
-    const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const days = [
+      "sunday",
+      "monday",
+      "tuesday",
+      "wednesday",
+      "thursday",
+      "friday",
+      "saturday",
+    ];
     const dayOfWeek = days[dateObj.getDay()];
 
     const { data: avData } = await supabase
@@ -221,11 +256,22 @@ export default function AdminPanel() {
       const {
         data: { session },
       } = await supabase.auth.getSession();
-      const { data, error: fnErr } = await supabase.functions.invoke("assign-staff", {
-        body: { bookingId: assignModal.booking.id, staffId: pickedStaff || null },
-        headers: session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {},
-      });
-      if (fnErr || !data?.ok) throw new Error(data?.error ?? fnErr?.message ?? "Failed to save assignment");
+      const { data, error: fnErr } = await supabase.functions.invoke(
+        "assign-staff",
+        {
+          body: {
+            bookingId: assignModal.booking.id,
+            staffId: pickedStaff || null,
+          },
+          headers: session?.access_token
+            ? { Authorization: `Bearer ${session.access_token}` }
+            : {},
+        }
+      );
+      if (fnErr || !data?.ok)
+        throw new Error(
+          data?.error ?? fnErr?.message ?? "Failed to save assignment"
+        );
       setAssignments((prev) => {
         const next = { ...prev };
         if (pickedStaff) next[assignModal.booking.id] = pickedStaff;
@@ -242,12 +288,30 @@ export default function AdminPanel() {
 
   const exportCSV = () => {
     const rows = [
-      ["Invoice", "Service", "Customer", "Phone", "Date", "Time", "City", "Property Type", "Layout", "Extras", "Duration (hrs)", "Price", "Status", "Payment", "Assigned Staff"],
+      [
+        "Invoice",
+        "Service",
+        "Customer",
+        "Phone",
+        "Date",
+        "Time",
+        "City",
+        "Property Type",
+        "Layout",
+        "Extras",
+        "Duration (hrs)",
+        "Price",
+        "Status",
+        "Payment",
+        "Assigned Staff",
+      ],
       ...filtered.map((b) => {
         const sid = assignments[b.id];
         const s = sid ? staff.find((x) => x.id === sid) : null;
         const extrasStr = Array.isArray(b.extras) ? b.extras.join(", ") : "";
-        const layoutStr = `${b.bedrooms ?? 1} Bed, ${b.bathrooms ?? 1} Bath, ${b.living_rooms ?? 1} Living`;
+        const layoutStr = `${b.bedrooms ?? 1} Bed, ${b.bathrooms ?? 1} Bath, ${
+          b.living_rooms ?? 1
+        } Living`;
         return [
           b.invoice_number ?? "",
           b.service_name,
@@ -267,7 +331,9 @@ export default function AdminPanel() {
         ];
       }),
     ];
-    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = rows
+      .map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
@@ -289,26 +355,51 @@ export default function AdminPanel() {
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const totalRevenue = bookings.reduce((sum, b) => {
-    if (b.payment_status !== "paid" && b.payment_status !== "refunded") return sum;
+    if (b.payment_status !== "paid" && b.payment_status !== "refunded")
+      return sum;
     return sum + Number(b.price) - Number(b.refunded_amount ?? 0);
   }, 0);
   const stats = [
     { label: "Total bookings", value: bookings.length },
-    { label: "Upcoming", value: bookings.filter((b) => b.status === "upcoming").length },
-    { label: "Completed", value: bookings.filter((b) => b.status === "completed").length },
+    {
+      label: "Upcoming",
+      value: bookings.filter((b) => b.status === "upcoming").length,
+    },
+    {
+      label: "Completed",
+      value: bookings.filter((b) => b.status === "completed").length,
+    },
     { label: "Total revenue", value: formatCurrency(totalRevenue) },
   ];
 
-  if (loading || roleLoading) return <div className="min-h-screen flex items-center justify-center"><Spinner /></div>;
-  if (!user) return <div className="min-h-screen flex items-center justify-center text-gray-500">Please log in.</div>;
-  if (!isAdmin) return <div className="min-h-screen flex items-center justify-center text-gray-500">No admin access.</div>;
+  if (loading || roleLoading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Spinner />
+      </div>
+    );
+  if (!user)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        Please log in.
+      </div>
+    );
+  if (!isAdmin)
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        No admin access.
+      </div>
+    );
 
   return (
     <AdminLayout
       title="Bookings"
       subtitle="Manage all customer bookings"
       actions={
-        <button onClick={exportCSV} className="btn-primary flex items-center gap-2 text-sm">
+        <button
+          onClick={exportCSV}
+          className="btn-primary flex items-center gap-2 text-sm"
+        >
           <Download className="w-4 h-4" /> Export CSV
         </button>
       }
@@ -316,12 +407,19 @@ export default function AdminPanel() {
       {/* Assign modal */}
       {assignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !assigning && setAssignModal(null)} />
+          <div
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            onClick={() => !assigning && setAssignModal(null)}
+          />
           <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
               <div>
-                <p className="text-base font-bold text-gray-900">Assign staff member</p>
-                <p className="text-sm text-gray-500 mt-0.5">{assignModal.booking.service_name}</p>
+                <p className="text-base font-bold text-gray-900">
+                  Assign staff member
+                </p>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {assignModal.booking.service_name}
+                </p>
               </div>
               <button
                 onClick={() => !assigning && setAssignModal(null)}
@@ -336,11 +434,13 @@ export default function AdminPanel() {
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
                 <div className="flex gap-2 text-gray-600">
                   <Calendar className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-                  {formatDate(assignModal.booking.date)} · {assignModal.booking.time_slot}
+                  {formatDate(assignModal.booking.date)} ·{" "}
+                  {assignModal.booking.time_slot}
                 </div>
                 <div className="flex gap-2 text-gray-600">
                   <MapPin className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
-                  {assignModal.booking.address}, {assignModal.booking.city}, {assignModal.booking.postcode}
+                  {assignModal.booking.address}, {assignModal.booking.city},{" "}
+                  {assignModal.booking.postcode}
                 </div>
                 {assignModal.booking.profiles?.full_name && (
                   <div className="flex gap-2 text-gray-600">
@@ -352,36 +452,49 @@ export default function AdminPanel() {
                 <div className="flex gap-2 text-gray-700 font-medium pt-2 border-t border-gray-200/60">
                   <Home className="w-4 h-4 text-green-600 shrink-0 mt-0.5" />
                   <span>
-                    {assignModal.booking.bedrooms ?? 1} Bed · {assignModal.booking.bathrooms ?? 1} Bath ·{" "}
-                    {assignModal.booking.living_rooms ?? 1} Living ({assignModal.booking.property_type || "House/Flat"})
+                    {assignModal.booking.bedrooms ?? 1} Bed ·{" "}
+                    {assignModal.booking.bathrooms ?? 1} Bath ·{" "}
+                    {assignModal.booking.living_rooms ?? 1} Living (
+                    {assignModal.booking.property_type || "House/Flat"})
                   </span>
                 </div>
-                {Array.isArray(assignModal.booking.extras) && assignModal.booking.extras.length > 0 && (
-                  <div className="flex gap-2 text-green-800 text-xs font-semibold bg-green-50/80 p-2 rounded-lg border border-green-100">
-                    <Sparkles className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
-                    <span>Extras: {assignModal.booking.extras.join(", ")}</span>
-                  </div>
-                )}
+                {Array.isArray(assignModal.booking.extras) &&
+                  assignModal.booking.extras.length > 0 && (
+                    <div className="flex gap-2 text-green-800 text-xs font-semibold bg-green-50/80 p-2 rounded-lg border border-green-100">
+                      <Sparkles className="w-3.5 h-3.5 text-green-600 shrink-0 mt-0.5" />
+                      <span>
+                        Extras: {assignModal.booking.extras.join(", ")}
+                      </span>
+                    </div>
+                  )}
               </div>
               {/* Staff picker */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Staff member</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Staff member
+                </label>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                   {/* Unassign option */}
                   <div
                     onClick={() => !assigning && setPickedStaff("")}
                     className={cn(
                       "flex items-center gap-3 p-3 rounded-xl cursor-pointer border-2 transition-all",
-                      pickedStaff === "" ? "border-green-500 bg-green-50" : "border-gray-100 hover:border-gray-200 bg-white"
+                      pickedStaff === ""
+                        ? "border-green-500 bg-green-50"
+                        : "border-gray-100 hover:border-gray-200 bg-white"
                     )}
                   >
                     <div
                       className={cn(
                         "w-4 h-4 rounded-full border-2 shrink-0 transition-colors",
-                        pickedStaff === "" ? "border-green-500 bg-green-500" : "border-gray-300"
+                        pickedStaff === ""
+                          ? "border-green-500 bg-green-500"
+                          : "border-gray-300"
                       )}
                     />
-                    <span className="text-sm font-semibold text-gray-500">Unassign</span>
+                    <span className="text-sm font-semibold text-gray-500">
+                      Unassign
+                    </span>
                   </div>
                   {staff.map((s) => {
                     const available = staffAvailability[s.id];
@@ -392,20 +505,26 @@ export default function AdminPanel() {
                         onClick={() => !assigning && setPickedStaff(s.id)}
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-xl cursor-pointer border-2 transition-all",
-                          pickedStaff === s.id ? "border-green-500 bg-green-50" : "border-gray-100 hover:border-gray-200 bg-white"
+                          pickedStaff === s.id
+                            ? "border-green-500 bg-green-50"
+                            : "border-gray-100 hover:border-gray-200 bg-white"
                         )}
                       >
                         <div
                           className={cn(
                             "w-4 h-4 rounded-full border-2 shrink-0 transition-colors",
-                            pickedStaff === s.id ? "border-green-500 bg-green-500" : "border-gray-300"
+                            pickedStaff === s.id
+                              ? "border-green-500 bg-green-500"
+                              : "border-gray-300"
                           )}
                         />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-900">
                             {s.first_name} {s.last_name}
                           </p>
-                          <p className="text-xs text-gray-400 truncate">{s.email}</p>
+                          <p className="text-xs text-gray-400 truncate">
+                            {s.email}
+                          </p>
                         </div>
                         {hasData &&
                           (available ? (
@@ -423,11 +542,16 @@ export default function AdminPanel() {
                 </div>
                 {pickedStaff && (
                   <p className="text-xs text-gray-400 mt-2">
-                    An email notification will be sent to {staff.find((s) => s.id === pickedStaff)?.email}.
+                    An email notification will be sent to{" "}
+                    {staff.find((s) => s.id === pickedStaff)?.email}.
                   </p>
                 )}
               </div>
-              {assignError && <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">{assignError}</p>}
+              {assignError && (
+                <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                  {assignError}
+                </p>
+              )}
             </div>
             <div className="px-6 pb-6 flex justify-end gap-3">
               <button
@@ -458,7 +582,10 @@ export default function AdminPanel() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         {stats.map(({ label, value }) => (
-          <div key={label} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+          <div
+            key={label}
+            className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm"
+          >
             <p className="text-xs font-medium text-gray-400 mb-1">{label}</p>
             <p className="text-2xl font-bold text-gray-900">{value}</p>
           </div>
@@ -478,13 +605,17 @@ export default function AdminPanel() {
           />
         </div>
         <div className="flex gap-2">
-          {(["all", "upcoming", "completed", "cancelled"] as StatusFilter[]).map((tab) => (
+          {(
+            ["all", "upcoming", "completed", "cancelled"] as StatusFilter[]
+          ).map((tab) => (
             <button
               key={tab}
               onClick={() => setStatusFilter(tab)}
               className={cn(
                 "px-4 py-2.5 rounded-xl text-xs font-bold capitalize transition-all",
-                statusFilter === tab ? "bg-green-600 text-white shadow-xs" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
+                statusFilter === tab
+                  ? "bg-green-600 text-white shadow-xs"
+                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-50"
               )}
             >
               {tab}
@@ -495,7 +626,9 @@ export default function AdminPanel() {
 
       {/* Bookings List */}
       {fetching ? (
-        <div className="flex items-center justify-center py-20"><Spinner /></div>
+        <div className="flex items-center justify-center py-20">
+          <Spinner />
+        </div>
       ) : paginated.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
           <p className="text-gray-400 text-sm">No bookings found</p>
@@ -538,9 +671,17 @@ export default function AdminPanel() {
                       </span>
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-gray-900 truncate">{b.profiles?.full_name ?? "Unknown"}</p>
-                      <p className="text-xs text-gray-400 truncate">{b.profiles?.phone ?? ""}</p>
-                      {b.invoice_number && <p className="text-xs font-mono text-gray-300">{b.invoice_number}</p>}
+                      <p className="text-sm font-bold text-gray-900 truncate">
+                        {b.profiles?.full_name ?? "Unknown"}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">
+                        {b.profiles?.phone ?? ""}
+                      </p>
+                      {b.invoice_number && (
+                        <p className="text-xs font-mono text-gray-300">
+                          {b.invoice_number}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -548,20 +689,29 @@ export default function AdminPanel() {
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-xl overflow-hidden bg-green-50 border border-green-100 shrink-0">
                       {serviceImages[b.service_type] ? (
-                        <img src={serviceImages[b.service_type]} alt={b.service_name} className="w-full h-full object-cover" />
+                        <img
+                          src={serviceImages[b.service_type]}
+                          alt={b.service_name}
+                          className="w-full h-full object-cover"
+                        />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-lg">🧹</div>
+                        <div className="w-full h-full flex items-center justify-center text-lg">
+                          🧹
+                        </div>
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{b.service_name}</p>
+                      <p className="text-sm font-semibold text-gray-800 truncate">
+                        {b.service_name}
+                      </p>
                       <p className="text-xs text-gray-400 flex items-center gap-1">
                         <MapPin className="w-3 h-3" />
                         {b.city}
                       </p>
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <span className="text-[11px] font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
-                          {b.bedrooms ?? 1} Bed · {b.bathrooms ?? 1} Bath · {b.duration_hours || 2}h
+                          {b.bedrooms ?? 1} Bed · {b.bathrooms ?? 1} Bath ·{" "}
+                          {b.duration_hours || 2}h
                         </span>
                       </div>
                     </div>
@@ -580,16 +730,32 @@ export default function AdminPanel() {
                     <div className="flex items-center gap-1.5 pt-0.5 border-t border-gray-100 mt-1">
                       <Clock className="w-3 h-3 text-gray-200 shrink-0" />
                       <span className="text-xs text-gray-300 leading-snug">
-                        Booked {new Date(b.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}{" "}
-                        at {new Date(b.created_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                        Booked{" "}
+                        {new Date(b.created_at).toLocaleDateString("en-GB", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}{" "}
+                        at{" "}
+                        {new Date(b.created_at).toLocaleTimeString("en-GB", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </span>
                     </div>
                   </div>
 
                   {/* Price */}
                   <div className="min-w-0">
-                    <p className="text-base font-black text-gray-900">{formatCurrency(b.price)}</p>
-                    <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", paymentClass)}>
+                    <p className="text-base font-black text-gray-900">
+                      {formatCurrency(b.price)}
+                    </p>
+                    <span
+                      className={cn(
+                        "text-xs font-semibold px-2 py-0.5 rounded-full",
+                        paymentClass
+                      )}
+                    >
                       {paymentLabel}
                     </span>
                   </div>
@@ -607,7 +773,9 @@ export default function AdminPanel() {
                     >
                       <UserCheck className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">
-                        {assignedStaff ? `${assignedStaff.first_name} ${assignedStaff.last_name}` : "Assign staff"}
+                        {assignedStaff
+                          ? `${assignedStaff.first_name} ${assignedStaff.last_name}`
+                          : "Assign staff"}
                       </span>
                     </button>
                   </div>
@@ -624,12 +792,21 @@ export default function AdminPanel() {
                       )}
                       title="View room layout and specialist extras"
                     >
-                      {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      {isExpanded ? (
+                        <ChevronUp className="w-3.5 h-3.5" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5" />
+                      )}
                       <span>{isExpanded ? "Hide" : "Details"}</span>
                     </button>
 
                     {b.status !== "upcoming" || b.payment_status === "paid" ? (
-                      <span className={cn("text-xs font-bold px-3 py-1.5 rounded-full", STATUS_PILL[b.status] ?? "bg-gray-100 text-gray-500")}>
+                      <span
+                        className={cn(
+                          "text-xs font-bold px-3 py-1.5 rounded-full",
+                          STATUS_PILL[b.status] ?? "bg-gray-100 text-gray-500"
+                        )}
+                      >
                         {b.status.charAt(0).toUpperCase() + b.status.slice(1)}
                       </span>
                     ) : (
@@ -661,124 +838,164 @@ export default function AdminPanel() {
                 </div>
 
                 {/* Expanded Details Panel: Full Room Layout, Access, Supplies & Specialist Extras */}
-                {isExpanded && (() => {
-                  const parsed = parseSpecialNotes(b.notes);
-                  const accessDisplay =
-                    b.access_method
+                {isExpanded &&
+                  (() => {
+                    const parsed = parseSpecialNotes(b.notes);
+                    const accessDisplay = b.access_method
                       ? ACCESS_METHOD_LABELS[b.access_method] || b.access_method
                       : parsed.parsedAccess || "Customer at home";
-                  const suppliesDisplay =
-                    b.supplies_option
-                      ? SUPPLIES_OPTION_LABELS[b.supplies_option] || b.supplies_option
+                    const suppliesDisplay = b.supplies_option
+                      ? SUPPLIES_OPTION_LABELS[b.supplies_option] ||
+                        b.supplies_option
                       : parsed.parsedSupplies || "Cleaner brings eco supplies";
-                  const parkingDisplay =
-                    b.parking_option
-                      ? PARKING_OPTION_LABELS[b.parking_option] || b.parking_option
+                    const parkingDisplay = b.parking_option
+                      ? PARKING_OPTION_LABELS[b.parking_option] ||
+                        b.parking_option
                       : parsed.parsedParking || "Free on-street/driveway";
-                  const hasPets = b.has_pets != null ? b.has_pets : Boolean(parsed.parsedPets);
+                    const hasPets =
+                      b.has_pets != null
+                        ? b.has_pets
+                        : Boolean(parsed.parsedPets);
 
-                  return (
-                    <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/70 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs animate-fade-in">
-                      {/* Col 1: Property Configuration */}
-                      <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
-                        <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
-                          <Home className="w-3.5 h-3.5 text-green-600" />
-                          <span>Property Configuration</span>
-                        </div>
-                        <p className="text-gray-600">
-                          Type: <span className="font-semibold text-gray-900">{b.property_type || "House / Flat"}</span>
-                        </p>
-                        <p className="text-gray-600">
-                          Layout:{" "}
-                          <span className="font-semibold text-gray-900">
-                            {b.bedrooms ?? 0} Bed · {b.bathrooms ?? 1} Bath · {b.living_rooms ?? 1} Living
-                          </span>
-                        </p>
-                        <p className="text-gray-600">
-                          Duration: <span className="font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded">{b.duration_hours || 2} Hours</span>
-                        </p>
-                      </div>
-
-                      {/* Col 2: Access & Key Logistics */}
-                      <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
-                        <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
-                          <Key className="w-3.5 h-3.5 text-amber-600" />
-                          <span>Access & Entry</span>
-                        </div>
-                        <p className="text-gray-600">
-                          Method: <span className="font-semibold text-gray-900">{accessDisplay}</span>
-                        </p>
-                        <p className="text-gray-600 flex items-center gap-1">
-                          <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>Supplies: <strong className="text-gray-900 font-semibold">{suppliesDisplay}</strong></span>
-                        </p>
-                        <p className="text-gray-600 flex items-center gap-1">
-                          <Car className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                          <span>Parking: <strong className="text-gray-900 font-semibold">{parkingDisplay}</strong></span>
-                        </p>
-                        {hasPets && (
-                          <p className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded font-medium flex items-center gap-1 w-fit">
-                            <Dog className="w-3.5 h-3.5" />
-                            <span>Pets on property</span>
+                    return (
+                      <div className="mt-4 pt-4 border-t border-gray-100 bg-gray-50/70 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs animate-fade-in">
+                        {/* Col 1: Property Configuration */}
+                        <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
+                          <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
+                            <Home className="w-3.5 h-3.5 text-green-600" />
+                            <span>Property Configuration</span>
+                          </div>
+                          <p className="text-gray-600">
+                            Type:{" "}
+                            <span className="font-semibold text-gray-900">
+                              {b.property_type || "House / Flat"}
+                            </span>
                           </p>
-                        )}
-                      </div>
-
-                      {/* Col 3: Specialist Add-Ons */}
-                      <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
-                        <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
-                          <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-                          <span>Specialist Add-Ons</span>
-                          {hasExtras && <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-1.5 rounded-full ml-auto">{(b.extras as string[]).length}</span>}
+                          <p className="text-gray-600">
+                            Layout:{" "}
+                            <span className="font-semibold text-gray-900">
+                              {b.bedrooms ?? 0} Bed · {b.bathrooms ?? 1} Bath ·{" "}
+                              {b.living_rooms ?? 1} Living
+                            </span>
+                          </p>
+                          <p className="text-gray-600">
+                            Duration:{" "}
+                            <span className="font-bold text-green-700 bg-green-50 px-1.5 py-0.5 rounded">
+                              {b.duration_hours || 2} Hours
+                            </span>
+                          </p>
                         </div>
-                        {hasExtras ? (
-                          <div className="flex flex-wrap gap-1.5 pt-0.5">
-                            {(b.extras as string[]).map((extraId, i) => {
-                              const badge = formatExtraBadge(extraId);
-                              return (
-                                <span
-                                  key={i}
-                                  className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 border border-purple-100 text-purple-900 font-medium text-[11px]"
-                                >
-                                  <span>{badge.icon}</span>
-                                  <span>{badge.label}</span>
-                                </span>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <p className="text-gray-400 italic pt-1">No specialist add-ons selected</p>
-                        )}
-                      </div>
 
-                      {/* Col 4: Client Instructions & Address */}
-                      <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
-                        <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
-                          <FileText className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Address & Notes</span>
-                        </div>
-                        <p className="text-gray-800 font-medium">
-                          {b.address}{b.city ? `, ${b.city}` : ""}{b.postcode ? ` ${b.postcode}` : ""}
-                        </p>
-                        {parsed.cleanNotes ? (
-                          <div className="mt-1 bg-amber-50/60 p-2 rounded-lg border border-amber-200/70 text-amber-950 font-sans">
-                            <span className="font-bold text-[10px] uppercase text-amber-800 block mb-0.5">Special Instructions:</span>
-                            "{parsed.cleanNotes}"
+                        {/* Col 2: Access & Key Logistics */}
+                        <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
+                          <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
+                            <Key className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Access & Entry</span>
                           </div>
-                        ) : (
-                          <p className="text-gray-400 italic mt-1">No additional instructions</p>
-                        )}
+                          <p className="text-gray-600">
+                            Method:{" "}
+                            <span className="font-semibold text-gray-900">
+                              {accessDisplay}
+                            </span>
+                          </p>
+                          <p className="text-gray-600 flex items-center gap-1">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>
+                              Supplies:{" "}
+                              <strong className="text-gray-900 font-semibold">
+                                {suppliesDisplay}
+                              </strong>
+                            </span>
+                          </p>
+                          <p className="text-gray-600 flex items-center gap-1">
+                            <Car className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                            <span>
+                              Parking:{" "}
+                              <strong className="text-gray-900 font-semibold">
+                                {parkingDisplay}
+                              </strong>
+                            </span>
+                          </p>
+                          {hasPets && (
+                            <p className="text-amber-800 bg-amber-50 px-2 py-0.5 rounded font-medium flex items-center gap-1 w-fit">
+                              <Dog className="w-3.5 h-3.5" />
+                              <span>Pets on property</span>
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Col 3: Specialist Add-Ons */}
+                        <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
+                          <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
+                            <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                            <span>Specialist Add-Ons</span>
+                            {hasExtras && (
+                              <span className="text-[10px] bg-purple-100 text-purple-700 font-bold px-1.5 rounded-full ml-auto">
+                                {(b.extras as string[]).length}
+                              </span>
+                            )}
+                          </div>
+                          {hasExtras ? (
+                            <div className="flex flex-wrap gap-1.5 pt-0.5">
+                              {(b.extras as string[]).map((extraId, i) => {
+                                const badge = formatExtraBadge(extraId);
+                                return (
+                                  <span
+                                    key={i}
+                                    className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-purple-50 border border-purple-100 text-purple-900 font-medium text-[11px]"
+                                  >
+                                    <span>{badge.icon}</span>
+                                    <span>{badge.label}</span>
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-gray-400 italic pt-1">
+                              No specialist add-ons selected
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Col 4: Client Instructions & Address */}
+                        <div className="space-y-1.5 bg-white p-3 rounded-xl border border-gray-100 shadow-2xs">
+                          <div className="flex items-center gap-1.5 font-bold text-gray-800 pb-1 border-b border-gray-100">
+                            <FileText className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Address & Notes</span>
+                          </div>
+                          <p className="text-gray-800 font-medium">
+                            {b.address}
+                            {b.city ? `, ${b.city}` : ""}
+                            {b.postcode ? ` ${b.postcode}` : ""}
+                          </p>
+                          {parsed.cleanNotes ? (
+                            <div className="mt-1 bg-amber-50/60 p-2 rounded-lg border border-amber-200/70 text-amber-950 font-sans">
+                              <span className="font-bold text-[10px] uppercase text-amber-800 block mb-0.5">
+                                Special Instructions:
+                              </span>
+                              "{parsed.cleanNotes}"
+                            </div>
+                          ) : (
+                            <p className="text-gray-400 italic mt-1">
+                              No additional instructions
+                            </p>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })()}
+                    );
+                  })()}
               </div>
             );
           })}
         </div>
       )}
       <div className="mt-4">
-        <Pagination page={page} total={filtered.length} pageSize={PAGE_SIZE} onChange={setPage} />
+        <Pagination
+          page={page}
+          total={filtered.length}
+          pageSize={PAGE_SIZE}
+          onChange={setPage}
+        />
       </div>
     </AdminLayout>
   );
