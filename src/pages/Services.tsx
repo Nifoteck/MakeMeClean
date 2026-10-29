@@ -180,9 +180,9 @@ export default function Services() {
                       <div className="w-14 h-14 rounded-2xl bg-green-50 border border-green-100 flex items-center justify-center text-3xl group-hover:scale-110 transition-transform">
                         {card.icon}
                       </div>
-                      <div className="text-right">
+                      <div className="text-right flex flex-col items-end gap-1.5">
                         {card.badge && (
-                          <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full mb-1">
+                          <span className="inline-block text-[10px] font-bold uppercase tracking-wider bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full">
                             {card.badge}
                           </span>
                         )}

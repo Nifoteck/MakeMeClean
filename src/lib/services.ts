@@ -43,10 +43,10 @@ export function mapDbService(s: DbService): Service {
     image_url: s.image_url ?? null,
     discount_percent: Number.isFinite(discount) ? discount : 0,
     popular: Boolean(s.popular),
-    category: s.category || 'domestic',
+    category: s.category || undefined,
     badge: s.badge || undefined,
     tagline: s.tagline || undefined,
-    icon: s.icon || '🧹',
+    icon: s.icon || undefined,
     sort_order: typeof s.sort_order === 'number' ? s.sort_order : 0,
   };
 }

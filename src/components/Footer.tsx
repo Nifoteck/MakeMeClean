@@ -71,10 +71,10 @@ export default function Footer() {
                 <li key={cat.id}>
                   <Link
                     href={`/services/${cat.primaryServiceId}`}
-                    className="hover:text-green-400 transition-colors duration-100 flex items-center justify-between group"
+                    className="hover:text-green-400 transition-colors duration-100 flex items-center justify-between gap-2 group"
                   >
                     <span>{cat.name}</span>
-                    <span className="text-[11px] text-gray-400 group-hover:text-green-300 font-medium">
+                    <span className="text-xs text-gray-400 group-hover:text-green-400 font-semibold shrink-0">
                       {cat.hourlyRateRange}
                     </span>
                   </Link>
