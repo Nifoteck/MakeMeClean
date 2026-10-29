@@ -34,7 +34,7 @@ export default function AdminServices() {
   const fetchServices = async () => {
     setFetching(true); setError("");
     const { data, error: err } = await supabase.from("services")
-      .select("id, name, description, price, image_url, discount_percent, popular, active, category, badge, tagline, icon, sort_order")
+      .select("*")
       .order("name", { ascending: true });
     if (err) { setError(err.message); setServices([]); }
     else setServices((data as DbService[]) ?? []);

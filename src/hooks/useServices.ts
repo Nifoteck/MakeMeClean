@@ -15,21 +15,41 @@ export function useServices() {
     (async () => {
       setLoading(true);
       setError("");
-      const { data, error: err } = await supabase
-        .from("services")
-        .select("id, name, description, price, image_url, discount_percent, popular, active, category, badge, tagline, icon, sort_order")
-        .eq("active", true)
-        .order("name", { ascending: true });
+      try {
+        // Try direct supabase client first
+        const { data, error: err } = await supabase
+          .from("services")
+          .select("*")
+          .eq("active", true)
+          .order("name", { ascending: true });
 
-      if (cancelled) return;
+        if (!err && data && data.length > 0) {
+          if (!cancelled) {
+            setServices((data as DbService[]).map(mapDbService));
+            setLoading(false);
+          }
+          return;
+        }
 
-      if (err) {
-        setError(err.message);
-        setServices(FALLBACK);
-      } else {
-        setServices(((data as DbService[]) ?? []).map(mapDbService));
+        // Fallback to /api/services server endpoint if client query returned error or empty
+        const apiRes = await fetch("/api/services");
+        const apiJson = await apiRes.json();
+        if (apiJson && apiJson.ok && Array.isArray(apiJson.data) && apiJson.data.length > 0) {
+          if (!cancelled) {
+            setServices((apiJson.data as DbService[]).map(mapDbService));
+            setLoading(false);
+          }
+          return;
+        }
+
+        if (err && !cancelled) {
+          setError(err.message);
+        }
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message || "Failed to load services");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      setLoading(false);
     })();
     return () => {
       cancelled = true;
