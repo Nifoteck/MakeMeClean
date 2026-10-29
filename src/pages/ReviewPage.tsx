@@ -248,6 +248,46 @@ export default function ReviewPage() {
             </div>
           </div>
 
+          {/* Cleaner Tip (Wecasa Standard) */}
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-semibold text-gray-700">
+                Leave an optional tip for your cleaner?
+              </label>
+              <span className="text-xs text-green-700 font-bold bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                100% goes to cleaner
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Reward great service. Tips are added directly to your cleaner's verified payout.
+            </p>
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {[2, 3, 5, 10].map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => {
+                    setTipAmount(tipAmount === amt ? null : amt);
+                    setCustomTip("");
+                  }}
+                  className={cn(
+                    "py-2.5 rounded-xl text-xs font-bold border transition-all",
+                    tipAmount === amt
+                      ? "border-green-600 bg-green-50 text-green-700 ring-1 ring-green-600"
+                      : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                  )}
+                >
+                  +£{amt}
+                </button>
+              ))}
+            </div>
+            {tipAmount !== null && (
+              <p className="text-xs text-green-700 font-bold animate-fade-in">
+                ✨ Thank you! £{tipAmount.toFixed(2)} tip will be rewarded to your cleaner.
+              </p>
+            )}
+          </div>
+
           {/* Comments */}
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5">
             <label className="block text-sm font-semibold text-gray-700 mb-2">

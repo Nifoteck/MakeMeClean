@@ -44,6 +44,8 @@ import { useServices } from "@/hooks/useServices";
 import { api } from "@/lib/apiClient";
 import { getServiceBookingConfig } from "@/lib/serviceBookingConfigs";
 import { buildServiceCatalogFromDb } from "@/lib/serviceCatalog";
+import { verifyPostcodeCoverage, type PostcodeCoverageResult } from "@/lib/postcodeCoverage";
+import { generateCleaningScopeChecklist } from "@/lib/cleaningScopeChecklist";
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6; // 1: Service, 2: Frequency & Schedule, 3: Scale & Hours, 4: Location & Access, 5: Review Summary, 6: Confirmed
 type RecurringFreq = "none" | "weekly" | "fortnightly" | "monthly";
@@ -94,6 +96,10 @@ export default function BookingPage() {
   const [city, setCity] = useState("");
   const [citiesList, setCitiesList] = useState<string[]>(walesCities);
   const [postcode, setPostcode] = useState("");
+  const [initialPostcode, setInitialPostcode] = useState("");
+  const [coverageInfo, setCoverageInfo] = useState<PostcodeCoverageResult | null>(null);
+  const [coverageChecked, setCoverageChecked] = useState(false);
+  const [cleanerBringsVacuum, setCleanerBringsVacuum] = useState(false);
   const [notes, setNotes] = useState("");
   const [accessMethod, setAccessMethod] = useState("home");
   const [suppliesOption, setSuppliesOption] = useState("cleaner");
@@ -161,6 +167,18 @@ export default function BookingPage() {
       mults,
       bookingConfig.category === "airbnb" ? bookingConfig.extras : extList
     );
+  };
+
+  const handleCheckPostcode = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!initialPostcode.trim()) return;
+    const result = verifyPostcodeCoverage(initialPostcode);
+    setCoverageInfo(result);
+    setCoverageChecked(true);
+    if (result.covered && result.city) {
+      setPostcode(initialPostcode.trim().toUpperCase());
+      setCity(result.city);
+    }
   };
 
   const handleRoomChange = (
@@ -669,6 +687,52 @@ export default function BookingPage() {
         {/* ═════════ STEP 1: SERVICE SELECTION ═════════ */}
         {step === 1 && (
           <div className="animate-fade-in space-y-6">
+            {/* Wecasa-style Upfront Postcode & Local Cleaner Availability Check */}
+            <div className="bg-gradient-to-r from-green-900 to-gray-900 text-white rounded-3xl p-5 sm:p-6 shadow-md">
+              <div className="max-w-xl">
+                <div className="inline-flex items-center gap-1.5 bg-green-500/20 text-green-300 text-[11px] font-bold px-2.5 py-0.5 rounded-full mb-2">
+                  <Sparkles className="w-3 h-3" /> Live Cleaner Availability
+                </div>
+                <h3 className="text-lg sm:text-xl font-black tracking-tight text-white mb-1">
+                  Check available cleaners in your Welsh postcode
+                </h3>
+                <p className="text-xs text-gray-300 mb-4">
+                  Find out which certified, DBS-checked professionals are working in your area this week.
+                </p>
+
+                <form onSubmit={handleCheckPostcode} className="flex gap-2 max-w-md">
+                  <input
+                    type="text"
+                    value={initialPostcode}
+                    onChange={(e) => setInitialPostcode(e.target.value.toUpperCase())}
+                    placeholder="e.g. CF10 1AB, SA1, NP20..."
+                    className="flex-1 bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-xs text-white placeholder-gray-400 font-bold uppercase focus:outline-none focus:ring-2 focus:ring-green-400 focus:bg-white/20"
+                  />
+                  <button
+                    type="submit"
+                    className="btn-primary py-2.5 px-5 text-xs font-bold shrink-0 shadow-xs"
+                  >
+                    Check Area
+                  </button>
+                </form>
+
+                {coverageChecked && coverageInfo && (
+                  <div className={`mt-3.5 p-3 rounded-2xl text-xs flex items-center gap-2.5 animate-fade-in ${
+                    coverageInfo.covered
+                      ? "bg-green-800/80 border border-green-500/50 text-green-100"
+                      : "bg-amber-900/80 border border-amber-600/50 text-amber-100"
+                  }`}>
+                    {coverageInfo.covered ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-300 shrink-0" />
+                    ) : (
+                      <MapPin className="w-4 h-4 text-amber-300 shrink-0" />
+                    )}
+                    <span>{coverageInfo.message}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="text-center max-w-xl mx-auto mb-2">
               <h2 className="text-2xl font-black text-gray-900 tracking-tight">
                 Select your service
@@ -1305,47 +1369,75 @@ export default function BookingPage() {
               </div>
             </div>
 
-            {/* Supplies Option */}
-            <div>
-              <label className="text-xs font-bold text-gray-700 block mb-2">
-                <Sparkles className="w-3.5 h-3.5 inline mr-1 text-green-600" />{" "}
-                {bookingConfig.suppliesPrompt}
-              </label>
-              <div className="grid sm:grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSuppliesOption("cleaner")}
-                  className={cn(
-                    "p-3 rounded-2xl border text-left transition-all",
-                    suppliesOption === "cleaner"
-                      ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
-                      : "border-gray-200 bg-white hover:border-gray-300"
-                  )}
-                >
-                  <div className="font-bold text-xs text-gray-900">
-                    {bookingConfig.suppliesCleanerLabel}
+            {/* Supplies Option & Vacuum/Mop Equipment Add-on */}
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-2">
+                  <Sparkles className="w-3.5 h-3.5 inline mr-1 text-green-600" />{" "}
+                  {bookingConfig.suppliesPrompt}
+                </label>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSuppliesOption("cleaner")}
+                    className={cn(
+                      "p-3 rounded-2xl border text-left transition-all",
+                      suppliesOption === "cleaner"
+                        ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    )}
+                  >
+                    <div className="font-bold text-xs text-gray-900">
+                      {bookingConfig.suppliesCleanerLabel}
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">
+                      Eco sprays, cloths & cleaning agents included
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSuppliesOption("customer")}
+                    className={cn(
+                      "p-3 rounded-2xl border text-left transition-all",
+                      suppliesOption === "customer"
+                        ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
+                        : "border-gray-200 bg-white hover:border-gray-300"
+                    )}
+                  >
+                    <div className="font-bold text-xs text-gray-900">
+                      {bookingConfig.suppliesCustomerLabel}
+                    </div>
+                    <div className="text-[10px] text-gray-500 mt-0.5">
+                      Cleaner uses items provided at property
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Vacuum & Mop Equipment Upgrade */}
+              <div className="p-3.5 rounded-2xl border border-gray-200 bg-gray-50/60 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-lg">
+                    🧹
                   </div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">
-                    Eco sprays, cloths & equipment arranged
+                  <div>
+                    <div className="text-xs font-bold text-gray-900">
+                      Need cleaner to bring vacuum cleaner & mop?
+                    </div>
+                    <div className="text-[11px] text-gray-500">
+                      Cleaner will bring full heavy-duty vacuum & clean mop bucket (+£7.50 flat)
+                    </div>
                   </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSuppliesOption("customer")}
-                  className={cn(
-                    "p-3 rounded-2xl border text-left transition-all",
-                    suppliesOption === "customer"
-                      ? "border-green-600 bg-green-50/70 shadow-xs ring-1 ring-green-600"
-                      : "border-gray-200 bg-white hover:border-gray-300"
-                  )}
-                >
-                  <div className="font-bold text-xs text-gray-900">
-                    {bookingConfig.suppliesCustomerLabel}
-                  </div>
-                  <div className="text-[10px] text-gray-500 mt-0.5">
-                    Cleaner uses items provided on site
-                  </div>
-                </button>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={cleanerBringsVacuum}
+                    onChange={(e) => setCleanerBringsVacuum(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-600"></div>
+                </label>
               </div>
             </div>
 
@@ -1457,6 +1549,38 @@ export default function BookingPage() {
               </p>
             </div>
 
+            {/* Dynamic Personalized Scope Checklist (Wecasa Standard) */}
+            <div className="bg-white rounded-2xl p-5 border border-gray-200 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-green-600" /> What your cleaner will cover:
+                </div>
+                <span className="text-[11px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                  {formatDuration(durationHours)} allocated
+                </span>
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-2.5 pt-1">
+                {generateCleaningScopeChecklist({
+                  serviceName: selectedService.name,
+                  bedrooms,
+                  bathrooms,
+                  livingRooms,
+                  extras: selectedExtras,
+                  propertyType,
+                  equipmentBroughtByCleaner: cleanerBringsVacuum,
+                }).map((task, idx) => (
+                  <div key={idx} className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 flex items-start gap-2.5">
+                    <span className="text-base shrink-0 mt-0.5">{task.icon}</span>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-gray-900 leading-snug">{task.title}</div>
+                      <div className="text-[10px] text-gray-500 leading-relaxed mt-0.5">{task.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* Summary details card */}
             <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-3 text-sm">
               <div className="flex justify-between items-center pb-3 border-b border-gray-200">
@@ -1528,6 +1652,12 @@ export default function BookingPage() {
                 </div>
               )}
 
+              {cleanerBringsVacuum && (
+                <div className="pt-2 text-xs font-medium text-gray-700 flex justify-between items-center border-t border-gray-200">
+                  <span>Vacuum & mop equipment hire:</span>
+                  <span className="font-bold">+£7.50</span>
+                </div>
+              )}
               {recurringPct > 0 && (
                 <div className="pt-2 text-xs font-semibold text-orange-600 flex items-center gap-1">
                   <span>🎉 {recurringPct}% frequency discount applied!</span>
