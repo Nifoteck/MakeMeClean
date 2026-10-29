@@ -43,10 +43,7 @@ import type { BookingDurationMultipliers, BookingExtra } from "@/lib/constants";
 import { useServices } from "@/hooks/useServices";
 import { api } from "@/lib/apiClient";
 import { getServiceBookingConfig } from "@/lib/serviceBookingConfigs";
-import {
-  CORE_SERVICE_CATEGORIES,
-  buildServiceCatalogFromDb,
-} from "@/lib/serviceCatalog";
+import { buildServiceCatalogFromDb } from "@/lib/serviceCatalog";
 
 type WizardStep = 1 | 2 | 3 | 4 | 5 | 6; // 1: Service, 2: Frequency & Schedule, 3: Scale & Hours, 4: Location & Access, 5: Review Summary, 6: Confirmed
 type RecurringFreq = "none" | "weekly" | "fortnightly" | "monthly";
