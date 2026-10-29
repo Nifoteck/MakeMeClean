@@ -754,7 +754,7 @@ export default function AdminPanel() {
                 key={b.id}
                 className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:border-green-100 hover:shadow-md transition-all"
               >
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-[minmax(190px,1.15fr)_minmax(170px,1fr)_minmax(230px,1.15fr)_96px_minmax(170px,0.95fr)_minmax(190px,auto)] xl:items-center">
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-[minmax(180px,1.15fr)_minmax(160px,1.05fr)_minmax(190px,1.2fr)_85px_minmax(160px,1.1fr)_auto] xl:grid-cols-3 xl:gap-y-4 lg:grid-cols-2 items-center">
                   {/* Customer */}
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center shrink-0">
