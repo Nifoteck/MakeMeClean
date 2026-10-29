@@ -30,6 +30,7 @@ import {
 import { START_HOURS } from "@/lib/services";
 import { Booking, RescheduleRequest } from "@/types";
 import { BOOKING_STATUS_STYLES } from "@/lib/constants";
+import { BOOKING_STATUS_STYLES, isBookingStartTimePassed } from "@/lib/constants";
 import { api } from "@/lib/apiClient";
 
 const STATUS_STYLES = BOOKING_STATUS_STYLES;
@@ -206,9 +207,13 @@ export default function BookingDetail() {
   }
 
   const isPaid = booking.payment_status === "paid";
+  const isExpiredUnpaid = !isPaid && isBookingStartTimePassed(booking.date, booking.time_slot);
+  const effectiveStatus = (isExpiredUnpaid && booking.status === "upcoming") ? "cancelled" : booking.status;
   const paymentLabel =
     booking.payment_status === "paid"
       ? "Paid"
+      : isExpiredUnpaid
+      ? "Payment expired"
       : booking.payment_status === "refunded"
       ? "Refunded"
       : booking.payment_status === "disputed"
@@ -217,12 +222,15 @@ export default function BookingDetail() {
   const paymentClass =
     booking.payment_status === "paid"
       ? "bg-emerald-100 text-emerald-700"
+      : isExpiredUnpaid
+      ? "bg-red-100 text-red-700"
       : booking.payment_status === "refunded"
       ? "bg-slate-100 text-slate-600"
       : booking.payment_status === "disputed"
       ? "bg-red-100 text-red-700"
       : "bg-amber-100 text-amber-700";
   const cancelCheck = canCancelBooking(booking);
+  const cancelCheck = canCancelBooking({ ...booking, status: effectiveStatus });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -260,15 +268,19 @@ export default function BookingDetail() {
                   </h1>
                   <div className="flex flex-wrap items-center gap-2 mt-2">
                     {(booking.status !== "upcoming" || isPaid) && (
+                    {(effectiveStatus !== "upcoming" || isPaid) && (
                       <span
                         className={cn(
                           "text-xs font-semibold px-2.5 py-1 rounded-full",
                           STATUS_STYLES[booking.status] ??
+                          STATUS_STYLES[effectiveStatus] ??
                             "bg-gray-100 text-gray-600"
                         )}
                       >
                         {booking.status.charAt(0).toUpperCase() +
                           booking.status.slice(1)}
+                        {effectiveStatus.charAt(0).toUpperCase() +
+                          effectiveStatus.slice(1)}
                       </span>
                     )}
                     <span
@@ -352,8 +364,37 @@ export default function BookingDetail() {
           </div>
         </div>
 
+        {/* Expired Unpaid Alert */}
+        {isExpiredUnpaid && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-5 mb-4 flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-red-100 rounded-xl flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <p className="font-bold text-red-900 text-sm">
+                  Booking expired & cancelled
+                </p>
+                <p className="text-xs text-red-700 mt-0.5">
+                  The scheduled booking time has passed and payment was not completed. Payment is closed.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/book"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-xl text-sm transition-colors"
+              >
+                Book New Clean
+              </Link>
+            </div>
+          </div>
+        )}
+
         {/* Payment pending alert */}
         {booking.status === "upcoming" &&
+        {!isExpiredUnpaid &&
+          booking.status === "upcoming" &&
           !isPaid &&
           booking.payment_status !== "refunded" &&
           booking.payment_status !== "disputed" && (
@@ -557,6 +598,7 @@ export default function BookingDetail() {
 
         {/* Cancel section */}
         {booking.status === "upcoming" &&
+        {!isExpiredUnpaid && booking.status === "upcoming" &&
           (!cancelCheck.allowed ? (
             <div className="flex items-start gap-3 px-4 py-3.5 bg-white border border-gray-200 rounded-2xl text-sm text-gray-500 shadow-sm mb-3">
               <XCircle className="w-4 h-4 mt-0.5 shrink-0 text-gray-300" />

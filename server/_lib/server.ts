@@ -15,6 +15,8 @@ export {
   MIN_DURATION_HOURS,
   parseDurationMultipliers,
   parseBookingExtras,
+  isBookingStartTimePassed,
+  isBookingEndTimePassed,
   START_HOURS,
 } from '../../shared/booking.js';
 export type {

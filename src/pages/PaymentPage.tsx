@@ -194,6 +194,26 @@ export default function PaymentPage() {
     );
   }
 
+  if (booking.status === "cancelled" || !isFutureBooking(booking)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center">
+          <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-extrabold text-gray-900 mb-2">
+            Booking Expired
+          </h1>
+          <p className="text-gray-500 mb-6">
+            The scheduled appointment time for this booking has passed, so payment is no longer accepted. Please reschedule or book a new clean.
+          </p>
+          <div className="flex gap-3 justify-center">
+            <button onClick={() => setLocation(`/bookings/${booking.id}`)} className="btn-secondary">View Booking</button>
+            <button onClick={() => setLocation("/book")} className="btn-primary">Book New Clean</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (booking.payment_status === "paid" || step === "success") return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center animate-fade-in">

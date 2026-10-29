@@ -22236,6 +22236,14 @@ function calculateDurationHours(timeSlot) {
   const duration = (endMinutes - startMinutes) / 60;
   return duration > 0 ? duration : 2;
 }
+function isBookingStartTimePassed(dateStr, timeSlot) {
+  if (!dateStr) return false;
+  const startHourStr = (timeSlot || "09:00").split(/[-–]/)[0]?.trim() || "09:00";
+  const [hour, min] = startHourStr.split(":").map(Number);
+  const scheduledTime = /* @__PURE__ */ new Date(`${dateStr}T${String(hour || 9).padStart(2, "0")}:${String(min || 0).padStart(2, "0")}:00`);
+  const now = /* @__PURE__ */ new Date();
+  return Number.isFinite(scheduledTime.getTime()) && now > scheduledTime;
+}
 
 // server/_lib/server.ts
 function getEnv(name, fallback = "") {
@@ -22747,8 +22755,15 @@ async function handleBookings(req, res, subPath, params = {}) {
       }
       const { data, error } = await query;
       if (error) return sendError(res, error.message, 500);
+      const expiredUnpaidIds = (data || []).filter(
+        (b) => b.status === "upcoming" && b.payment_status !== "paid" && isBookingStartTimePassed(b.date, b.time_slot)
+      ).map((b) => b.id);
+      if (expiredUnpaidIds.length > 0) {
+        void supabase.from("bookings").update({ status: "cancelled" }).in("id", expiredUnpaidIds);
+      }
       const items = (data || []).map((b) => ({
         ...b,
+        status: expiredUnpaidIds.includes(b.id) ? "cancelled" : b.status,
         imageUrl: resolveServiceImageUrl(b.service_type, null)
       }));
       return sendSuccess(res, items);
@@ -23021,6 +23036,16 @@ async function handleBookings(req, res, subPath, params = {}) {
     const { data: booking, error: fetchErr } = await supabase.from("bookings").select("id, user_id, status, date, time_slot").eq("id", bookingId).single();
     if (fetchErr || !booking) return sendError(res, "Booking not found", 404);
     if (booking.user_id !== user.id) return sendError(res, "Unauthorized", 403);
+    if (booking.payment_status === "paid") return sendError(res, "Booking is already paid", 400);
+    if (isBookingStartTimePassed(booking.date, booking.time_slot)) {
+      void supabase.from("bookings").update({ status: "cancelled" }).eq("id", booking.id);
+      return sendError(
+        res,
+        "This appointment scheduled start time has already passed. Please reschedule or place a new booking.",
+        400,
+        { expired: true, requiresReschedule: true }
+      );
+    }
     if (booking.status === "cancelled") return sendError(res, "Booking is already cancelled", 400);
     const { error: updateErr } = await supabase.from("bookings").update({ status: "cancelled" }).eq("id", bookingId);
     if (updateErr) return sendError(res, updateErr.message, 500);
@@ -23031,6 +23056,16 @@ async function handleBookings(req, res, subPath, params = {}) {
     const { data: booking, error: fetchErr } = await supabase.from("bookings").select("*").eq("id", bookingId).single();
     if (fetchErr || !booking) return sendError(res, "Booking not found", 404);
     if (booking.user_id !== user.id) return sendError(res, "Unauthorized", 403);
+    if (booking.payment_status === "paid") return sendError(res, "Booking is already paid", 400);
+    if (isBookingStartTimePassed(booking.date, booking.time_slot)) {
+      void supabase.from("bookings").update({ status: "cancelled" }).eq("id", booking.id);
+      return sendError(
+        res,
+        "This appointment scheduled start time has already passed. Please reschedule or place a new booking.",
+        400,
+        { expired: true, requiresReschedule: true }
+      );
+    }
     const siteUrl = getEnv("SITE_URL", "https://makemeclean.co.uk");
     const successUrl = `${siteUrl}/booking-detail/${booking.id}?payment=success`;
     const cancelUrl = `${siteUrl}/booking-detail/${booking.id}?payment=cancelled`;
@@ -23100,6 +23135,11 @@ async function handleBookings(req, res, subPath, params = {}) {
     const { data: booking, error } = await supabase.from("bookings").select("*").eq("id", bookingId).single();
     if (error || !booking) return sendError(res, "Booking not found", 404);
     if (booking.user_id !== user.id) return sendError(res, "Unauthorized", 403);
+    let currentStatus = booking.status;
+    if (booking.status === "upcoming" && booking.payment_status !== "paid" && isBookingStartTimePassed(booking.date, booking.time_slot)) {
+      currentStatus = "cancelled";
+      void supabase.from("bookings").update({ status: "cancelled" }).eq("id", booking.id);
+    }
     const netAmount = Math.round(booking.price / 1.2 * 100) / 100;
     const vatAmount = Math.round((booking.price - netAmount) * 100) / 100;
     return sendSuccess(res, {
@@ -23161,6 +23201,16 @@ async function handleBookings(req, res, subPath, params = {}) {
     const { data: booking, error: fetchErr } = await supabase.from("bookings").select("id, user_id, price, status").eq("id", bookingId).single();
     if (fetchErr || !booking) return sendError(res, "Booking not found", 404);
     if (booking.user_id !== user.id) return sendError(res, "Unauthorized", 403);
+    if (booking.payment_status === "paid") return sendError(res, "Booking is already paid", 400);
+    if (isBookingStartTimePassed(booking.date, booking.time_slot)) {
+      void supabase.from("bookings").update({ status: "cancelled" }).eq("id", booking.id);
+      return sendError(
+        res,
+        "This appointment scheduled start time has already passed. Please reschedule or place a new booking.",
+        400,
+        { expired: true, requiresReschedule: true }
+      );
+    }
     const refundAmount = amount === void 0 ? Number(booking.price) : Number(amount);
     if (!Number.isFinite(refundAmount) || refundAmount <= 0 || refundAmount > Number(booking.price)) {
       return sendError(res, "Refund amount must be greater than zero and no more than the booking total.", 400);
@@ -23179,6 +23229,11 @@ async function handleBookings(req, res, subPath, params = {}) {
     const { data: booking, error } = await supabase.from("bookings").select("*").eq("id", bookingId).single();
     if (error || !booking) return sendError(res, "Booking not found", 404);
     if (booking.user_id !== user.id) return sendError(res, "Unauthorized", 403);
+    let currentStatus = booking.status;
+    if (booking.status === "upcoming" && booking.payment_status !== "paid" && isBookingStartTimePassed(booking.date, booking.time_slot)) {
+      currentStatus = "cancelled";
+      void supabase.from("bookings").update({ status: "cancelled" }).eq("id", booking.id);
+    }
     let cleaner = null;
     if (booking.staff_id) {
       const { data: staffData } = await supabase.from("staff").select("id, full_name, phone, rating, avatar_url").eq("id", booking.staff_id).maybeSingle();
@@ -23188,6 +23243,7 @@ async function handleBookings(req, res, subPath, params = {}) {
     const { data: refund } = await supabase.from("refund_requests").select("*").eq("booking_id", bookingId).order("created_at", { ascending: false }).limit(1).maybeSingle();
     return sendSuccess(res, {
       ...booking,
+      status: currentStatus,
       imageUrl: resolveServiceImageUrl(booking.service_type, null),
       cleaner,
       rescheduleRequest: reschedule || null,

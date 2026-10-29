@@ -79,6 +79,8 @@ export {
   DURATION_STEP_HOURS,
   parseDurationMultipliers,
   parseBookingExtras,
+  isBookingStartTimePassed,
+  isBookingEndTimePassed,
 } from "../../shared/booking";
 export type {
   BookingDurationMultipliers,
