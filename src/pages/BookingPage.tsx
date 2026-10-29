@@ -181,30 +181,12 @@ export default function BookingPage() {
     selectedExtras
   );
   const requiresManualQuote = recommendedDurationHours > MAX_DURATION_HOURS;
-  const isStudio = propertyType === "Studio";
-  const isHmo = propertyType === "HMO / Shared House";
-  const bedroomLabel = isStudio
-    ? "Separate bedrooms"
-    : isHmo
-    ? "Private bedrooms"
-    : "Bedrooms";
-  const bedroomHint = isStudio
-    ? "Count only separate rooms"
-    : isHmo
-    ? "Private rooms to clean"
-    : "Sleep & storage";
-  const bathroomLabel = isHmo ? "Shared bathrooms" : "Bathrooms";
-  const bathroomHint = isHmo ? "Shared shower & WC" : "Shower & WC";
-  const livingAreaLabel = isHmo
-    ? "Shared living areas"
-    : isStudio
-    ? "Main living area"
-    : "Living Areas";
-  const livingAreaHint = isHmo
-    ? "Communal rooms"
-    : isStudio
-    ? "Open-plan room"
-    : "Lounge & dining";
+  const bedroomLabel = "Bedrooms";
+  const bedroomHint = "Sleep & storage (or 0 for studio)";
+  const bathroomLabel = "Bathrooms";
+  const bathroomHint = "Shower, bath & WC";
+  const livingAreaLabel = "Living Areas";
+  const livingAreaHint = "Lounge & dining (or 0 if none)";
 
   const toggleExtra = (extraId: string) => {
     const updated = selectedExtras.includes(extraId)
